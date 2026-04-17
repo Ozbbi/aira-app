@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "AIRA",
+    "slug": "aira",
+    "scheme": "aira",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aira.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0A0F"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.aira.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "AIRA",
+      "shortName": "AIRA",
+      "description": "Think with AI. Not against it.",
+      "themeColor": "#7C3AED",
+      "backgroundColor": "#0A0A0F",
+      "display": "standalone",
+      "lang": "en"
+    },
+    "platforms": ["ios", "android", "web"],
+    "plugins": [
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#7C3AED",
+          "defaultChannel": "streak"
+        }
+      ],
+      "expo-secure-store",
+      "expo-web-browser"
+    ]
+  }
+}

@@ -1,19 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, Alert, Platform, ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import * as Haptics from 'expo-haptics';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withSequence,
-  withTiming,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
 import { useUserStore } from '../store/userStore';
@@ -25,8 +17,8 @@ interface Props {
 }
 
 const tracks = [
-  { id: 'foundations', name: 'Foundations', icon: '🧠', unlocked: true },
-  { id: 'critical', name: 'Critical Thinking', icon: '🔍', unlocked: false },
+  { id: 'foundations', name: 'Foundations', icon: '🌱', unlocked: true },
+  { id: 'critical', name: 'Critical Thinking', icon: '🧠', unlocked: false },
   { id: 'power', name: 'Power User', icon: '⚡', unlocked: false },
   { id: 'tools', name: 'Tools & Taste', icon: '🛠️', unlocked: false },
   { id: 'creators', name: 'AI for Creators', icon: '✨', unlocked: false },
@@ -39,21 +31,7 @@ export function PaywallScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [unlockedIndex, setUnlockedIndex] = useState(0);
 
-  const pulseScale = useSharedValue(1);
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseScale.value }],
-  }));
-
-  React.useEffect(() => {
-    pulseScale.value = withRepeat(
-      withSequence(
-        withSpring(1.05, { damping: 10 }),
-        withSpring(1, { damping: 10 })
-      ),
-      -1,
-      false
-    );
-
+  useEffect(() => {
     // Stagger unlock animation
     const interval = setInterval(() => {
       setUnlockedIndex((prev) => {
@@ -67,11 +45,13 @@ export function PaywallScreen({ navigation }: Props) {
 
   async function handleUpgrade() {
     if (!userId || loading) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (Platform.OS as string !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
     setLoading(true);
     try {
       const { url } = await createCheckout(userId);
-      if (Platform.OS === 'web') {
+      if (Platform.OS as string === 'web') {
         if (typeof window !== 'undefined') {
           window.location.href = url;
         }
@@ -82,14 +62,18 @@ export function PaywallScreen({ navigation }: Props) {
         const fresh = await getUser(userId);
         if (fresh.tier === 'pro') {
           upgradeTier();
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          if (Platform.OS as string !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
           navigation.goBack();
         }
       } catch {
         // Non-fatal
       }
     } catch (err) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS as string !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
       Alert.alert('Checkout unavailable', 'Could not start checkout. Please try again.');
     } finally {
       setLoading(false);
@@ -137,7 +121,15 @@ export function PaywallScreen({ navigation }: Props) {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(500).delay(800)} style={styles.buttonSection}>
-        <Animated.View style={pulseStyle}>
+        <MotiView
+          animate={{
+            scale: [1, 1.05, 1],
+          }}
+          transition={{
+            loop: true,
+            duration: 3000,
+          }}
+        >
           <Pressable
             style={[styles.upgradeButton, loading && styles.upgradeButtonDisabled]}
             onPress={handleUpgrade}
@@ -149,10 +141,12 @@ export function PaywallScreen({ navigation }: Props) {
               </Text>
             </LinearGradient>
           </Pressable>
-        </Animated.View>
+        </MotiView>
         <Pressable
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            if (Platform.OS as string !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
             navigation.goBack();
           }}
           disabled={loading}

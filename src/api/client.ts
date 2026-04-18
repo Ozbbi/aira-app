@@ -36,15 +36,6 @@ export class NetworkError extends Error {
   }
 }
 
-export class DailyLimitError extends Error {
-  upgradeUrl: string;
-  constructor(message: string, upgradeUrl: string) {
-    super(message);
-    this.name = 'DailyLimitError';
-    this.upgradeUrl = upgradeUrl;
-  }
-}
-
 // --- Request interceptor: attach JWT if present ---
 // We import the store lazily inside the interceptor to avoid circular deps
 // (store imports api, api would import store). The lazy import reads the
@@ -73,15 +64,6 @@ api.interceptors.response.use(
     if (!error.response) {
       // Network error (timeout, no connection, DNS fail)
       return Promise.reject(new NetworkError());
-    }
-    if (error.response.status === 402) {
-      const data = error.response.data as { message?: string; upgradeUrl?: string };
-      return Promise.reject(
-        new DailyLimitError(
-          data.message ?? 'Daily limit reached',
-          data.upgradeUrl ?? '/pro'
-        )
-      );
     }
     return Promise.reject(error);
   }
@@ -136,18 +118,6 @@ export async function createUser(name: string, email?: string): Promise<User> {
 
 export async function getUser(userId: string): Promise<User> {
   const { data } = await api.get(`/users/${userId}`);
-  return data;
-}
-
-export interface UserLimits {
-  tier: 'free' | 'pro';
-  lessonsToday: number;
-  dailyLimit: number | 'unlimited';
-  canTakeLesson: boolean;
-}
-
-export async function getUserLimits(userId: string): Promise<UserLimits> {
-  const { data } = await api.get(`/users/${userId}/limits`);
   return data;
 }
 

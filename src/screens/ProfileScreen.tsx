@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Switch, ScrollView, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, Switch, ScrollView, TextInput, Modal, Platform } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
 import { useUserStore } from '../store/userStore';
@@ -95,7 +96,9 @@ export function ProfileScreen({ navigation }: Props) {
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   const handleSaveName = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     // setName(newName); // TODO: Add setName to userStore
     setEditingName(false);
   };
@@ -110,7 +113,9 @@ export function ProfileScreen({ navigation }: Props) {
           text: 'Reset',
           style: 'destructive',
           onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            }
             resetStore();
           },
         },
@@ -184,7 +189,9 @@ export function ProfileScreen({ navigation }: Props) {
         <Text style={styles.sectionTitle}>Settings</Text>
         
         <Pressable style={styles.settingRow} onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
           setEditingName(true);
         }}>
           <View style={styles.settingTextWrap}>
@@ -201,7 +208,9 @@ export function ProfileScreen({ navigation }: Props) {
           <Switch
             value={hapticsEnabled}
             onValueChange={(value) => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
               setHapticsEnabled(value);
             }}
             trackColor={{ false: colors.border, true: colors.airaCore }}
@@ -216,7 +225,9 @@ export function ProfileScreen({ navigation }: Props) {
           <Switch
             value={hapticsEnabled}
             onValueChange={(value) => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
               setHapticsEnabled(value);
             }}
             trackColor={{ false: colors.border, true: colors.airaCore }}
@@ -235,7 +246,9 @@ export function ProfileScreen({ navigation }: Props) {
           <Pressable
             style={styles.upgradeCard}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
               navigation.navigate('Paywall');
             }}
           >
@@ -267,7 +280,9 @@ export function ProfileScreen({ navigation }: Props) {
               <Pressable
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
                   setEditingName(false);
                   setNewName(name);
                 }}

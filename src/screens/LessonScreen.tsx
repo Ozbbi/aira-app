@@ -1,24 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withRepeat,
-  withSpring,
-  Easing,
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  FadeOut,
-  SlideInDown,
-  SlideInUp,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, SlideInDown, SlideInUp } from 'react-native-reanimated';
+import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
 import { getLessonById, checkAnswer, saveProgress, getProgress } from '../api/client';
@@ -60,36 +47,15 @@ export function LessonScreen({ navigation, route }: Props) {
   const [feedbackData, setFeedbackData] = useState<any>(null);
   const [checking, setChecking] = useState(false);
 
-  // Progress bar animation
-  const progressWidth = useSharedValue(0);
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value}%`,
-  }));
-
-  // XP count animation
-  const xpAnimated = useSharedValue(0);
-  const xpStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(1, { duration: 300 }),
-  }));
-
   useEffect(() => {
     loadLesson();
   }, []);
-
-  useEffect(() => {
-    if (lesson && phase === 'question') {
-      progressWidth.value = withTiming(
-        ((questionIndex + 1) / lesson.questions.length) * 100,
-        { duration: 400, easing: Easing.out(Easing.cubic) }
-      );
-    }
-  }, [questionIndex, lesson, phase]);
 
   const loadLesson = async () => {
     setPhase('loading');
     setErrorMsg('');
     try {
-      const lessonId = route.params?.lessonId;
+      const lessonId = route.params?.lessonId || 'foundations_1';
       const data = await getLessonById(lessonId, userId);
       setLesson(data);
       setStartTime(Date.now());
@@ -135,7 +101,9 @@ export function LessonScreen({ navigation, route }: Props) {
   const handleCheck = async () => {
     if (!lesson || !currentQuestion || checking) return;
     setChecking(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
 
     const answer = getUserAnswer();
     let result: any;
@@ -148,9 +116,13 @@ export function LessonScreen({ navigation, route }: Props) {
 
     if (result.correct) {
       setCorrectCount((c) => c + 1);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     }
 
     setTotalXpEarned((x) => x + result.xpEarned);
@@ -180,12 +152,16 @@ export function LessonScreen({ navigation, route }: Props) {
       if (result.newLevel > prevLevel) {
         setLeveledUp(true);
         setNewLevel(result.newLevel);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
       }
       
       if (prevStreak === 2 || prevStreak === 6 || prevStreak === 29 || prevStreak === 99) {
         setStreakMilestone(true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       }
 
       syncFromBackend({
@@ -212,6 +188,9 @@ export function LessonScreen({ navigation, route }: Props) {
   };
 
   const handleClose = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     if (phase === 'question' && questionIndex > 0) {
       Alert.alert('Leave lesson?', 'Your progress will be lost.', [
         { text: 'Stay', style: 'cancel' },
@@ -342,7 +321,13 @@ export function LessonScreen({ navigation, route }: Props) {
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
         <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressFill, progressStyle]} />
+          <MotiView
+            style={styles.progressFill}
+            animate={{
+              width: `${lesson ? ((questionIndex + 1) / lesson.questions.length) * 100 : 0}%`,
+            }}
+            transition={{ duration: 400 }}
+          />
         </View>
         <Text style={styles.progressLabel}>+{totalXpEarned} XP</Text>
       </View>
@@ -360,7 +345,9 @@ export function LessonScreen({ navigation, route }: Props) {
                   mcSelected === index && styles.optionSelected,
                 ]}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Selection);
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
                   setMcSelected(index);
                 }}
               >
@@ -376,7 +363,9 @@ export function LessonScreen({ navigation, route }: Props) {
             <Pressable
               style={[styles.tfButton, tfSelected === true && styles.tfSelected]}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Selection);
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
                 setTfSelected(true);
               }}
             >
@@ -385,7 +374,9 @@ export function LessonScreen({ navigation, route }: Props) {
             <Pressable
               style={[styles.tfButton, tfSelected === false && styles.tfSelected]}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Selection);
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
                 setTfSelected(false);
               }}
             >
@@ -429,7 +420,9 @@ export function LessonScreen({ navigation, route }: Props) {
                 key={index}
                 style={styles.orderingItem}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Selection);
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
                   // Simplified ordering - just select items
                   if (!orderingItems.includes(item)) {
                     setOrderingItems([...orderingItems, item]);

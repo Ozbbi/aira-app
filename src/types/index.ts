@@ -20,7 +20,7 @@ export interface AiraFeedback {
 
 export interface Question {
   id: string;
-  type: 'multiple_choice' | 'true_false' | 'fill_blank' | 'prompt_write';
+  type: 'multiple_choice' | 'true_false' | 'fill_blank' | 'prompt_write' | 'ordering' | 'match_pairs';
   question: string;
   options?: string[];
   correctAnswer: number | boolean | string | string[];
@@ -38,6 +38,7 @@ export interface Lesson {
   airaIntro?: string;
   airaOutro?: string;
   realWorldScenario?: string;
+  takeaway?: string;
 }
 
 export interface AnswerResult {
@@ -55,6 +56,8 @@ export interface ProgressResult {
   newLevel: number;
   leveledUp: boolean;
   streak: number;
+  tier: 'free' | 'pro';
+  totalLessonsCompleted: number;
 }
 
 export interface UserProgress {

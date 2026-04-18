@@ -246,7 +246,9 @@ export function DashboardScreen({ navigation }: Props) {
       {emptyMessage && (
         <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.emptyState}>
           <AiraCharacter mood="calm" size={80} />
-          <Text style={styles.emptyStateText}>{emptyMessage}</Text>
+          <Text style={styles.emptyStateText}>
+            {streak === 0 ? "First day. Let's start something small." : emptyMessage}
+          </Text>
         </Animated.View>
       )}
 

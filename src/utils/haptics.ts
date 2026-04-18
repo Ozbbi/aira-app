@@ -18,7 +18,7 @@ const IS_NATIVE = Platform.OS === 'ios' || Platform.OS === 'android';
  *   heavy   → Heavy  (big commitment: submit lesson, level up)
  *   success → Success notification (correct answer, lesson complete)
  *   error   → Error notification (wrong answer, failed signup)
- *   warning → Warning notification (daily limit hit, paywall trigger)
+ *   warning → Warning notification (paywall trigger)
  */
 export const haptics = {
   tap: () => {

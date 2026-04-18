@@ -16,8 +16,6 @@ interface Props {
 
 type Step = 0 | 1 | 2 | 3;
 
-const AnimatedText = Animated.createAnimatedComponent(Text);
-
 const TypewriterText = ({ text, onComplete }: { text: string; onComplete: () => void }) => {
   const words = text.split(' ');
   const [displayedWords, setDisplayedWords] = useState<string[]>([]);
@@ -39,7 +37,7 @@ const TypewriterText = ({ text, onComplete }: { text: string; onComplete: () => 
     <Text style={styles.messageText}>
       {displayedWords.join(' ')}
       {currentIndex < words.length && (
-        <AnimatedText style={styles.cursor}>|</AnimatedText>
+        <Text style={styles.cursor}>|</Text>
       )}
     </Text>
   );

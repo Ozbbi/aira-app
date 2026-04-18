@@ -5,15 +5,8 @@ import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  Easing,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { MotiView } from 'moti';
 import { Svg, Circle } from 'react-native-svg';
 import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
@@ -63,31 +56,6 @@ export function DashboardScreen({ navigation }: Props) {
   const [nextLesson, setNextLesson] = useState<any>(null);
   const [stats, setStats] = useState({ totalXp: 0, streak: 0, lessonsDone: 0, accuracy: 0 });
 
-  const shimmerOffset = useSharedValue(0);
-  const xpAnimated = useSharedValue(0);
-  const streakAnimated = useSharedValue(0);
-
-  useEffect(() => {
-    shimmerOffset.value = withRepeat(
-      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true
-    );
-  }, []);
-
-  useEffect(() => {
-    xpAnimated.value = withTiming(xp, { duration: 800, easing: Easing.out(Easing.cubic) });
-    streakAnimated.value = withTiming(streak, { duration: 800, easing: Easing.out(Easing.cubic) });
-  }, [xp, streak]);
-
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: withTiming(shimmerOffset.value * 300, { duration: 0 }) }],
-  }));
-
-  const xpAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(1, { duration: 300 }),
-  }));
-
   const fetchData = useCallback(async () => {
     if (!userId || userId.startsWith('offline_')) {
       setLoading(false);
@@ -112,19 +80,19 @@ export function DashboardScreen({ navigation }: Props) {
         totalXp: progress.xp,
         streak: progress.streak,
         lessonsDone: progress.totalLessonsCompleted,
-        accuracy: progress.accuracy || 0,
+        accuracy: 0,
       });
 
       // Find next lesson from curriculum
-      if (curriculum && curriculum.tracks) {
+      if (curriculum && curriculum.topics) {
         const updatedTracks = tracks.map((track) => {
-          const curriculumTrack = curriculum.tracks.find((t: any) => t.id === track.id);
-          if (curriculumTrack) {
-            const completed = curriculumTrack.lessons.filter((l: any) => l.completed).length;
+          const curriculumTopic = curriculum.topics.find((t: any) => t.name.toLowerCase() === track.id);
+          if (curriculumTopic) {
+            const completed = curriculumTopic.lessons.filter((l: any) => l.completed).length;
             return {
               ...track,
               completedLessons: completed,
-              progress: completed / curriculumTrack.lessons.length,
+              progress: completed / curriculumTopic.lessons.length,
             };
           }
           return track;
@@ -132,8 +100,8 @@ export function DashboardScreen({ navigation }: Props) {
         setTracksData(updatedTracks);
 
         // Find first incomplete lesson
-        for (const track of curriculum.tracks) {
-          const incomplete = track.lessons.find((l: any) => !l.completed);
+        for (const topic of curriculum.topics) {
+          const incomplete = topic.lessons.find((l: any) => !l.completed);
           if (incomplete) {
             setNextLesson(incomplete);
             break;
@@ -262,7 +230,6 @@ export function DashboardScreen({ navigation }: Props) {
             ]}
           >
             <LinearGradient colors={colors.gradientLesson} style={styles.heroGradient}>
-              <Animated.View style={[styles.heroShimmer, shimmerStyle]} />
               <View style={styles.heroContent}>
                 <Text style={styles.heroLabel}>Continue Learning</Text>
                 <Text style={styles.heroTitle}>{nextLesson.title}</Text>
@@ -461,6 +428,7 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: radius.xl,
     overflow: 'hidden',
+    marginBottom: spacing.lg,
   },
   heroCardPressed: {
     transform: [{ scale: 0.97 }],
@@ -469,16 +437,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     position: 'relative',
     overflow: 'hidden',
-  },
-  heroShimmer: {
-    position: 'absolute',
-    top: 0,
-    left: -100,
-    right: 0,
-    bottom: 0,
-    width: '200%',
-    height: '100%',
-    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
   },
   heroContent: {
     position: 'relative',

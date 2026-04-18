@@ -96,6 +96,7 @@ export type RootStackParamList = {
   Topic: { topicName: string };
   Lesson: { lessonId?: string; topic?: string };
   Paywall: undefined;
+  TrackDetail: { trackId: string };
 };
 
 export type TabParamList = {

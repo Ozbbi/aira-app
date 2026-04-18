@@ -4,17 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withSpring,
-  withRepeat,
-  Easing,
-} from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../types';
@@ -25,7 +16,6 @@ interface Props {
 
 type Step = 0 | 1 | 2 | 3;
 
-const AnimatedDot = Animated.createAnimatedComponent(View);
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
 const TypewriterText = ({ text, onComplete }: { text: string; onComplete: () => void }) => {
@@ -62,24 +52,6 @@ export function OnboardingScreen({ navigation }: Props) {
   const [mood, setMood] = useState<'calm' | 'thinking' | 'happy' | 'celebrating' | 'encouraging' | 'proud'>('calm');
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const gradientOffset = useSharedValue(0);
-
-  useEffect(() => {
-    gradientOffset.value = withRepeat(
-      withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true
-    );
-  }, []);
-
-  const animatedGradientStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateX: withTiming(gradientOffset.value * 100, { duration: 0 }),
-      },
-    ],
-  }));
-
   const handleMessageComplete = useCallback(() => {
     setMessageComplete(true);
   }, []);
@@ -107,7 +79,7 @@ export function OnboardingScreen({ navigation }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setShowConfetti(true);
     setTimeout(() => {
-      navigation.replace('Dashboard');
+      navigation.replace('MainTabs');
     }, 500);
   };
 
@@ -147,7 +119,7 @@ export function OnboardingScreen({ navigation }: Props) {
       colors={colors.gradientHero}
       style={styles.container}
     >
-      <Animated.View style={[styles.gradientOverlay, animatedGradientStyle]} />
+      <View style={styles.gradientOverlay} />
       
       <View style={styles.screen}>
         {/* AIRA Character */}
@@ -200,16 +172,20 @@ export function OnboardingScreen({ navigation }: Props) {
       {/* Pagination Dots */}
       <View style={styles.dotsRow}>
         {[0, 1, 2, 3].map((i) => (
-          <AnimatedDot
+          <MotiView
             key={i}
             style={[
               styles.dot,
               i === step && styles.dotActive,
-              i === step && {
-                width: withSpring(24, { damping: 15 }),
-                backgroundColor: colors.airaGlow,
-              },
             ]}
+            animate={{
+              width: i === step ? 24 : 8,
+              backgroundColor: i === step ? colors.airaGlow : colors.textMuted,
+            }}
+            transition={{
+              type: 'spring',
+              damping: 15,
+            }}
           />
         ))}
       </View>

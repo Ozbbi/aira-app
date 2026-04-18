@@ -31,8 +31,8 @@ export const colors = {
 
   // Track colors (one per track)
   trackFoundations: '#8B5CF6',
-  trackCriticalThinking: '#EC4899',
-  trackPowerUser: '#6366F1',
+  trackCritical: '#EC4899',
+  trackPower: '#6366F1',
   trackTools: '#06B6D4',
   trackCreators: '#F59E0B',
   trackMaster: '#10B981',

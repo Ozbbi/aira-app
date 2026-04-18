@@ -39,13 +39,13 @@ interface Track {
   progress: number;
   totalLessons: number;
   completedLessons: number;
-  tier: 'demo' | 'pro';
+  tier: 'free' | 'pro';
 }
 
 const tracks: Track[] = [
-  { id: 'foundations', title: 'Foundations', subtitle: 'Prompt basics', icon: '🌱', color: colors.trackFoundations, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'demo' },
-  { id: 'critical', title: 'Critical Thinking', subtitle: 'Verify AI output', icon: '🧠', color: colors.trackCriticalThinking, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
-  { id: 'power', title: 'Power User', subtitle: 'Advanced techniques', icon: '⚡', color: colors.trackPowerUser, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
+  { id: 'foundations', title: 'Foundations', subtitle: 'Prompt basics', icon: '🌱', color: colors.trackFoundations, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'free' },
+  { id: 'critical', title: 'Critical Thinking', subtitle: 'Verify AI output', icon: '🧠', color: colors.trackCritical, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
+  { id: 'power', title: 'Power User', subtitle: 'Advanced techniques', icon: '⚡', color: colors.trackPower, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
   { id: 'tools', title: 'Tools & Taste', subtitle: 'AI tools comparison', icon: '🛠️', color: colors.trackTools, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
   { id: 'creators', title: 'AI for Creators', subtitle: 'Build with AI', icon: '✨', color: colors.trackCreators, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
   { id: 'master', title: 'The AI Master', subtitle: 'Meta-prompting & more', icon: '🏆', color: colors.trackMaster, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
@@ -181,8 +181,8 @@ export function DashboardScreen({ navigation }: Props) {
   };
 
   const handleTrackPress = (track: Track) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Selection);
-    if (track.tier === 'pro' && tier === 'demo') {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (track.tier === 'pro' && tier === 'free') {
       navigation.navigate('Paywall');
     } else {
       navigation.navigate('TrackDetail', { trackId: track.id });
@@ -316,7 +316,7 @@ export function DashboardScreen({ navigation }: Props) {
                       />
                     </Svg>
                   )}
-                  {track.tier === 'pro' && tier === 'demo' && (
+                  {track.tier === 'pro' && tier === 'free' && (
                     <View style={styles.lockOverlay}>
                       <Text style={styles.lockIcon}>🔒</Text>
                     </View>

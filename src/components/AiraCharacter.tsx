@@ -36,7 +36,7 @@ const moodConfig: Record<
     particleBehavior: 'orbit',
   },
   thinking: {
-    colors: [colors.trackCriticalThinking, colors.airaCore],
+    colors: [colors.trackCritical, colors.airaCore],
     pulseSpeed: 1200,
     particleSpeed: 1500,
     particleBehavior: 'orbit',
@@ -54,7 +54,7 @@ const moodConfig: Record<
     particleBehavior: 'burst',
   },
   encouraging: {
-    colors: [colors.trackCriticalThinking, colors.airaGlow],
+    colors: [colors.trackCritical, colors.airaGlow],
     pulseSpeed: 1800,
     particleSpeed: 2500,
     particleBehavior: 'glow',

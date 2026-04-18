@@ -38,6 +38,8 @@ export const colors = {
   trackMaster: '#10B981',
 
   confettiColors: ['#8B5CF6', '#EC4899', '#F59E0B', '#34D399', '#60A5FA'],
+  
+  border: '#2A2A38',
 };
 
 export const radius = { sm: 10, md: 14, lg: 20, xl: 28, full: 999 };

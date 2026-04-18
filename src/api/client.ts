@@ -170,6 +170,11 @@ export async function getCurriculum(userId: string): Promise<Curriculum> {
   return data;
 }
 
+export async function getTrackLessons(trackId: string): Promise<{ lessons: Lesson[] }> {
+  const { data } = await api.get(`/tracks/${trackId}/lessons`);
+  return data;
+}
+
 export async function checkAnswer(
   userId: string,
   lessonId: string,

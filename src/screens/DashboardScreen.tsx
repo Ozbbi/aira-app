@@ -166,6 +166,13 @@ export function DashboardScreen({ navigation }: Props) {
     return 'Good evening';
   };
 
+  const getEmptyStateMessage = () => {
+    if (stats.streak === 0) {
+      return "First day. Let's start something small.";
+    }
+    return null;
+  };
+
   const handleContinueLearning = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (nextLesson) {
@@ -190,6 +197,8 @@ export function DashboardScreen({ navigation }: Props) {
       </View>
     );
   }
+
+  const emptyMessage = getEmptyStateMessage();
 
   return (
     <ScrollView
@@ -263,6 +272,14 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </LinearGradient>
           </Pressable>
+        </Animated.View>
+      )}
+
+      {/* Empty State */}
+      {emptyMessage && (
+        <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.emptyState}>
+          <AiraCharacter mood="calm" size={80} />
+          <Text style={styles.emptyStateText}>{emptyMessage}</Text>
         </Animated.View>
       )}
 
@@ -585,5 +602,15 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: spacing.xxl,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.lg,
   },
 });

@@ -1,37 +1,44 @@
 export const colors = {
-  // Brand gradients
-  gradientPrimary: ['#7C3AED', '#4F46E5'] as const,
-  gradientAccent: ['#A855F7', '#6366F1'] as const,
-  gradientSuccess: ['#10B981', '#059669'] as const,
-  gradientXp: ['#F59E0B', '#EF4444'] as const,
+  // Multi-stop gradients
+  gradientHero: ['#8B5CF6', '#EC4899', '#F59E0B'] as const,
+  gradientLesson: ['#6366F1', '#8B5CF6'] as const,
+  gradientSuccess: ['#10B981', '#34D399'] as const,
+  gradientStreak: ['#F59E0B', '#EF4444'] as const,
+  gradientPro: ['#F59E0B', '#EC4899', '#8B5CF6'] as const,
 
-  // Backgrounds (dark premium)
-  bg: '#0A0A0F',
-  bgElevated: '#12121A',
-  bgCard: '#1A1A24',
-  bgCardHover: '#22222E',
+  // Surfaces (warmer purple-tinted dark)
+  bg: '#0C0A14',
+  bgElevated: '#161327',
+  bgCard: '#1E1B31',
+  bgCardHover: '#28253F',
+  bgGlass: 'rgba(139, 92, 246, 0.08)',
 
   // Text
-  textPrimary: '#F8FAFC',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
+  textPrimary: '#FAFAFA',
+  textSecondary: '#A1A1B5',
+  textMuted: '#6B6B80',
 
-  // Semantic
-  success: '#10B981',
-  error: '#EF4444',
-  warning: '#F59E0B',
+  // Semantic (softer, less harsh)
+  success: '#34D399',
+  error: '#FB7185',
+  warning: '#FBBF24',
 
-  // Borders
-  border: '#2A2A38',
-  borderLight: '#1F1F2B',
+  // AIRA identity
+  airaCore: '#8B5CF6',
+  airaGlow: '#C4B5FD',
+  airaWhisper: 'rgba(196, 181, 253, 0.12)',
+  airaPro: '#FBBF24',
 
-  // Accents
-  purple: '#7C3AED',
-  indigo: '#4F46E5',
-  pink: '#EC4899',
+  // Track colors (one per track)
+  trackFoundations: '#8B5CF6',
+  trackCriticalThinking: '#EC4899',
+  trackPowerUser: '#6366F1',
+  trackTools: '#06B6D4',
+  trackCreators: '#F59E0B',
+  trackMaster: '#10B981',
 
-  // AIRA character
-  airaGlow: '#A78BFA',
-  airaCore: '#7C3AED',
-  airaWhisper: 'rgba(167, 139, 250, 0.15)',
+  confettiColors: ['#8B5CF6', '#EC4899', '#F59E0B', '#34D399', '#60A5FA'],
 };
+
+export const radius = { sm: 10, md: 14, lg: 20, xl: 28, full: 999 };
+export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48, huge: 64 };

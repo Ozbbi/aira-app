@@ -1,19 +1,24 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, RefreshControl } from 'react-native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { ScreenContainer } from '../components/ScreenContainer';
-import { Card } from '../components/Card';
-import { XpBar } from '../components/XpBar';
-import { StreakBadge } from '../components/StreakBadge';
-import { AiraOrb } from '../components/AiraOrb';
-import { AiraMessage } from '../components/AiraMessage';
-import { GradientButton } from '../components/GradientButton';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  Easing,
+} from 'react-native-reanimated';
+import { Svg, Circle } from 'react-native-svg';
+import { AiraCharacter } from '../components/AiraCharacter';
+import { colors, radius, spacing } from '../theme';
+import { getProgress, getCurriculum } from '../api/client';
 import { useUserStore } from '../store/userStore';
-import { getProgress, getUserLimits } from '../api/client';
-import { colors, typography, spacing, radius } from '../theme';
 import type { RootStackParamList, TabParamList } from '../types';
 
 type NavigationProp = CompositeNavigationProp<
@@ -25,321 +30,558 @@ interface Props {
   navigation: NavigationProp;
 }
 
-const topics = [
-  { name: 'Foundations', icon: '\u2728', difficulty: 1 },
-  { name: 'Critical\nThinking', icon: '\uD83E\uDDE0', difficulty: 2 },
-  { name: 'Practical', icon: '\u26A1', difficulty: 3 },
-  { name: 'Tools', icon: '\uD83D\uDEE0\uFE0F', difficulty: 2 },
-  { name: 'Creating', icon: '\uD83D\uDCBB', difficulty: 4 },
+interface Track {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  color: string;
+  progress: number;
+  totalLessons: number;
+  completedLessons: number;
+  tier: 'demo' | 'pro';
+}
+
+const tracks: Track[] = [
+  { id: 'foundations', title: 'Foundations', subtitle: 'Prompt basics', icon: '🌱', color: colors.trackFoundations, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'demo' },
+  { id: 'critical', title: 'Critical Thinking', subtitle: 'Verify AI output', icon: '🧠', color: colors.trackCriticalThinking, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
+  { id: 'power', title: 'Power User', subtitle: 'Advanced techniques', icon: '⚡', color: colors.trackPowerUser, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
+  { id: 'tools', title: 'Tools & Taste', subtitle: 'AI tools comparison', icon: '🛠️', color: colors.trackTools, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
+  { id: 'creators', title: 'AI for Creators', subtitle: 'Build with AI', icon: '✨', color: colors.trackCreators, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
+  { id: 'master', title: 'The AI Master', subtitle: 'Meta-prompting & more', icon: '🏆', color: colors.trackMaster, progress: 0, totalLessons: 5, completedLessons: 0, tier: 'pro' },
 ];
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 export function DashboardScreen({ navigation }: Props) {
-  const { name, xp, level, streak, tier, lessonsCompletedToday, dailyLimit, totalLessonsCompleted, userId } = useUserStore();
+  const { name, xp, level, streak, tier, userId } = useUserStore();
   const syncFromBackend = useUserStore((s) => s.syncFromBackend);
-  const setUser = useUserStore((s) => s.setUser);
-  const xpForNextLevel = (level ** 2) * 50;
-
-  const [offline, setOffline] = useState(false);
-  const [canTakeLesson, setCanTakeLesson] = useState(true);
+  
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [tracksData, setTracksData] = useState<Track[]>(tracks);
+  const [nextLesson, setNextLesson] = useState<any>(null);
+  const [stats, setStats] = useState({ totalXp: 0, streak: 0, lessonsDone: 0, accuracy: 0 });
 
-  const syncProgress = useCallback(async () => {
-    if (!userId || userId.startsWith('offline_')) return;
+  const shimmerOffset = useSharedValue(0);
+  const xpAnimated = useSharedValue(0);
+  const streakAnimated = useSharedValue(0);
+
+  useEffect(() => {
+    shimmerOffset.value = withRepeat(
+      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, []);
+
+  useEffect(() => {
+    xpAnimated.value = withTiming(xp, { duration: 800, easing: Easing.out(Easing.cubic) });
+    streakAnimated.value = withTiming(streak, { duration: 800, easing: Easing.out(Easing.cubic) });
+  }, [xp, streak]);
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: withTiming(shimmerOffset.value * 300, { duration: 0 }) }],
+  }));
+
+  const xpAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(1, { duration: 300 }),
+  }));
+
+  const fetchData = useCallback(async () => {
+    if (!userId || userId.startsWith('offline_')) {
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const [progress, limits] = await Promise.all([
+      const [progress, curriculum] = await Promise.all([
         getProgress(userId),
-        getUserLimits(userId),
+        getCurriculum(userId),
       ]);
+      
       syncFromBackend({
         xp: progress.xp,
         level: progress.level,
         streak: progress.streak,
         tier: progress.tier,
         totalLessonsCompleted: progress.totalLessonsCompleted,
-        lessonsCompletedToday: limits.lessonsToday,
-        dailyLimit: limits.dailyLimit,
       });
-      setCanTakeLesson(limits.canTakeLesson);
-      setOffline(false);
-    } catch {
-      setOffline(true);
+
+      setStats({
+        totalXp: progress.xp,
+        streak: progress.streak,
+        lessonsDone: progress.totalLessonsCompleted,
+        accuracy: progress.accuracy || 0,
+      });
+
+      // Find next lesson from curriculum
+      if (curriculum && curriculum.tracks) {
+        const updatedTracks = tracks.map((track) => {
+          const curriculumTrack = curriculum.tracks.find((t: any) => t.id === track.id);
+          if (curriculumTrack) {
+            const completed = curriculumTrack.lessons.filter((l: any) => l.completed).length;
+            return {
+              ...track,
+              completedLessons: completed,
+              progress: completed / curriculumTrack.lessons.length,
+            };
+          }
+          return track;
+        });
+        setTracksData(updatedTracks);
+
+        // Find first incomplete lesson
+        for (const track of curriculum.tracks) {
+          const incomplete = track.lessons.find((l: any) => !l.completed);
+          if (incomplete) {
+            setNextLesson(incomplete);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
     }
   }, [userId]);
 
-  // Fetch real progress on every screen focus
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      syncProgress();
-      return () => { cancelled = true; };
-    }, [syncProgress])
+      fetchData();
+    }, [fetchData])
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await syncProgress();
+    await fetchData();
     setRefreshing(false);
-  }, [syncProgress]);
+  }, [fetchData]);
 
-  const atLimit = tier === 'free' && !canTakeLesson;
-  const limitNum = typeof dailyLimit === 'number' ? dailyLimit : 0;
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const handleContinueLearning = () => {
-    if (atLimit) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (nextLesson) {
+      navigation.navigate('Lesson', { lessonId: nextLesson.id });
+    }
+  };
+
+  const handleTrackPress = (track: Track) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Selection);
+    if (track.tier === 'pro' && tier === 'demo') {
       navigation.navigate('Paywall');
     } else {
-      navigation.navigate('Lesson', {});
+      navigation.navigate('TrackDetail', { trackId: track.id });
     }
   };
 
-  const getLimitText = (): string => {
-    if (tier === 'pro') return 'Unlimited lessons';
-    if (lessonsCompletedToday >= limitNum && limitNum > 0) {
-      return `Today: ${lessonsCompletedToday} of ${limitNum} done. See you tomorrow, or go Pro`;
-    }
-    if (lessonsCompletedToday === limitNum - 1) {
-      return `Today: ${lessonsCompletedToday} of ${limitNum} lessons — one more left`;
-    }
-    return `Today: ${lessonsCompletedToday} of ${limitNum} lessons`;
-  };
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <AiraCharacter mood="thinking" size={120} />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScreenContainer
-      scroll
+    <ScrollView
+      style={styles.container}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
           tintColor={colors.airaGlow}
-          colors={[colors.purple]}
+          colors={[colors.airaCore]}
           progressBackgroundColor={colors.bgCard}
         />
       }
     >
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Greeting Card */}
+      <Animated.View entering={FadeIn.duration(400)} style={styles.greetingCard}>
         <View style={styles.greetingRow}>
-          <AiraOrb size={48} intensity="calm" />
+          <AiraCharacter mood="calm" size={60} />
           <View style={styles.greetingText}>
             <Text style={styles.greeting}>
-              {streak === 0
-                ? `Hey ${name}. Let's start something.`
-                : streak >= 7
-                ? `Hey ${name}. ${streak} days strong. Proud of you.`
-                : `Hey ${name}. Day ${streak} — ready when you are.`}
+              {getTimeGreeting()}, {name || 'friend'}.
             </Text>
           </View>
         </View>
-        <StreakBadge streak={streak} />
-      </View>
-
-      {offline && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>Offline — showing last saved data</Text>
-        </View>
-      )}
+        {streak >= 3 && (
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakIcon}>🔥</Text>
+            <Text style={styles.streakNumber}>{streak}</Text>
+          </View>
+        )}
+      </Animated.View>
 
       {/* XP Bar */}
-      <View style={styles.xpSection}>
-        <XpBar currentXp={xp} level={level} xpForNextLevel={xpForNextLevel} />
-      </View>
-
-      {/* Continue Learning */}
-      <Card
-        onPress={handleContinueLearning}
-        style={[styles.continueCard, atLimit && styles.continueCardDisabled]}
-      >
-        {atLimit ? (
-          <View style={styles.continueDisabledInner}>
-            <AiraOrb size={40} intensity="calm" />
-            <Text style={styles.continueDisabledText}>
-              You've finished today's lessons. Rest, or unlock unlimited.
-            </Text>
+      <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.xpSection}>
+        <View style={styles.xpBarContainer}>
+          <View style={styles.xpInfo}>
+            <Text style={styles.levelText}>Level {level}</Text>
+            <Text style={styles.xpText}>{xp} XP</Text>
           </View>
-        ) : (
-          <LinearGradient
-            colors={[...colors.gradientPrimary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.continueGradient}
-          >
-            <Text style={styles.continueLabel}>Continue Learning</Text>
-            <Text style={styles.continueTitle}>Next Lesson</Text>
-            <Text style={styles.continueSubtitle}>Tap to start</Text>
-          </LinearGradient>
-        )}
-      </Card>
+          <View style={styles.xpProgress}>
+            <Animated.View
+              style={[
+                styles.xpFill,
+                {
+                  width: `${(xp / ((level ** 2) * 50)) * 100}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      </Animated.View>
 
-      {/* Limit indicator */}
-      <Pressable
-        onPress={atLimit ? () => navigation.navigate('Paywall') : undefined}
-        style={styles.limitRow}
-      >
-        <Text style={[styles.limitText, tier === 'pro' && styles.limitTextPro]}>
-          {getLimitText()}
-        </Text>
-        {atLimit && <Text style={styles.limitArrow}>{'\u2197'}</Text>}
-      </Pressable>
-
-      {/* Topics */}
-      <Text style={styles.sectionTitle}>Topics</Text>
-      <View style={styles.topicsGrid}>
-        {topics.map((topic) => (
-          <Card
-            key={topic.name}
-            onPress={() => navigation.navigate('Topic', { topicName: topic.name.replace('\n', ' ') })}
-            style={styles.topicCard}
+      {/* Continue Learning Hero */}
+      {nextLesson && (
+        <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.heroSection}>
+          <Pressable
+            onPress={handleContinueLearning}
+            style={({ pressed }) => [
+              styles.heroCard,
+              pressed && styles.heroCardPressed,
+            ]}
           >
-            <Text style={styles.topicIcon}>{topic.icon}</Text>
-            <Text style={styles.topicName}>{topic.name}</Text>
-            <View style={styles.difficultyRow}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[styles.star, i < topic.difficulty && styles.starFilled]}
-                />
-              ))}
-            </View>
-          </Card>
-        ))}
-      </View>
+            <LinearGradient colors={colors.gradientLesson} style={styles.heroGradient}>
+              <Animated.View style={[styles.heroShimmer, shimmerStyle]} />
+              <View style={styles.heroContent}>
+                <Text style={styles.heroLabel}>Continue Learning</Text>
+                <Text style={styles.heroTitle}>{nextLesson.title}</Text>
+                <Text style={styles.heroSubtitle}>
+                  {tracksData.find((t) => t.id === nextLesson.trackId)?.icon} {nextLesson.estimatedMinutes} min
+                </Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+      )}
+
+      {/* Tracks Grid */}
+      <Animated.View entering={FadeInDown.duration(400).delay(300)} style={styles.tracksSection}>
+        <Text style={styles.sectionTitle}>Tracks</Text>
+        <View style={styles.tracksGrid}>
+          {tracksData.map((track, index) => (
+            <Animated.View
+              key={track.id}
+              entering={FadeInDown.duration(400).delay(300 + index * 100)}
+            >
+              <Pressable
+                onPress={() => handleTrackPress(track)}
+                style={({ pressed }) => [
+                  styles.trackCard,
+                  pressed && styles.trackCardPressed,
+                  { borderLeftColor: track.color },
+                ]}
+              >
+                <View style={styles.trackIconContainer}>
+                  <Text style={styles.trackIcon}>{track.icon}</Text>
+                  {track.completedLessons > 0 && (
+                    <Svg style={styles.progressRing} width={60} height={60}>
+                      <Circle
+                        cx={30}
+                        cy={30}
+                        r={28}
+                        stroke={track.color}
+                        strokeWidth={3}
+                        fill="none"
+                        strokeDasharray={`${track.progress * 175} 175`}
+                        strokeLinecap="round"
+                      />
+                    </Svg>
+                  )}
+                  {track.tier === 'pro' && tier === 'demo' && (
+                    <View style={styles.lockOverlay}>
+                      <Text style={styles.lockIcon}>🔒</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.trackTitle}>{track.title}</Text>
+                <Text style={styles.trackSubtitle}>{track.subtitle}</Text>
+                <Text style={styles.trackProgress}>
+                  {track.completedLessons} / {track.totalLessons}
+                </Text>
+              </Pressable>
+            </Animated.View>
+          ))}
+        </View>
+      </Animated.View>
+
+      {/* Stats Strip */}
+      <Animated.View entering={FadeInDown.duration(400).delay(600)} style={styles.statsSection}>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>🏆</Text>
+            <Text style={styles.statValue}>{stats.totalXp}</Text>
+            <Text style={styles.statLabel}>Total XP</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>🔥</Text>
+            <Text style={styles.statValue}>{stats.streak}</Text>
+            <Text style={styles.statLabel}>Streak</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>📚</Text>
+            <Text style={styles.statValue}>{stats.lessonsDone}</Text>
+            <Text style={styles.statLabel}>Lessons</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>🎯</Text>
+            <Text style={styles.statValue}>{stats.accuracy}%</Text>
+            <Text style={styles.statLabel}>Accuracy</Text>
+          </View>
+        </View>
+      </Animated.View>
+
       <View style={styles.bottomSpacer} />
-    </ScreenContainer>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.bg,
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    marginTop: spacing.lg,
+  },
+  greetingCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginTop: spacing.lg,
+    marginHorizontal: spacing.lg,
   },
   greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   greetingText: {
     flex: 1,
   },
   greeting: {
-    ...typography.bodyBold,
-    color: colors.textSecondary,
-    lineHeight: 22,
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
-  offlineBanner: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.sm,
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.bgGlass,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: colors.warning + '40',
+    borderRadius: radius.md,
   },
-  offlineText: {
-    ...typography.caption,
-    color: colors.warning,
+  streakIcon: {
+    fontSize: 16,
+  },
+  streakNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.airaPro,
   },
   xpSection: {
-    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.lg,
   },
-  continueCard: {
-    padding: 0,
-    overflow: 'hidden',
+  xpBarContainer: {
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+  },
+  xpInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
-  continueCardDisabled: {
-    opacity: 0.8,
+  levelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
-  continueGradient: {
-    padding: spacing.lg,
-    borderRadius: radius.xl - 1,
-  },
-  continueDisabledInner: {
-    padding: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  continueDisabledText: {
-    ...typography.body,
+  xpText: {
+    fontSize: 14,
     color: colors.textSecondary,
-    flex: 1,
   },
-  continueLabel: {
-    ...typography.caption,
-    color: 'rgba(255,255,255,0.7)',
+  xpProgress: {
+    height: 8,
+    backgroundColor: colors.bg,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  xpFill: {
+    height: '100%',
+    backgroundColor: colors.gradientLesson[0],
+    borderRadius: radius.full,
+  },
+  heroSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  heroCard: {
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  heroCardPressed: {
+    transform: [{ scale: 0.97 }],
+  },
+  heroGradient: {
+    padding: spacing.xl,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: -100,
+    right: 0,
+    bottom: 0,
+    width: '200%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
+  },
+  heroContent: {
+    position: 'relative',
+    zIndex: 1,
+  },
+  heroLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
     marginBottom: spacing.xs,
   },
-  continueTitle: {
-    ...typography.h2,
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
-  continueSubtitle: {
-    ...typography.body,
-    color: 'rgba(255,255,255,0.8)',
+  heroSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.9)',
   },
-  limitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.lg,
-    paddingVertical: spacing.xs,
-  },
-  limitText: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  limitTextPro: {
-    color: colors.airaGlow,
-  },
-  limitArrow: {
-    color: colors.airaGlow,
-    fontSize: 14,
+  tracksSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
   },
   sectionTitle: {
-    ...typography.h3,
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
-  topicsGrid: {
+  tracksGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
   },
-  topicCard: {
+  trackCard: {
     width: '47%',
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderLeftWidth: 4,
+    marginBottom: spacing.md,
+  },
+  trackCardPressed: {
+    transform: [{ scale: 0.97 }],
+  },
+  trackIconContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
-  topicIcon: {
-    fontSize: 28,
+    justifyContent: 'center',
     marginBottom: spacing.sm,
+    position: 'relative',
   },
-  topicName: {
-    ...typography.caption,
+  trackIcon: {
+    fontSize: 32,
+  },
+  progressRing: {
+    position: 'absolute',
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockIcon: {
+    fontSize: 20,
+  },
+  trackTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  difficultyRow: {
+  trackSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  trackProgress: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  statsSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xl,
+  },
+  statsGrid: {
     flexDirection: 'row',
-    gap: 4,
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
-  star: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.border,
+  statCard: {
+    width: '47%',
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
   },
-  starFilled: {
-    backgroundColor: colors.warning,
+  statIcon: {
+    fontSize: 24,
+    marginBottom: spacing.xs,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   bottomSpacer: {
     height: spacing.xxl,

@@ -1,13 +1,22 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { AiraOrb } from '../components/AiraOrb';
-import { AiraMessage } from '../components/AiraMessage';
-import { GradientButton } from '../components/GradientButton';
-import { useUserStore } from '../store/userStore';
-import { colors, typography, spacing, radius } from '../theme';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  withSpring,
+  withRepeat,
+  Easing,
+} from 'react-native-reanimated';
+import { AiraCharacter } from '../components/AiraCharacter';
+import { colors, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../types';
 
 interface Props {
@@ -16,153 +25,192 @@ interface Props {
 
 type Step = 0 | 1 | 2 | 3;
 
+const AnimatedDot = Animated.createAnimatedComponent(View);
+const AnimatedText = Animated.createAnimatedComponent(Text);
+
+const TypewriterText = ({ text, onComplete }: { text: string; onComplete: () => void }) => {
+  const words = text.split(' ');
+  const [displayedWords, setDisplayedWords] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < words.length) {
+      const timer = setTimeout(() => {
+        setDisplayedWords((prev) => [...prev, words[currentIndex]]);
+        setCurrentIndex((prev) => prev + 1);
+      }, 400); // Word by word, not character
+      return () => clearTimeout(timer);
+    } else {
+      onComplete();
+    }
+  }, [currentIndex, words, onComplete]);
+
+  return (
+    <Text style={styles.messageText}>
+      {displayedWords.join(' ')}
+      {currentIndex < words.length && (
+        <AnimatedText style={styles.cursor}>|</AnimatedText>
+      )}
+    </Text>
+  );
+};
+
 export function OnboardingScreen({ navigation }: Props) {
   const [step, setStep] = useState<Step>(0);
   const [messageComplete, setMessageComplete] = useState(false);
   const [name, setName] = useState('');
-  const [orbIntensity, setOrbIntensity] = useState<'calm' | 'thinking' | 'celebrating'>('calm');
-  const [error, setError] = useState<string | null>(null);
-  const setUser = useUserStore((s) => s.setUser);
+  const [mood, setMood] = useState<'calm' | 'thinking' | 'happy' | 'celebrating' | 'encouraging' | 'proud'>('calm');
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  const gradientOffset = useSharedValue(0);
+
+  useEffect(() => {
+    gradientOffset.value = withRepeat(
+      withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedGradientStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: withTiming(gradientOffset.value * 100, { duration: 0 }),
+      },
+    ],
+  }));
 
   const handleMessageComplete = useCallback(() => {
     setMessageComplete(true);
   }, []);
 
   const goNext = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMessageComplete(false);
-    setError(null);
     if (step < 3) {
       setStep((step + 1) as Step);
+      setMood('calm');
     }
   };
 
-  const handleNameSubmit = () => {
+  const handleNameSubmit = async () => {
     if (name.trim().length > 0) {
-      setUser({ name: name.trim() });
-      setOrbIntensity('celebrating');
-      setTimeout(() => setOrbIntensity('calm'), 1200);
-      goNext();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await AsyncStorage.setItem('user_name', name.trim());
+      await AsyncStorage.setItem('onboarding_complete', 'true');
+      setMood('celebrating');
+      setStep(3);
     }
   };
 
-  const storedName = useUserStore((s) => s.name);
-
-  // After name is entered, go to Auth screen (which handles signup/login/skip).
   const handleFinish = () => {
-    navigation.replace('Auth', { name: storedName });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setShowConfetti(true);
+    setTimeout(() => {
+      navigation.replace('Dashboard');
+    }, 500);
   };
+
+  const getStepContent = () => {
+    switch (step) {
+      case 0:
+        return {
+          mood: 'calm' as const,
+          characterSize: 180,
+          message: "Hey. I'm AIRA.",
+        };
+      case 1:
+        return {
+          mood: 'thinking' as const,
+          characterSize: 140,
+          message: "Most apps teach you AI shortcuts. I'll teach you to think with AI.",
+        };
+      case 2:
+        return {
+          mood: 'encouraging' as const,
+          characterSize: 120,
+          message: "Before we start — what should I call you?",
+        };
+      case 3:
+        return {
+          mood: 'celebrating' as const,
+          characterSize: 140,
+          message: `Nice to meet you, ${name || 'friend'}.`,
+        };
+    }
+  };
+
+  const content = getStepContent();
 
   return (
     <LinearGradient
-      colors={[colors.bg, '#0F0A1A', colors.bg]}
+      colors={colors.gradientHero}
       style={styles.container}
     >
-      {step === 0 && (
-        <View style={styles.screen} key="step0">
-          <View style={styles.orbCenter}>
-            <AiraOrb size={180} intensity="calm" />
-          </View>
-          <View style={styles.messageArea}>
-            <AiraMessage
-              message="Hey. I'm AIRA. I'm here to help you think better in a world full of AI."
-              typewriter
-              onComplete={handleMessageComplete}
+      <Animated.View style={[styles.gradientOverlay, animatedGradientStyle]} />
+      
+      <View style={styles.screen}>
+        {/* AIRA Character */}
+        <View style={styles.characterContainer}>
+          <AiraCharacter mood={content.mood} size={content.characterSize} />
+        </View>
+
+        {/* Message Area */}
+        <View style={styles.messageArea}>
+          <TypewriterText
+            text={content.message}
+            onComplete={handleMessageComplete}
+          />
+        </View>
+
+        {/* Step-specific content */}
+        {step === 2 && messageComplete && (
+          <Animated.View entering={FadeIn.duration(400)} style={styles.inputArea}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Your name"
+              placeholderTextColor={colors.textMuted}
+              value={name}
+              onChangeText={setName}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleNameSubmit}
             />
-          </View>
-          {messageComplete && (
-            <Animated.View entering={FadeIn.duration(400)} style={styles.buttonArea}>
-              <GradientButton title="Continue" onPress={goNext} fullWidth />
-            </Animated.View>
-          )}
-        </View>
-      )}
+          </Animated.View>
+        )}
 
-      {step === 1 && (
-        <View style={styles.screen} key="step1">
-          <View style={styles.orbCenter}>
-            <AiraOrb size={100} intensity="calm" />
-          </View>
-          <View style={styles.messageArea}>
-            <AiraMessage
-              message="Most apps will teach you AI shortcuts. I'll teach you how to think with AI — and when not to."
-              typewriter
-              onComplete={handleMessageComplete}
-            />
-          </View>
-          {messageComplete && (
-            <Animated.View entering={FadeIn.duration(400)} style={styles.buttonArea}>
-              <GradientButton title="Continue" onPress={goNext} fullWidth />
-            </Animated.View>
-          )}
-        </View>
-      )}
+        {/* Continue Button */}
+        {messageComplete && step !== 2 && (
+          <Animated.View entering={FadeIn.duration(400)} style={styles.buttonArea}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={step === 3 ? handleFinish : goNext}
+            >
+              <Text style={styles.buttonText}>
+                {step === 3 ? "Let's begin" : 'Continue'}
+              </Text>
+            </Pressable>
+          </Animated.View>
+        )}
+      </View>
 
-      {step === 2 && (
-        <View style={styles.screen} key="step2">
-          <View style={styles.orbCenter}>
-            <AiraOrb size={100} intensity="calm" />
-          </View>
-          <View style={styles.messageArea}>
-            <AiraMessage
-              message="Before we start — what should I call you?"
-              typewriter
-              onComplete={handleMessageComplete}
-            />
-          </View>
-          {messageComplete && (
-            <Animated.View entering={FadeInDown.duration(400)} style={styles.inputArea}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Your name"
-                placeholderTextColor={colors.textMuted}
-                value={name}
-                onChangeText={setName}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={handleNameSubmit}
-              />
-              <GradientButton
-                title="Continue"
-                onPress={handleNameSubmit}
-                fullWidth
-                disabled={name.trim().length === 0}
-              />
-            </Animated.View>
-          )}
-        </View>
-      )}
-
-      {step === 3 && (
-        <View style={styles.screen} key="step3">
-          <View style={styles.orbCenter}>
-            <AiraOrb size={120} intensity={orbIntensity} />
-          </View>
-          <View style={styles.messageArea}>
-            {error ? (
-              <AiraMessage message={error} />
-            ) : (
-              <AiraMessage
-                message={`Nice to meet you, ${storedName}. Let's begin.`}
-                typewriter
-                onComplete={handleMessageComplete}
-              />
-            )}
-          </View>
-          {(messageComplete || error) && (
-            <Animated.View entering={FadeIn.duration(400)} style={styles.buttonArea}>
-              <GradientButton
-                title="Continue"
-                onPress={handleFinish}
-                fullWidth
-              />
-            </Animated.View>
-          )}
-        </View>
-      )}
-
+      {/* Pagination Dots */}
       <View style={styles.dotsRow}>
         {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+          <AnimatedDot
+            key={i}
+            style={[
+              styles.dot,
+              i === step && styles.dotActive,
+              i === step && {
+                width: withSpring(24, { damping: 15 }),
+                backgroundColor: colors.airaGlow,
+              },
+            ]}
+          />
         ))}
       </View>
     </LinearGradient>
@@ -173,38 +221,71 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(12, 10, 20, 0.85)',
+  },
   screen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.xxl,
   },
-  orbCenter: {
-    marginBottom: spacing.xl,
-    alignItems: 'center',
+  characterContainer: {
+    marginBottom: spacing.xxl,
   },
   messageArea: {
     width: '100%',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    minHeight: 60,
   },
-  buttonArea: {
-    width: '100%',
+  messageText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: 36,
+  },
+  cursor: {
+    color: colors.airaGlow,
   },
   inputArea: {
     width: '100%',
-    gap: spacing.lg,
+    marginBottom: spacing.xl,
   },
   textInput: {
     backgroundColor: colors.bgCard,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    ...typography.body,
-    color: colors.textPrimary,
+    borderWidth: 2,
+    borderColor: colors.airaCore,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
     fontSize: 18,
+    color: colors.textPrimary,
     textAlign: 'center',
+  },
+  buttonArea: {
+    width: '100%',
+  },
+  button: {
+    backgroundColor: colors.airaCore,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxl,
+    alignItems: 'center',
+  },
+  buttonPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.97 }],
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   dotsRow: {
     flexDirection: 'row',
@@ -216,10 +297,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: colors.border,
+    backgroundColor: colors.textMuted,
   },
   dotActive: {
-    backgroundColor: colors.airaCore,
-    width: 24,
+    shadowColor: colors.airaGlow,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
 });

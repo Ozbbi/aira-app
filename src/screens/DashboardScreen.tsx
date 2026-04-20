@@ -1,21 +1,15 @@
-import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  Platform,
-} from 'react-native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { MotiView } from 'moti';
+import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
-import { getProgress } from '../api/client';
+import { getProgress, getCurriculum } from '../api/client';
 import { useUserStore } from '../store/userStore';
 import type { RootStackParamList, TabParamList } from '../types';
 
@@ -28,49 +22,40 @@ interface Props {
   navigation: NavigationProp;
 }
 
-/**
- * The four topic cards shown on the dashboard mirror the landing-page mockup
- * at airamentor.com. Only "AI Basics" (Foundations track) is demo-tier; the
- * other three are Pro. Tapping a pro card while on the free tier opens the
- * paywall instead of the lesson.
- */
-type TopicTier = 'demo' | 'pro';
 interface Topic {
-  id: string;
-  label: string;
   emoji: string;
-  lessonId: string; // first lesson in the track
-  tier: TopicTier;
+  label: string;
+  lessonId: string;
+  tier: 'free' | 'pro';
 }
 
-const TOPICS: Topic[] = [
-  { id: 'foundations', label: 'AI Basics', emoji: '✨', lessonId: 'foundations_1', tier: 'demo' },
-  { id: 'critical', label: 'Thinking', emoji: '🧠', lessonId: 'critical_1', tier: 'pro' },
-  { id: 'power', label: 'Prompts', emoji: '⚡', lessonId: 'power_1', tier: 'pro' },
-  { id: 'tools', label: 'Tools', emoji: '🛠️', lessonId: 'tools_1', tier: 'pro' },
+const topics: Topic[] = [
+  { emoji: '✨', label: 'AI Basics', lessonId: 'foundations_1', tier: 'free' },
+  { emoji: '🧠', label: 'Thinking', lessonId: 'critical_1', tier: 'pro' },
+  { emoji: '⚡', label: 'Prompts', lessonId: 'power_1', tier: 'pro' },
+  { emoji: '🛠️', label: 'Tools', lessonId: 'tools_1', tier: 'pro' },
 ];
-
-function xpForLevel(level: number) {
-  // Matches the store's sqrt progression — keep display + logic in sync.
-  return Math.max(50, level ** 2 * 50);
-}
-
-function tapHaptic() {
-  if (Platform.OS !== 'web') {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-  }
-}
 
 export function DashboardScreen({ navigation }: Props) {
   const { name, xp, level, streak, tier, userId } = useUserStore();
   const syncFromBackend = useUserStore((s) => s.syncFromBackend);
-
+  
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [nextLesson, setNextLesson] = useState<any>(null);
 
   const fetchData = useCallback(async () => {
-    if (!userId || userId.startsWith('offline_')) return;
+    if (!userId || userId.startsWith('offline_')) {
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const progress = await getProgress(userId);
+      const [progress, curriculum] = await Promise.all([
+        getProgress(userId),
+        getCurriculum(userId),
+      ]);
+      
       syncFromBackend({
         xp: progress.xp,
         level: progress.level,
@@ -78,11 +63,23 @@ export function DashboardScreen({ navigation }: Props) {
         tier: progress.tier,
         totalLessonsCompleted: progress.totalLessonsCompleted,
       });
-    } catch (err) {
-      // Non-fatal — dashboard still renders from the local store.
-      console.warn('[dashboard] progress fetch failed', err);
+
+      // Find first incomplete lesson
+      if (curriculum && curriculum.topics) {
+        for (const topic of curriculum.topics) {
+          const incomplete = topic.lessons.find((l: any) => !l.completed);
+          if (incomplete) {
+            setNextLesson(incomplete);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [userId, syncFromBackend]);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -96,32 +93,34 @@ export function DashboardScreen({ navigation }: Props) {
     setRefreshing(false);
   }, [fetchData]);
 
-  const handleContinue = () => {
-    tapHaptic();
-    // Always route new users through the first Foundations lesson. For
-    // returning users, this is still a safe "pick up where you left off"
-    // default until we wire resume-state.
-    navigation.navigate('Lesson', { lessonId: 'foundations_1' });
+  const handleContinueLearning = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    if (nextLesson) {
+      navigation.navigate('Lesson', { lessonId: nextLesson.id });
+    } else {
+      navigation.navigate('Lesson', { lessonId: 'foundations_1' });
+    }
   };
 
   const handleTopicPress = (topic: Topic) => {
-    tapHaptic();
-    if (topic.tier === 'pro' && tier !== 'pro') {
-      navigation.navigate('Paywall');
-      return;
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    navigation.navigate('Lesson', { lessonId: topic.lessonId });
+    if (topic.tier === 'pro' && tier === 'free') {
+      navigation.navigate('Paywall');
+    } else {
+      navigation.navigate('Lesson', { lessonId: topic.lessonId });
+    }
   };
 
-  const firstName = (name || 'there').split(' ')[0];
-  const xpGoal = xpForLevel(level);
-  const xpIntoLevel = Math.max(0, Math.min(xp, xpGoal));
-  const progressPct = xpGoal > 0 ? Math.min(100, (xpIntoLevel / xpGoal) * 100) : 0;
+  const xpForNextLevel = (level ** 2) * 50;
+  const xpProgress = (xp / xpForNextLevel) * 100;
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -132,94 +131,78 @@ export function DashboardScreen({ navigation }: Props) {
         />
       }
     >
-      {/* ========== Top row: greeting + streak ========== */}
-      <Animated.View entering={FadeIn.duration(400)} style={styles.topRow}>
-        <View style={styles.greetingCol}>
-          <Text style={styles.welcomeLabel}>WELCOME BACK</Text>
-          <Text style={styles.greetingTitle} numberOfLines={1}>
-            Hey {firstName} 👋
-          </Text>
+      {/* Greeting Card */}
+      <Animated.View entering={FadeIn.duration(400)} style={styles.greetingCard}>
+        <View style={styles.greetingRow}>
+          <View>
+            <Text style={styles.welcomeLabel}>Welcome back</Text>
+            <Text style={styles.greeting}>Hey {name || 'there'} 👋</Text>
+          </View>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakIcon}>🔥</Text>
+            <Text style={styles.streakNumber}>{streak}</Text>
+          </View>
         </View>
-        <View style={styles.streakPill}>
-          <Text style={styles.streakEmoji}>🔥</Text>
-          <Text style={styles.streakNumber}>{streak}</Text>
+
+        {/* XP Bar */}
+        <View style={styles.xpSection}>
+          <View style={styles.xpInfo}>
+            <Text style={styles.levelText}>Level {level}</Text>
+            <Text style={styles.xpText}>{xp}/{xpForNextLevel} XP</Text>
+          </View>
+          <View style={styles.xpProgress}>
+            <MotiView
+              from={{ width: '0%' }}
+              animate={{ width: `${Math.min(xpProgress, 100)}%` }}
+              transition={{ duration: 500, delay: 200 }}
+              style={styles.xpFill}
+            />
+          </View>
         </View>
       </Animated.View>
 
-      {/* ========== XP progress ========== */}
-      <Animated.View
-        entering={FadeInDown.duration(400).delay(100)}
-        style={styles.xpBlock}
-      >
-        <View style={styles.xpLabelsRow}>
-          <Text style={styles.xpLevelLabel}>Level {level}</Text>
-          <Text style={styles.xpCountLabel}>
-            {xpIntoLevel}/{xpGoal} XP
-          </Text>
-        </View>
-        <View style={styles.xpTrack}>
-          <LinearGradient
-            colors={colors.gradientLesson}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.xpFill, { width: `${progressPct}%` }]}
-          />
-        </View>
-      </Animated.View>
-
-      {/* ========== Continue learning hero ========== */}
-      <Animated.View
-        entering={FadeInDown.duration(400).delay(200)}
-        style={styles.heroWrap}
-      >
+      {/* Continue Learning Card */}
+      <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.heroSection}>
         <Pressable
-          onPress={handleContinue}
-          style={({ pressed }) => [pressed && styles.heroPressed]}
+          onPress={handleContinueLearning}
+          style={({ pressed }) => [
+            styles.heroCard,
+            pressed && styles.heroCardPressed,
+          ]}
         >
-          <LinearGradient
-            colors={colors.gradientLesson}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
-            <Text style={styles.heroEyebrow}>NEXT LESSON</Text>
+          <LinearGradient colors={colors.gradientLesson} style={styles.heroGradient}>
+            <Text style={styles.heroLabel}>Next Lesson</Text>
             <Text style={styles.heroTitle}>Continue Learning</Text>
-            <Text style={styles.heroHint}>Tap to start</Text>
+            <Text style={styles.heroSubtitle}>Tap to start</Text>
           </LinearGradient>
         </Pressable>
       </Animated.View>
 
-      {/* ========== 2×2 topic grid ========== */}
-      <Animated.View
-        entering={FadeInDown.duration(400).delay(300)}
-        style={styles.grid}
-      >
-        {TOPICS.map((topic, i) => {
-          const locked = topic.tier === 'pro' && tier !== 'pro';
-          return (
-            <Animated.View
-              key={topic.id}
-              entering={FadeInDown.duration(400).delay(300 + i * 70)}
-              style={styles.gridCell}
+      {/* Topic Grid 2x2 */}
+      <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.topicsGrid}>
+        {topics.map((topic, index) => (
+          <Animated.View
+            key={topic.label}
+            entering={FadeInDown.duration(400).delay(200 + index * 50)}
+            style={{ flex: 1 }}
+          >
+            <Pressable
+              onPress={() => handleTopicPress(topic)}
+              style={({ pressed }) => [
+                styles.topicCard,
+                pressed && styles.topicCardPressed,
+              ]}
             >
-              <Pressable
-                onPress={() => handleTopicPress(topic)}
-                style={({ pressed }) => [
-                  styles.topicCard,
-                  pressed && styles.topicCardPressed,
-                ]}
-              >
-                <View style={styles.topicHeaderRow}>
-                  <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-                  {locked && <Text style={styles.topicLock}>🔒</Text>}
+              <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+              <Text style={styles.topicLabel}>{topic.label}</Text>
+              {topic.tier === 'pro' && tier === 'free' && (
+                <View style={styles.lockOverlay}>
+                  <Text style={styles.lockIcon}>🔒</Text>
                 </View>
-                <Text style={styles.topicLabel} numberOfLines={1}>
-                  {topic.label}
-                </Text>
-              </Pressable>
-            </Animated.View>
-          );
-        })}
+              )}
+            </Pressable>
+          </Animated.View>
+        ))}
       </Animated.View>
 
       <View style={styles.bottomSpacer} />
@@ -232,152 +215,158 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
+  greetingCard: {
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
   },
-
-  // --- Top row ---
-  topRow: {
+  greetingRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  greetingCol: {
-    flex: 1,
-    minWidth: 0, // critical on web: allows text to shrink instead of per-letter-wrap
-    marginRight: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   welcomeLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: colors.textMuted,
     letterSpacing: 0.5,
-    marginBottom: 2,
+    textTransform: 'uppercase',
   },
-  greetingTitle: {
-    fontSize: 22,
+  greeting: {
+    fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  streakPill: {
+  streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: radius.full,
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  streakEmoji: { fontSize: 14 },
+  streakIcon: { fontSize: 11 },
   streakNumber: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textPrimary,
   },
 
   // --- XP bar ---
-  xpBlock: {
-    marginBottom: spacing.lg,
+  xpSection: {
+    marginTop: spacing.sm,
   },
-  xpLabelsRow: {
+  xpInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  xpLevelLabel: {
-    fontSize: 12,
+  levelText: {
+    fontSize: 10,
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  xpCountLabel: {
-    fontSize: 12,
+  xpText: {
+    fontSize: 10,
     color: colors.textMuted,
   },
-  xpTrack: {
+  xpProgress: {
     height: 6,
-    borderRadius: radius.full,
     backgroundColor: colors.bgCard,
+    borderRadius: radius.full,
     overflow: 'hidden',
   },
   xpFill: {
     height: '100%',
     borderRadius: radius.full,
+    backgroundColor: colors.gradientLesson[0],
   },
 
-  // --- Hero ---
-  heroWrap: {
-    marginBottom: spacing.lg,
-  },
-  heroPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.95,
+  // --- Hero card ---
+  heroSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
   },
   heroCard: {
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    overflow: 'hidden',
   },
-  heroEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    color: 'rgba(255,255,255,0.75)',
-    marginBottom: 4,
+  heroCardPressed: {
+    transform: [{ scale: 0.97 }],
+  },
+  heroGradient: {
+    padding: spacing.md,
+  },
+  heroLabel: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   heroTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: colors.textPrimary,
+    marginBottom: 2,
   },
-  heroHint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
+  heroSubtitle: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.8)',
   },
 
-  // --- Topic grid (2×2) ---
-  grid: {
+  // --- Topic grid ---
+  topicsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -spacing.xs, // compensates per-cell padding for edge alignment
-  },
-  gridCell: {
-    width: '50%',
-    padding: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    gap: 8,
   },
   topicCard: {
+    flex: 1,
+    minWidth: '47%',
     backgroundColor: colors.bgCard,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
-    minHeight: 80,
-    justifyContent: 'space-between',
+    minHeight: 130,
   },
   topicCardPressed: {
     transform: [{ scale: 0.97 }],
-    backgroundColor: colors.bgCardHover,
+    backgroundColor: colors.bgGlass,
   },
-  topicHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  topicEmoji: { fontSize: 20 },
-  topicLock: {
-    fontSize: 12,
-    opacity: 0.6,
+  topicEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
   },
   topicLabel: {
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginTop: 8,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockIcon: {
+    fontSize: 20,
   },
 
-  bottomSpacer: { height: spacing.xl },
+  bottomSpacer: {
+    height: spacing.xxl,
+  },
 });

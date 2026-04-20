@@ -135,7 +135,7 @@ export function DashboardScreen({ navigation }: Props) {
       {/* ========== Top row: greeting + streak ========== */}
       <Animated.View entering={FadeIn.duration(400)} style={styles.topRow}>
         <View style={styles.greetingCol}>
-          <Text style={styles.welcomeLabel}>Welcome back</Text>
+          <Text style={styles.welcomeLabel}>WELCOME BACK</Text>
           <Text style={styles.greetingTitle} numberOfLines={1}>
             Hey {firstName} 👋
           </Text>
@@ -159,7 +159,7 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
         <View style={styles.xpTrack}>
           <LinearGradient
-            colors={['#7C3AED', '#4F46E5']}
+            colors={colors.gradientLesson}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.xpFill, { width: `${progressPct}%` }]}
@@ -177,7 +177,7 @@ export function DashboardScreen({ navigation }: Props) {
           style={({ pressed }) => [pressed && styles.heroPressed]}
         >
           <LinearGradient
-            colors={['#7C3AED', '#4F46E5']}
+            colors={colors.gradientLesson}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCard}

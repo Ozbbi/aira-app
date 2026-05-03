@@ -34,7 +34,11 @@
       "themeColor": "#7C3AED",
       "backgroundColor": "#0A0A0F",
       "display": "standalone",
-      "lang": "en"
+      "lang": "en",
+      "startUrl": "/app",
+      "scope": "/app",
+      "orientation": "portrait",
+      "barStyle": "black-translucent"
     },
     "platforms": ["ios", "android", "web"],
     "plugins": [

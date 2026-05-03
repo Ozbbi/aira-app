@@ -8,6 +8,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { LearningMapScreen } from '../screens/LearningMapScreen';
+import { JourneyScreen } from '../screens/JourneyScreen';
+import { LearnScreen } from '../screens/LearnScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { haptics } from '../utils/haptics';
 import { colors, typography, spacing } from '../theme';
@@ -48,7 +51,7 @@ export function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.purple,
+        tabBarActiveTintColor: colors.airaCore,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: styles.tabLabel,
       }}
@@ -62,20 +65,50 @@ export function TabNavigator() {
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          tabBarIcon: ({ color, focused }) => (
-            <AnimatedTabIcon focused={focused} color={color} glyph={'\u2302'} />
-          ),
           tabBarLabel: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color} glyph="🏠" />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Lessons"
+        component={LearningMapScreen}
+        options={{
+          tabBarLabel: 'Lessons',
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color} glyph="📚" />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Journey"
+        component={JourneyScreen}
+        options={{
+          tabBarLabel: 'Journey',
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color} glyph="🗺️" />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Learn"
+        component={LearnScreen}
+        options={{
+          tabBarLabel: 'Learn',
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color} glyph="💡" />
+          ),
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
+          tabBarLabel: 'You',
           tabBarIcon: ({ color, focused }) => (
-            <AnimatedTabIcon focused={focused} color={color} glyph={'\u2603'} />
+            <AnimatedTabIcon focused={focused} color={color} glyph="👤" />
           ),
-          tabBarLabel: 'Profile',
         }}
       />
     </Tab.Navigator>
@@ -87,7 +120,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    height: 64,
+    height: 68,
     paddingBottom: spacing.sm,
     paddingTop: spacing.sm,
   },
@@ -96,6 +129,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   tabIcon: {
-    fontSize: 22,
+    fontSize: 20,
   },
 });

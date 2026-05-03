@@ -5,6 +5,8 @@ import { AuthScreen } from '../screens/AuthScreen';
 import { LessonScreen } from '../screens/LessonScreen';
 import { TopicScreen } from '../screens/TopicScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
+import { TrackDetailScreen } from '../screens/TrackDetailScreen';
+import { LearningMapScreen } from '../screens/LearningMapScreen';
 import { TabNavigator } from './TabNavigator';
 import { useUserStore } from '../store/userStore';
 import { colors } from '../theme';
@@ -54,6 +56,14 @@ export function RootNavigator() {
         name="Paywall"
         component={PaywallScreen}
         options={{ presentation: 'modal', animation: 'slide_from_bottom', animationDuration: 400 }}
+      />
+      <Stack.Screen
+        name="TrackDetail"
+        component={TrackDetailScreen}
+      />
+      <Stack.Screen
+        name="LearningMap"
+        component={LearningMapScreen}
       />
     </Stack.Navigator>
   );

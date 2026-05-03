@@ -205,6 +205,23 @@ export function DashboardScreen({ navigation }: Props) {
         ))}
       </Animated.View>
 
+      {/* Learning Map Button */}
+      <Animated.View entering={FadeInDown.duration(400).delay(300)} style={styles.mapButtonSection}>
+        <Pressable
+          onPress={() => navigation.navigate('LearningMap')}
+          style={({ pressed }) => [
+            styles.mapButton,
+            pressed && styles.mapButtonPressed,
+          ]}
+        >
+          <LinearGradient colors={[colors.bgCard, colors.bg]} style={styles.mapButtonGradient}>
+            <Text style={styles.mapButtonIcon}>🗺️</Text>
+            <Text style={styles.mapButtonText}>View Learning Map</Text>
+            <Text style={styles.mapButtonArrow}>→</Text>
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
+
       <View style={styles.bottomSpacer} />
     </ScrollView>
   );
@@ -364,6 +381,39 @@ const styles = StyleSheet.create({
   },
   lockIcon: {
     fontSize: 20,
+  },
+
+  // --- Learning Map Button ---
+  mapButtonSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  mapButton: {
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  mapButtonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  mapButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+  },
+  mapButtonIcon: {
+    fontSize: 20,
+  },
+  mapButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  mapButtonArrow: {
+    fontSize: 18,
+    color: colors.textSecondary,
   },
 
   bottomSpacer: {

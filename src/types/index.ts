@@ -100,9 +100,13 @@ export type RootStackParamList = {
   Lesson: { lessonId?: string; topic?: string };
   Paywall: undefined;
   TrackDetail: { trackId: string };
+  LearningMap: undefined;
 };
 
 export type TabParamList = {
   Dashboard: undefined;
+  Lessons: undefined;
+  Journey: undefined;
+  Learn: undefined;
   Profile: undefined;
 };

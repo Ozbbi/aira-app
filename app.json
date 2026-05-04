@@ -40,7 +40,11 @@
       "orientation": "portrait",
       "barStyle": "black-translucent"
     },
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "plugins": [
       "expo-font",
       [
@@ -52,7 +56,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-build-properties"
     ]
   }
 }

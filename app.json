@@ -58,6 +58,18 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-build-properties"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d737222d-cd29-42be-9bd3-3d69358beaba"
+      }
+    },
+    "owner": "ozbbi",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d737222d-cd29-42be-9bd3-3d69358beaba"
+    }
   }
 }

@@ -8,10 +8,27 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
-import { colors, radius, spacing } from '../theme';
+import { AnimatedNumber } from '../components/AnimatedNumber';
+import { colors, radius, spacing, typography } from '../theme';
 import { getProgress, getCurriculum } from '../api/client';
 import { useUserStore } from '../store/userStore';
+import { getInsightOfTheDay } from '../data';
 import type { RootStackParamList, TabParamList } from '../types';
+
+// Past 7 days, oldest → today. We mark today as "active" (pulsing dot)
+// and synthesise the past 6 from streak — if streak >= n, that day is filled.
+// This is a temporary stand-in; once the backend exposes a per-day activity
+// log, swap in the real series.
+function buildWeekDots(streak: number): { day: string; filled: boolean; isToday: boolean }[] {
+  const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const today = new Date();
+  const todayIdx = (today.getDay() + 6) % 7; // Mon=0 .. Sun=6
+  return Array.from({ length: 7 }).map((_, i) => {
+    const offsetFromToday = todayIdx - i;
+    const filled = offsetFromToday >= 0 && offsetFromToday < streak;
+    return { day: labels[i], filled, isToday: i === todayIdx };
+  });
+}
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Dashboard'>,
@@ -37,9 +54,12 @@ const topics: Topic[] = [
 ];
 
 export function DashboardScreen({ navigation }: Props) {
-  const { name, xp, level, streak, tier, userId } = useUserStore();
+  const { name, xp, level, streak, tier, userId, totalLessonsCompleted } = useUserStore();
   const syncFromBackend = useUserStore((s) => s.syncFromBackend);
-  
+
+  const insight = getInsightOfTheDay();
+  const weekDots = buildWeekDots(streak);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [nextLesson, setNextLesson] = useState<any>(null);
@@ -220,6 +240,76 @@ export function DashboardScreen({ navigation }: Props) {
             <Text style={styles.mapButtonArrow}>→</Text>
           </LinearGradient>
         </Pressable>
+      </Animated.View>
+
+      {/* ========== Week-dot streak strip ========== */}
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(350)}
+        style={styles.weekDotsCard}
+      >
+        <View style={styles.weekDotsHeader}>
+          <Text style={styles.sectionEyebrow}>THIS WEEK</Text>
+          <Text style={styles.sectionEyebrowMuted}>{streak}-day streak</Text>
+        </View>
+        <View style={styles.weekDotsRow}>
+          {weekDots.map((d, i) => (
+            <View key={i} style={styles.weekDotCol}>
+              <View
+                style={[
+                  styles.weekDot,
+                  d.filled && styles.weekDotFilled,
+                  d.isToday && styles.weekDotToday,
+                ]}
+              />
+              <Text style={[styles.weekDayLabel, d.isToday && styles.weekDayLabelToday]}>
+                {d.day}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </Animated.View>
+
+      {/* ========== Insight of the day ========== */}
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(420)}
+        style={styles.insightCard}
+      >
+        <View style={styles.insightHeader}>
+          <Text style={styles.sectionEyebrow}>💡 INSIGHT OF THE DAY</Text>
+        </View>
+        <Text style={styles.insightTitle} numberOfLines={2}>
+          {insight.title}
+        </Text>
+        <Text style={styles.insightBody} numberOfLines={3}>
+          {insight.body.split('\n\n')[0]}
+        </Text>
+        <Pressable
+          onPress={() => navigation.navigate('Learn' as never)}
+          style={styles.insightCta}
+        >
+          <Text style={styles.insightCtaText}>Read the full insight →</Text>
+        </Pressable>
+      </Animated.View>
+
+      {/* ========== Lifetime stats row (animated count-up) ========== */}
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(490)}
+        style={styles.statsRow}
+      >
+        <View style={styles.statCell}>
+          <AnimatedNumber value={totalLessonsCompleted} style={styles.statNumber} />
+          <Text style={styles.statLabel}>LESSONS</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statCell}>
+          <AnimatedNumber value={xp} style={styles.statNumber} />
+          <Text style={styles.statLabel}>TOTAL XP</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statCell}>
+          <AnimatedNumber value={streak} style={styles.statNumber} suffix="🔥" />
+          <Text style={styles.statLabel}>STREAK</Text>
+        </View>
       </Animated.View>
 
       <View style={styles.bottomSpacer} />
@@ -416,7 +506,133 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
+  // --- Week dots ---
+  weekDotsCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  weekDotsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  sectionEyebrow: {
+    ...typography.label,
+    color: colors.airaGlow,
+  },
+  sectionEyebrowMuted: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  weekDotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+  },
+  weekDotCol: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  weekDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.bgCardHover,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  weekDotFilled: {
+    backgroundColor: colors.airaCore,
+    borderColor: colors.airaCore,
+  },
+  weekDotToday: {
+    backgroundColor: colors.airaGlow,
+    borderColor: colors.airaGlow,
+    transform: [{ scale: 1.3 }],
+  },
+  weekDayLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  weekDayLabelToday: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+
+  // --- Insight of the day ---
+  insightCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  insightHeader: {
+    marginBottom: spacing.sm,
+  },
+  insightTitle: {
+    ...typography.title,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  insightBody: {
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  insightCta: {
+    alignSelf: 'flex-start',
+  },
+  insightCtaText: {
+    ...typography.caption,
+    color: colors.airaCore,
+    fontFamily: 'Inter_600SemiBold',
+  },
+
+  // --- Lifetime stats row ---
+  statsRow: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
+  },
+  statNumber: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 22,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  statLabel: {
+    ...typography.label,
+    fontSize: 9,
+    color: colors.textMuted,
+  },
+
   bottomSpacer: {
-    height: spacing.xxl,
+    // Clears the floating tab bar (~64px bar + 16px bottom inset + breathing room)
+    height: 100,
   },
 });

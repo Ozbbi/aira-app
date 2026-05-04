@@ -283,5 +283,5 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.textPrimary,
   },
-  bottomSpace: { height: spacing.xl },
+  bottomSpace: { height: 100 }, // floating tab bar clearance
 });

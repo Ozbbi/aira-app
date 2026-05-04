@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { StatusBar, View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import { AppBootstrap } from './src/components/AppBootstrap';
 import { AiraOrb } from './src/components/AiraOrb';
@@ -18,6 +18,7 @@ export default function App() {
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
+    Inter_700Bold,
     SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
   });

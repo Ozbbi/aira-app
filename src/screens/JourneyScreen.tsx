@@ -181,5 +181,5 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0, // RN-Web fix: prevents per-letter wrap
   },
-  bottomSpace: { height: spacing.xl },
+  bottomSpace: { height: 100 }, // floating tab bar clearance
 });

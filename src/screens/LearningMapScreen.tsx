@@ -275,7 +275,7 @@ export function LearningMapScreen({ navigation }: Props) {
                     <Text style={styles.startLabel}>Start →</Text>
                   )}
                   {status === 'locked' && (
-                    <Text style={styles.lockedLabel}>Pro Only</Text>
+                    <Text style={styles.lockedLabel}>Coming up</Text>
                   )}
                 </LinearGradient>
               </Pressable>
@@ -290,8 +290,7 @@ export function LearningMapScreen({ navigation }: Props) {
           <AiraCharacter mood="calm" size={60} />
           <View style={styles.airaMessage}>
             <Text style={styles.airaText}>
-              This is your learning map. Complete lessons in order to unlock new tracks. 
-              {tier === 'free' && ' Upgrade to Pro to unlock all tracks.'}
+              This is your learning map. Complete lessons in order to unlock new tracks.
             </Text>
           </View>
         </View>

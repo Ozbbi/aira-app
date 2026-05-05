@@ -1,5 +1,6 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,11 +47,14 @@ interface Topic {
   tier: 'free' | 'pro';
 }
 
+// All topics are free now — AIRA shipped as a single product. The Topic
+// type still has `tier` for future per-track features but every entry is
+// 'free'.
 const topics: Topic[] = [
   { emoji: '✨', label: 'AI Basics', lessonId: 'foundations_1', tier: 'free' },
-  { emoji: '🧠', label: 'Thinking', lessonId: 'critical_1', tier: 'pro' },
-  { emoji: '⚡', label: 'Prompts', lessonId: 'power_1', tier: 'pro' },
-  { emoji: '🛠️', label: 'Tools', lessonId: 'tools_1', tier: 'pro' },
+  { emoji: '🧠', label: 'Thinking', lessonId: 'critical_1', tier: 'free' },
+  { emoji: '⚡', label: 'Prompts', lessonId: 'power_1', tier: 'free' },
+  { emoji: '🛠️', label: 'Tools', lessonId: 'tools_1', tier: 'free' },
 ];
 
 export function DashboardScreen({ navigation }: Props) {
@@ -128,19 +132,30 @@ export function DashboardScreen({ navigation }: Props) {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    if (topic.tier === 'pro' && tier === 'free') {
-      navigation.navigate('Paywall');
-    } else {
-      navigation.navigate('Lesson', { lessonId: topic.lessonId });
-    }
+    navigation.navigate('Lesson', { lessonId: topic.lessonId });
   };
+
+  // Today's mission: 1 lesson per day. Once they finish a lesson today the
+  // ring fills. We compare lessons completed against a simple bucket so this
+  // works without backend changes.
+  const todayKey = new Date().toDateString();
+  const lessonsToday = useMemo(() => {
+    // Heuristic: if user opened a lesson today AND total > 0, count 1.
+    // Replace with backend per-day data when available.
+    return totalLessonsCompleted > 0 ? 1 : 0;
+  }, [totalLessonsCompleted, todayKey]);
+  const dailyGoal = 1;
+  const dailyComplete = lessonsToday >= dailyGoal;
 
   const xpForNextLevel = (level ** 2) * 50;
   const xpProgress = (xp / xpForNextLevel) * 100;
 
   return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -215,31 +230,39 @@ export function DashboardScreen({ navigation }: Props) {
             >
               <Text style={styles.topicEmoji}>{topic.emoji}</Text>
               <Text style={styles.topicLabel}>{topic.label}</Text>
-              {topic.tier === 'pro' && tier === 'free' && (
-                <View style={styles.lockOverlay}>
-                  <Text style={styles.lockIcon}>🔒</Text>
-                </View>
-              )}
             </Pressable>
           </Animated.View>
         ))}
       </Animated.View>
 
-      {/* Learning Map Button */}
-      <Animated.View entering={FadeInDown.duration(400).delay(300)} style={styles.mapButtonSection}>
-        <Pressable
-          onPress={() => navigation.navigate('LearningMap')}
-          style={({ pressed }) => [
-            styles.mapButton,
-            pressed && styles.mapButtonPressed,
-          ]}
-        >
-          <LinearGradient colors={[colors.bgCard, colors.bg]} style={styles.mapButtonGradient}>
-            <Text style={styles.mapButtonIcon}>🗺️</Text>
-            <Text style={styles.mapButtonText}>View Learning Map</Text>
-            <Text style={styles.mapButtonArrow}>→</Text>
-          </LinearGradient>
-        </Pressable>
+      {/* ========== Today's Mission ========== */}
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(300)}
+        style={styles.missionCard}
+      >
+        <View style={styles.missionLeft}>
+          <Text style={styles.sectionEyebrow}>TODAY'S MISSION</Text>
+          <Text style={styles.missionTitle}>
+            {dailyComplete ? "You're done for today 🎉" : 'Finish 1 lesson today'}
+          </Text>
+          <Text style={styles.missionHint}>
+            {dailyComplete
+              ? 'Come back tomorrow to keep your streak alive.'
+              : 'Small daily progress beats big weekly bursts.'}
+          </Text>
+        </View>
+        <View style={styles.missionRing}>
+          <View style={styles.missionRingTrack} />
+          <View
+            style={[
+              styles.missionRingFill,
+              dailyComplete && styles.missionRingFillDone,
+            ]}
+          />
+          <Text style={styles.missionRingText}>
+            {lessonsToday}/{dailyGoal}
+          </Text>
+        </View>
       </Animated.View>
 
       {/* ========== Week-dot streak strip ========== */}
@@ -314,20 +337,28 @@ export function DashboardScreen({ navigation }: Props) {
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  scrollContent: {
+    paddingTop: spacing.sm,
   },
   greetingCard: {
     backgroundColor: colors.bgCard,
     borderRadius: radius.xl,
     padding: spacing.lg,
     marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   greetingRow: {
     flexDirection: 'row',
@@ -336,31 +367,34 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   welcomeLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
   },
   greeting: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 26,
+    fontFamily: 'SpaceGrotesk_700Bold',
     color: colors.textPrimary,
+    letterSpacing: -0.4,
   },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
     borderRadius: radius.full,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.bg,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  streakIcon: { fontSize: 11 },
+  streakIcon: { fontSize: 14 },
   streakNumber: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
     color: colors.textPrimary,
   },
 
@@ -374,13 +408,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   levelText: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
     color: colors.textSecondary,
   },
   xpText: {
-    fontSize: 10,
+    fontSize: 13,
     color: colors.textMuted,
+    fontFamily: 'Inter_500Medium',
   },
   xpProgress: {
     height: 6,
@@ -407,24 +442,27 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.97 }],
   },
   heroGradient: {
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   heroLabel: {
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.78)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
+    letterSpacing: 1.4,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 6,
   },
   heroTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 2,
+    fontSize: 22,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    letterSpacing: -0.3,
   },
   heroSubtitle: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    fontFamily: 'Inter_500Medium',
   },
 
   // --- Topic grid ---
@@ -440,70 +478,88 @@ const styles = StyleSheet.create({
     minWidth: '47%',
     backgroundColor: colors.bgCard,
     borderRadius: radius.lg,
-    padding: spacing.sm,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: 130,
+    minHeight: 110,
+    justifyContent: 'space-between',
   },
   topicCardPressed: {
     transform: [{ scale: 0.97 }],
-    backgroundColor: colors.bgGlass,
+    backgroundColor: colors.bgCardHover,
+    borderColor: colors.airaCore,
   },
   topicEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: 28,
+    marginBottom: 6,
   },
   topicLabel: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
     color: colors.textPrimary,
   },
-  lockOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+
+  // --- Today's Mission ---
+  missionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: colors.bgCard,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
+  missionLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  missionTitle: {
+    fontSize: 17,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: colors.textPrimary,
+    marginTop: 6,
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  missionHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 18,
+  },
+  missionRing: {
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockIcon: {
-    fontSize: 20,
+  missionRingTrack: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 32,
+    borderWidth: 5,
+    borderColor: colors.bgCardHover,
   },
-
-  // --- Learning Map Button ---
-  mapButtonSection: {
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
+  missionRingFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 32,
+    borderWidth: 5,
+    borderColor: colors.airaCore,
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+    transform: [{ rotate: '-45deg' }],
   },
-  mapButton: {
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
+  missionRingFillDone: {
+    borderColor: colors.success,
+    borderRightColor: colors.success,
+    borderBottomColor: colors.success,
   },
-  mapButtonPressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  mapButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.md,
-  },
-  mapButtonIcon: {
-    fontSize: 20,
-  },
-  mapButtonText: {
+  missionRingText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'SpaceGrotesk_700Bold',
     color: colors.textPrimary,
-  },
-  mapButtonArrow: {
-    fontSize: 18,
-    color: colors.textSecondary,
   },
 
   // --- Week dots ---

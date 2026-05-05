@@ -240,29 +240,6 @@ export function ProfileScreen({ navigation }: Props) {
         </Pressable>
       </Animated.View>
 
-      {/* Upgrade to Pro Card */}
-      {tier === 'free' && (
-        <Animated.View entering={FadeInDown.duration(400).delay(400)} style={styles.upgradeSection}>
-          <Pressable
-            style={styles.upgradeCard}
-            onPress={() => {
-              if (Platform.OS !== 'web') {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }
-              navigation.navigate('Paywall');
-            }}
-          >
-            <LinearGradient colors={colors.gradientPro} style={styles.upgradeGradient}>
-              <Text style={styles.upgradeTitle}>Upgrade to Pro</Text>
-              <Text style={styles.upgradeSubtitle}>
-                Unlock all 6 tracks, unlimited lessons, advanced AI techniques
-              </Text>
-              <Text style={styles.upgradePrice}>$9.99 — one time, forever</Text>
-            </LinearGradient>
-          </Pressable>
-        </Animated.View>
-      )}
-
       {/* Edit Name Modal */}
       <Modal visible={editingName} transparent animationType="slide">
         <View style={styles.modalOverlay}>

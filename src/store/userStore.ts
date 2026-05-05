@@ -44,7 +44,9 @@ const initialState = {
   xp: 0,
   level: 1,
   streak: 0,
-  tier: 'free' as const,
+  // AIRA shipped as a single product with everything unlocked. The 'tier'
+  // field is kept for backend compatibility but is always 'pro' on device.
+  tier: 'pro' as const,
   totalLessonsCompleted: 0,
   lastLessonTopic: null,
   lastSyncedAt: null,
@@ -89,7 +91,8 @@ export const useUserStore = create<UserState>()(
           xp: data.xp,
           level: data.level,
           streak: data.streak,
-          tier: data.tier,
+          // Force 'pro' regardless of backend value — paywall is removed.
+          tier: 'pro',
           totalLessonsCompleted: data.totalLessonsCompleted,
           lastSyncedAt: new Date().toISOString(),
         }),

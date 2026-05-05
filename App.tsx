@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { StatusBar, View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import { AppBootstrap } from './src/components/AppBootstrap';
@@ -32,10 +33,12 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <AppBootstrap />
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+        <AppBootstrap />
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 

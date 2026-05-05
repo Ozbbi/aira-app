@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
-import { Text, StyleSheet, View, Pressable, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Text, StyleSheet, View, Pressable, LayoutChangeEvent } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -19,7 +20,6 @@ import type { TabParamList } from '../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-// One source of truth so the bar and the indicator pill stay in lock-step.
 const TAB_DEFS = [
   { name: 'Dashboard', label: 'Home', glyph: '🏠' },
   { name: 'Lessons', label: 'Lessons', glyph: '📚' },
@@ -29,43 +29,81 @@ const TAB_DEFS = [
 ] as const;
 
 /**
- * Custom floating tab bar. The active-tab pill is a separately-positioned
- * Animated.View that springs to the tapped tab's slot, so the indicator
- * slides smoothly between tabs instead of flicker-rendering on every press.
+ * Floating tab bar with a sliding gradient pill behind the active tab.
+ *
+ * Indicator alignment: each tab slot reports its on-screen x and width via
+ * onLayout. The pill is a single absolute-positioned element that springs
+ * to those exact coordinates, which means it's always pixel-perfectly
+ * centred no matter what layout/safe-area math the OS gives us.
+ *
+ * Bottom inset: we add the safe-area inset to the bottom margin so the bar
+ * floats above Samsung's gesture pill / iPhone home indicator, instead of
+ * being interleaved with them (which was stealing taps on Samsungs).
  */
 function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
-  const tabCount = state.routes.length;
-  const indicatorX = useSharedValue(state.index);
+  const insets = useSafeAreaInsets();
 
+  // Per-slot measured geometry. Stored in a ref so we don't re-render on
+  // every layout pass — only the indicator's shared values are reactive.
+  const layoutsRef = useRef<{ x: number; width: number }[]>([]);
+  const [layoutsReady, setLayoutsReady] = useState(false);
+
+  const indicatorX = useSharedValue(0);
+  const indicatorW = useSharedValue(0);
+
+  // Re-target the indicator whenever the active tab or layouts change.
   useEffect(() => {
-    indicatorX.value = withSpring(state.index, { damping: 18, stiffness: 240 });
-  }, [state.index, indicatorX]);
+    const target = layoutsRef.current[state.index];
+    if (!target) return;
+    indicatorX.value = withSpring(target.x, { damping: 18, stiffness: 240 });
+    indicatorW.value = withTiming(target.width, { duration: 220 });
+  }, [state.index, layoutsReady, indicatorX, indicatorW]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: `${indicatorX.value * 100}%` as `${number}%` }],
+    transform: [{ translateX: indicatorX.value }],
+    width: indicatorW.value,
   }));
 
+  const onSlotLayout = (i: number) => (e: LayoutChangeEvent) => {
+    const { x, width } = e.nativeEvent.layout;
+    layoutsRef.current[i] = { x, width };
+    // Once we've measured every slot, kick the indicator to its current
+    // active position (covers first paint).
+    if (layoutsRef.current.filter(Boolean).length === state.routes.length) {
+      setLayoutsReady(true);
+      const t = layoutsRef.current[state.index];
+      if (t) {
+        indicatorX.value = t.x;
+        indicatorW.value = t.width;
+      }
+    }
+  };
+
   return (
-    <View pointerEvents="box-none" style={styles.tabBarHost}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.tabBarHost, { paddingBottom: Math.max(insets.bottom, 12) + 12 }]}
+    >
       <View style={styles.tabBar}>
-        {/* Sliding gradient pill behind the active icon */}
-        <View style={[styles.indicatorTrack, { width: `${100 / tabCount}%` }]}>
-          <Animated.View style={[styles.indicatorMover, indicatorStyle]}>
-            <LinearGradient
-              colors={['rgba(139,92,246,0.35)', 'rgba(196,181,253,0.18)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.indicatorPill}
-            />
-          </Animated.View>
-        </View>
+        <Animated.View style={[styles.indicator, indicatorStyle]} pointerEvents="none">
+          <LinearGradient
+            colors={['rgba(139,92,246,0.45)', 'rgba(196,181,253,0.18)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.indicatorPill}
+          />
+        </Animated.View>
 
         {state.routes.map((route, index) => {
           const def = TAB_DEFS.find((t) => t.name === route.name) ?? TAB_DEFS[0];
           const focused = state.index === index;
 
           const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
             if (!focused && !event.defaultPrevented) {
               haptics.select();
               navigation.navigate(route.name as never);
@@ -73,9 +111,19 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
           };
 
           return (
-            <Pressable key={route.key} onPress={onPress} style={styles.tabSlot} accessibilityRole="button">
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              onLayout={onSlotLayout(index)}
+              style={styles.tabSlot}
+              accessibilityRole="button"
+              accessibilityLabel={def.label}
+            >
               <TabIcon glyph={def.glyph} focused={focused} />
-              <Text style={[styles.tabLabel, focused && styles.tabLabelActive]} numberOfLines={1}>
+              <Text
+                style={[styles.tabLabel, focused && styles.tabLabelActive]}
+                numberOfLines={1}
+              >
                 {def.label}
               </Text>
             </Pressable>
@@ -87,7 +135,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 function TabIcon({ glyph, focused }: { glyph: string; focused: boolean }) {
-  const scale = useSharedValue(focused ? 1.1 : 1);
+  const scale = useSharedValue(focused ? 1.12 : 1);
   const opacity = useSharedValue(focused ? 1 : 0.55);
 
   useEffect(() => {
@@ -125,46 +173,35 @@ export function TabNavigator() {
   );
 }
 
-const BAR_HORIZONTAL_INSET = 12;
-const BAR_BOTTOM = Platform.select({ ios: 24, android: 16, default: 16 });
-
 const styles = StyleSheet.create({
   tabBarHost: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
     bottom: 0,
-    alignItems: 'center',
-    paddingBottom: BAR_BOTTOM,
-    paddingHorizontal: BAR_HORIZONTAL_INSET,
+    alignItems: 'stretch',
   },
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
     height: 64,
     borderRadius: radius.full,
     backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.xs,
-    // Soft elevation: shadow on iOS, elevation on Android
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 14,
   },
-  indicatorTrack: {
+  indicator: {
     position: 'absolute',
+    top: spacing.xs,
+    bottom: spacing.xs,
     left: 0,
-    top: 0,
-    bottom: 0,
-    paddingHorizontal: spacing.xs,
-  },
-  indicatorMover: {
-    flex: 1,
-    paddingVertical: spacing.xs,
   },
   indicatorPill: {
     flex: 1,

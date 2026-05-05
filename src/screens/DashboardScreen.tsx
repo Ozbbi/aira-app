@@ -9,6 +9,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
+import { AiraMascot } from '../components/AiraMascot';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { colors, radius, spacing, typography } from '../theme';
 import { getProgress, getCurriculum } from '../api/client';
@@ -45,16 +46,16 @@ interface Topic {
   label: string;
   lessonId: string;
   tier: 'free' | 'pro';
+  gradient: readonly [string, string, ...string[]];
 }
 
-// All topics are free now — AIRA shipped as a single product. The Topic
-// type still has `tier` for future per-track features but every entry is
-// 'free'.
+// Each topic card carries its own gradient — same palette as the
+// LearningMap track gradients so the brand colours echo across screens.
 const topics: Topic[] = [
-  { emoji: '✨', label: 'AI Basics', lessonId: 'foundations_1', tier: 'free' },
-  { emoji: '🧠', label: 'Thinking', lessonId: 'critical_1', tier: 'free' },
-  { emoji: '⚡', label: 'Prompts', lessonId: 'power_1', tier: 'free' },
-  { emoji: '🛠️', label: 'Tools', lessonId: 'tools_1', tier: 'free' },
+  { emoji: '✨', label: 'AI Basics',  lessonId: 'foundations_1', tier: 'free', gradient: ['#6366F1', '#8B5CF6'] as const },
+  { emoji: '🧠', label: 'Thinking',   lessonId: 'critical_1',    tier: 'free', gradient: ['#EC4899', '#8B5CF6'] as const },
+  { emoji: '⚡', label: 'Prompts',    lessonId: 'power_1',       tier: 'free', gradient: ['#F59E0B', '#EC4899'] as const },
+  { emoji: '🛠️', label: 'Tools',     lessonId: 'tools_1',       tier: 'free', gradient: ['#06B6D4', '#3B82F6'] as const },
 ];
 
 export function DashboardScreen({ navigation }: Props) {
@@ -166,37 +167,42 @@ export function DashboardScreen({ navigation }: Props) {
         />
       }
     >
-      {/* Greeting Card */}
+      {/* Greeting card — mascot says hi */}
       <Animated.View entering={FadeIn.duration(260)} style={styles.greetingCard}>
         <View style={styles.greetingRow}>
-          <View>
-            <Text style={styles.welcomeLabel}>Welcome back</Text>
-            <Text style={styles.greeting}>Hey {name || 'there'} 👋</Text>
+          <View style={styles.greetingTextWrap}>
+            <Text style={styles.welcomeLabel}>WELCOME BACK</Text>
+            <Text style={styles.greeting} numberOfLines={1}>
+              Hey {name || 'there'} 👋
+            </Text>
           </View>
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakIcon}>🔥</Text>
-            <Text style={styles.streakNumber}>{streak}</Text>
+          <View style={styles.greetingMascotWrap}>
+            <AiraMascot size={68} mood={dailyComplete ? 'celebrating' : 'happy'} />
           </View>
         </View>
 
         {/* XP Bar */}
         <View style={styles.xpSection}>
           <View style={styles.xpInfo}>
-            <Text style={styles.levelText}>Level {level}</Text>
-            <Text style={styles.xpText}>{xp}/{xpForNextLevel} XP</Text>
+            <View style={styles.streakInline}>
+              <Text style={styles.streakInlineEmoji}>🔥</Text>
+              <Text style={styles.streakInlineNum}>{streak}</Text>
+              <Text style={styles.streakInlineLabel}> day streak</Text>
+            </View>
+            <Text style={styles.xpText}>Lvl {level} · {xp}/{xpForNextLevel} XP</Text>
           </View>
           <View style={styles.xpProgress}>
-            <MotiView
-              from={{ width: '0%' }}
-              animate={{ width: `${Math.min(xpProgress, 100)}%` }}
-              transition={{ duration: 500, delay: 200 }}
-              style={styles.xpFill}
+            <LinearGradient
+              colors={['#F59E0B', '#EC4899', '#8B5CF6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.xpFill, { width: `${Math.min(xpProgress, 100)}%` }]}
             />
           </View>
         </View>
       </Animated.View>
 
-      {/* Continue Learning Card */}
+      {/* HERO — start lesson now (the loud, unmissable CTA) */}
       <Animated.View entering={FadeInDown.duration(260).delay(45)} style={styles.heroSection}>
         <Pressable
           onPress={handleContinueLearning}
@@ -205,31 +211,52 @@ export function DashboardScreen({ navigation }: Props) {
             pressed && styles.heroCardPressed,
           ]}
         >
-          <LinearGradient colors={colors.gradientLesson} style={styles.heroGradient}>
-            <Text style={styles.heroLabel}>Next Lesson</Text>
-            <Text style={styles.heroTitle}>Continue Learning</Text>
-            <Text style={styles.heroSubtitle}>Tap to start</Text>
+          <LinearGradient
+            colors={['#7C3AED', '#EC4899', '#F59E0B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroGradient}
+          >
+            <View style={styles.heroTextCol}>
+              <Text style={styles.heroLabel}>READY WHEN YOU ARE</Text>
+              <Text style={styles.heroTitle}>Start today's lesson</Text>
+              <Text style={styles.heroSubtitle}>3 minutes. Sharpen one habit.</Text>
+              <View style={styles.heroPill}>
+                <Text style={styles.heroPillText}>Start →</Text>
+              </View>
+            </View>
+            <View style={styles.heroMascotWrap} pointerEvents="none">
+              <AiraMascot size={104} mood="encouraging" />
+            </View>
           </LinearGradient>
         </Pressable>
       </Animated.View>
 
-      {/* Topic Grid 2x2 */}
+      {/* Topic grid 2×2 — each card gets its own gradient */}
       <Animated.View entering={FadeInDown.duration(260).delay(90)} style={styles.topicsGrid}>
         {topics.map((topic, index) => (
           <Animated.View
             key={topic.label}
             entering={FadeInDown.duration(260).delay(200 + index * 30)}
-            style={{ flex: 1 }}
+            style={styles.topicCellWrap}
           >
             <Pressable
               onPress={() => handleTopicPress(topic)}
               style={({ pressed }) => [
-                styles.topicCard,
+                styles.topicCardOuter,
                 pressed && styles.topicCardPressed,
               ]}
             >
-              <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-              <Text style={styles.topicLabel}>{topic.label}</Text>
+              <LinearGradient
+                colors={topic.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.topicCardInner}
+              >
+                <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+                <Text style={styles.topicLabel}>{topic.label}</Text>
+                <Text style={styles.topicHint}>Start →</Text>
+              </LinearGradient>
             </Pressable>
           </Animated.View>
         ))}
@@ -365,6 +392,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
+    gap: spacing.md,
+  },
+  greetingTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  greetingMascotWrap: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  streakInlineEmoji: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  streakInlineNum: {
+    fontSize: 14,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: colors.textPrimary,
+  },
+  streakInlineLabel: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontFamily: 'Inter_500Medium',
   },
   welcomeLabel: {
     fontSize: 11,
@@ -442,61 +498,101 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.97 }],
   },
   heroGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: spacing.lg,
+    minHeight: 160,
+  },
+  heroTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroMascotWrap: {
+    width: 110,
+    height: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
   },
   heroLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.78)',
+    color: 'rgba(255,255,255,0.85)',
     textTransform: 'uppercase',
-    letterSpacing: 1.4,
+    letterSpacing: 1.5,
     fontFamily: 'Inter_700Bold',
     marginBottom: 6,
   },
   heroTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: 'SpaceGrotesk_700Bold',
     color: '#FFFFFF',
-    marginBottom: 4,
-    letterSpacing: -0.3,
+    marginBottom: 6,
+    letterSpacing: -0.4,
   },
   heroSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.92)',
     fontFamily: 'Inter_500Medium',
+    marginBottom: spacing.md,
+  },
+  heroPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+  },
+  heroPillText: {
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+    color: '#0F0A1F',
+    letterSpacing: 0.2,
   },
 
   // --- Topic grid ---
   topicsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.lg - spacing.xs,
     marginTop: spacing.md,
-    gap: 8,
   },
-  topicCard: {
-    flex: 1,
-    minWidth: '47%',
-    backgroundColor: colors.bgCard,
+  topicCellWrap: {
+    width: '50%',
+    padding: spacing.xs,
+  },
+  topicCardOuter: {
     borderRadius: radius.lg,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  topicCardInner: {
     padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minHeight: 110,
+    minHeight: 124,
     justifyContent: 'space-between',
   },
   topicCardPressed: {
     transform: [{ scale: 0.97 }],
-    backgroundColor: colors.bgCardHover,
-    borderColor: colors.airaCore,
   },
   topicEmoji: {
-    fontSize: 28,
-    marginBottom: 6,
+    fontSize: 30,
+    marginBottom: 4,
   },
   topicLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: colors.textPrimary,
+    fontSize: 16,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+    marginBottom: 4,
+  },
+  topicHint: {
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+    color: 'rgba(255,255,255,0.92)',
+    letterSpacing: 0.6,
   },
 
   // --- Today's Mission ---

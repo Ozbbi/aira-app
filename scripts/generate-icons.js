@@ -1,27 +1,20 @@
 /* eslint-disable no-console */
 /**
- * AIRA brand mark — generates all the icon/splash PNGs from a single SVG.
+ * AIRA brand assets — renders the mascot character to PNG at every size
+ * the app needs.
  *
- * Mark anatomy:
- *   • A bold geometric Λ (lambda / peak) — two trapezoidal strokes leaning
- *     inward, NO horizontal crossbar. Distinctive, reads as "A" without
- *     looking like every generic A-letter logo. Hints at ascent, peaks,
- *     thought rising.
- *   • A bright luminous orb seated at the apex, exactly where the eye
- *     wants to land. Cyan-to-violet radial gradient + outer glow ring.
- *   • Wedge fill: vertical gradient cyan → violet matches the orb so
- *     the whole mark feels like a single object, not a clip-art mashup.
- *   • Subtle inner highlight on each stroke for tactile depth at large
- *     sizes; falls away to a flat silhouette at 48 px favicons.
+ * The mascot here is the same character users see inside the app
+ * (src/components/AiraMascot.tsx) — rounded squircle body in a vertical
+ * cyan→purple gradient, big expressive eyes, soft cheek blush, gentle
+ * smile, sparkles for the splash variant. Same character on the icon,
+ * splash, and inside the app. One brand, one face.
  *
- * Sizes produced:
- *   icon.png            1024×1024  (full bleed, 70% mark)
- *   adaptive-icon.png   1024×1024  (54% mark — Android safe-zone)
- *   splash-icon.png     1024×1024  (60% mark, used by expo-splash-screen)
- *   splash.png          1284×2778  (mark centred + AIRA wordmark)
- *   favicon.png         48×48      (web)
- *
- * Run: node scripts/generate-icons.js
+ * Sizes:
+ *   icon.png            1024  Android/iOS app icon (full bleed)
+ *   adaptive-icon.png   1024  Android adaptive — tighter, safe-zone
+ *   splash-icon.png     1024  used by expo-splash-screen
+ *   splash.png          1284×2778  full splash with wordmark
+ *   favicon.png         48    web tab
  */
 const sharp = require('sharp');
 const path = require('path');
@@ -30,125 +23,102 @@ const fs = require('fs');
 const OUT = path.resolve(__dirname, '..', 'assets');
 const BG = '#0A0A0F';
 
-/**
- * Build an SVG of the AIRA "A" mark.
- *
- * Anatomy: a bold geometric capital A. Two thick diagonal legs meeting at
- * the apex, a stout horizontal crossbar, no negative-space cleverness. The
- * fill is a vertical brand gradient (cyan → purple → violet) so the letter
- * itself carries the brand colour without needing extra orbs or glyphs.
- * A subtle ambient glow sits behind the letter for depth.
- */
-function airaSvg({ size, markScale = 0.7, withWordmark = false }) {
+function mascotSvg({ size, bg = BG, scale = 0.7, withWordmark = false, sparkles = false }) {
   const cx = size / 2;
   const cy = withWordmark ? size * 0.42 : size / 2;
+  const s = size * scale; // mascot edge in px
+  const half = s / 2;
 
-  // Bounding box of the mark
-  const markH = size * markScale;
-  const markW = markH * 0.92;
-  const top = cy - markH / 2;
-  const bottom = cy + markH / 2;
-  const apexX = cx;
-
-  // Stroke geometry. Thicker strokes read better at favicon size.
-  const legT = markH * 0.20; // diagonal leg thickness
-  const baseHalf = markW / 2;
-  const apexY = top + legT * 0.45; // tuck apex down slightly so corners aren't sharp at the edge
-
-  // Apex top vertices (small flat top instead of needle-sharp point — looks
-  // more like a real geometric letterform, less like a triangle).
-  const apexHalf = legT * 0.42;
-
-  // LEFT LEG polygon corners (clockwise from outer-bottom)
-  const ll = [
-    `${apexX - baseHalf},${bottom}`,                // outer bottom-left
-    `${apexX - baseHalf + legT * 1.05},${bottom}`,  // inner bottom-left
-    `${apexX - apexHalf * 0.4},${apexY + legT}`,    // inner near top
-    `${apexX - apexHalf},${apexY}`,                 // top inner
-    `${apexX - apexHalf * 1.4},${apexY}`,           // top outer
-  ].join(' ');
-
-  // RIGHT LEG polygon (mirror)
-  const rl = [
-    `${apexX + baseHalf},${bottom}`,
-    `${apexX + baseHalf - legT * 1.05},${bottom}`,
-    `${apexX + apexHalf * 0.4},${apexY + legT}`,
-    `${apexX + apexHalf},${apexY}`,
-    `${apexX + apexHalf * 1.4},${apexY}`,
-  ].join(' ');
-
-  // CROSSBAR — full-width box with rounded corners that visually "rests"
-  // between the legs at ~62% down.
-  const crossY = top + markH * 0.62;
-  const crossH = legT * 0.85;
-  const crossInsetFromLeg = legT * 0.5;
-  const xLeft = apexX - baseHalf + (crossY - apexY) * (baseHalf - apexHalf) / (bottom - apexY) - crossInsetFromLeg;
-  const xRight = apexX + baseHalf - (crossY - apexY) * (baseHalf - apexHalf) / (bottom - apexY) + crossInsetFromLeg;
-  const crossX = Math.max(apexX - markW * 0.32, xLeft + legT * 0.7);
-  const crossW = Math.min(markW * 0.64, xRight - crossX - legT * 0.7);
+  // Map 120-unit mascot coords → canvas
+  // Each mascot unit = (s / 120) px, offset by (cx-half, cy-half).
+  const u = (n) => (n * s) / 120;
+  const X = (n) => cx - half + u(n);
+  const Y = (n) => cy - half + u(n);
 
   const wordmark = withWordmark
     ? `<text
          x="${cx}"
-         y="${size * 0.79}"
+         y="${size * 0.80}"
          text-anchor="middle"
          font-family="Space Grotesk, Inter, system-ui, sans-serif"
          font-weight="700"
-         font-size="${Math.round(size * 0.11)}"
+         font-size="${Math.round(size * 0.108)}"
          letter-spacing="${(size * 0.014).toFixed(2)}"
-         fill="url(#wordmarkGradient)">AIRA</text>`
+         fill="url(#wm)">AIRA</text>`
+    : '';
+
+  const sparkleSvg = sparkles
+    ? `
+    <path d="M ${X(20)} ${Y(28)} l ${u(2)} ${-u(6)} l ${u(2)} ${u(6)} l ${u(6)} ${u(2)} l ${-u(6)} ${u(2)} l ${-u(2)} ${u(6)} l ${-u(2)} ${-u(6)} l ${-u(6)} ${-u(2)} z" fill="#FFD86B" />
+    <path d="M ${X(96)} ${Y(30)} l ${u(1.4)} ${-u(4)} l ${u(1.4)} ${u(4)} l ${u(4)} ${u(1.4)} l ${-u(4)} ${u(1.4)} l ${-u(1.4)} ${u(4)} l ${-u(1.4)} ${-u(4)} l ${-u(4)} ${-u(1.4)} z" fill="#FFD86B" />
+    <path d="M ${X(100)} ${Y(94)} l ${u(1.6)} ${-u(5)} l ${u(1.6)} ${u(5)} l ${u(5)} ${u(1.6)} l ${-u(5)} ${u(1.6)} l ${-u(1.6)} ${u(5)} l ${-u(1.6)} ${-u(5)} l ${-u(5)} ${-u(1.6)} z" fill="#FFD86B" />`
     : '';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
-    <!-- Brand gradient: cyan top → AIRA core purple → violet bottom -->
-    <linearGradient id="aGradient" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0%"   stop-color="#4FC3F7" />
-      <stop offset="50%"  stop-color="#8B5CF6" />
+    <linearGradient id="body" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%"   stop-color="#6FD4FB" />
+      <stop offset="55%"  stop-color="#8B5CF6" />
       <stop offset="100%" stop-color="#B388FF" />
     </linearGradient>
-    <!-- Subtle inner highlight along the left edge of each leg -->
-    <linearGradient id="legShine" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="rgba(255,255,255,0.22)" />
-      <stop offset="35%"  stop-color="rgba(255,255,255,0)" />
-      <stop offset="100%" stop-color="rgba(0,0,0,0.20)" />
+    <linearGradient id="shine" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.45)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0)" />
     </linearGradient>
-    <!-- Soft ambient halo behind the letter -->
-    <radialGradient id="ambient" cx="50%" cy="50%" r="60%">
-      <stop offset="0%"   stop-color="#8B5CF6" stop-opacity="0.30" />
-      <stop offset="60%"  stop-color="#8B5CF6" stop-opacity="0.08" />
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#B388FF" stop-opacity="0.5" />
+      <stop offset="60%"  stop-color="#8B5CF6" stop-opacity="0.18" />
       <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0" />
     </radialGradient>
-    <linearGradient id="wordmarkGradient" x1="0" y1="0" x2="1" y2="1">
+    <radialGradient id="cheek" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FF8FB1" stop-opacity="0.65" />
+      <stop offset="100%" stop-color="#FF8FB1" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="wm" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%"   stop-color="#FFFFFF" />
       <stop offset="100%" stop-color="#C4B5FD" />
     </linearGradient>
   </defs>
 
   <!-- Background -->
-  <rect width="${size}" height="${size}" fill="${BG}" />
+  <rect width="${size}" height="${size}" fill="${bg}" />
 
-  <!-- Ambient halo -->
-  <ellipse cx="${cx}" cy="${cy}" rx="${markW * 0.65}" ry="${markH * 0.62}" fill="url(#ambient)" />
+  <!-- Halo -->
+  <circle cx="${cx}" cy="${cy}" r="${half * 1.05}" fill="url(#halo)" />
 
-  <!-- Letter A -->
-  <polygon points="${ll}" fill="url(#aGradient)" />
-  <polygon points="${ll}" fill="url(#legShine)" opacity="0.6" />
+  <!-- Body -->
+  <path d="M ${X(60)} ${Y(22)}
+           C ${X(88)} ${Y(22)} ${X(96)} ${Y(34)} ${X(96)} ${Y(60)}
+           C ${X(96)} ${Y(86)} ${X(82)} ${Y(96)} ${X(60)} ${Y(96)}
+           C ${X(38)} ${Y(96)} ${X(24)} ${Y(86)} ${X(24)} ${Y(60)}
+           C ${X(24)} ${Y(34)} ${X(32)} ${Y(22)} ${X(60)} ${Y(22)} Z"
+        fill="url(#body)" />
 
-  <polygon points="${rl}" fill="url(#aGradient)" />
-  <polygon points="${rl}" fill="url(#legShine)" opacity="0.6" />
+  <!-- Top shine -->
+  <path d="M ${X(36)} ${Y(32)}
+           C ${X(44)} ${Y(26)} ${X(76)} ${Y(26)} ${X(84)} ${Y(32)}
+           C ${X(80)} ${Y(38)} ${X(60)} ${Y(40)} ${X(60)} ${Y(40)}
+           C ${X(60)} ${Y(40)} ${X(40)} ${Y(38)} ${X(36)} ${Y(32)} Z"
+        fill="url(#shine)" opacity="0.55" />
 
-  <!-- Crossbar -->
-  <rect
-    x="${crossX}"
-    y="${crossY}"
-    width="${crossW}"
-    height="${crossH}"
-    rx="${crossH * 0.32}"
-    ry="${crossH * 0.32}"
-    fill="url(#aGradient)" />
+  <!-- Cheeks -->
+  <circle cx="${X(36)}" cy="${Y(68)}" r="${u(7)}" fill="url(#cheek)" />
+  <circle cx="${X(84)}" cy="${Y(68)}" r="${u(7)}" fill="url(#cheek)" />
 
+  <!-- Eyes (calm/celebrating-style for icon) -->
+  <ellipse cx="${X(46)}" cy="${Y(58)}" rx="${u(7)}" ry="${u(8)}" fill="#FFFFFF" />
+  <ellipse cx="${X(74)}" cy="${Y(58)}" rx="${u(7)}" ry="${u(8)}" fill="#FFFFFF" />
+  <circle cx="${X(47)}" cy="${Y(59)}" r="${u(3.6)}" fill="#0F1020" />
+  <circle cx="${X(75)}" cy="${Y(59)}" r="${u(3.6)}" fill="#0F1020" />
+  <circle cx="${X(48.5)}" cy="${Y(56)}" r="${u(1.4)}" fill="#FFFFFF" />
+  <circle cx="${X(76.5)}" cy="${Y(56)}" r="${u(1.4)}" fill="#FFFFFF" />
+
+  <!-- Smile -->
+  <path d="M ${X(48)} ${Y(74)} Q ${X(60)} ${Y(82)} ${X(72)} ${Y(74)}"
+        stroke="#0F1020" stroke-width="${u(2.8)}" stroke-linecap="round" fill="none" />
+
+  ${sparkleSvg}
   ${wordmark}
 </svg>`;
 }
@@ -164,17 +134,17 @@ async function render(svg, outFile, w, h) {
 
 (async () => {
   if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
-  console.log('Rendering AIRA brand assets:');
+  console.log('Rendering AIRA mascot brand assets:');
 
-  await render(airaSvg({ size: 1024, markScale: 0.70 }),
+  await render(mascotSvg({ size: 1024, scale: 0.74, sparkles: false }),
     path.join(OUT, 'icon.png'), 1024, 1024);
-  await render(airaSvg({ size: 1024, markScale: 0.54 }),
+  await render(mascotSvg({ size: 1024, scale: 0.58, sparkles: false }),
     path.join(OUT, 'adaptive-icon.png'), 1024, 1024);
-  await render(airaSvg({ size: 1024, markScale: 0.60 }),
+  await render(mascotSvg({ size: 1024, scale: 0.66, sparkles: true }),
     path.join(OUT, 'splash-icon.png'), 1024, 1024);
-  await render(airaSvg({ size: 1284, markScale: 0.42, withWordmark: true }),
+  await render(mascotSvg({ size: 1284, scale: 0.46, withWordmark: true, sparkles: true }),
     path.join(OUT, 'splash.png'), 1284, 2778);
-  await render(airaSvg({ size: 256, markScale: 0.78 }),
+  await render(mascotSvg({ size: 256, scale: 0.84 }),
     path.join(OUT, 'favicon.png'), 48, 48);
 
   console.log('Done.');

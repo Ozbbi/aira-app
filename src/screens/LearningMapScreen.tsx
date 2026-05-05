@@ -122,15 +122,9 @@ export function LearningMapScreen({ navigation }: Props) {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    
-    const config = trackConfig[trackId];
-    const isPro = trackId !== 'foundations';
-    
-    if (isPro && tier === 'free') {
-      navigation.navigate('Paywall');
-    } else {
-      navigation.navigate('TrackDetail', { trackId });
-    }
+    // All tracks are open. We always go to the track detail; the user
+    // picks which lesson to start there.
+    navigation.navigate('TrackDetail', { trackId });
   };
 
   const handleBack = () => {
@@ -147,13 +141,12 @@ export function LearningMapScreen({ navigation }: Props) {
   };
 
   const getTrackStatus = (trackId: string) => {
+    // No more locked / "Coming up" — every track is open. Status only
+    // reflects what's been completed so the CTA wording reads naturally.
     const progress = trackProgress[trackId];
-    const isPro = trackId !== 'foundations';
-    
-    if (!progress) return 'locked';
-    if (progress.completed === progress.total) return 'completed';
+    if (!progress) return 'available';
+    if (progress.completed === progress.total && progress.total > 0) return 'completed';
     if (progress.completed > 0) return 'in-progress';
-    if (isPro && tier === 'free') return 'locked';
     return 'available';
   };
 
@@ -224,58 +217,48 @@ export function LearningMapScreen({ navigation }: Props) {
                 style={({ pressed }) => [
                   styles.trackCard,
                   pressed && styles.trackCardPressed,
-                  status === 'locked' && styles.trackCardLocked,
                 ]}
               >
-                <LinearGradient 
-                  colors={status === 'locked' ? [colors.bgCard, colors.bg] : config.gradient as any}
+                <LinearGradient
+                  colors={config.gradient as any}
                   style={styles.trackGradient}
                 >
                   <View style={styles.trackIconContainer}>
                     <Text style={styles.trackIcon}>{config.icon}</Text>
-                    {status === 'locked' && (
-                      <View style={styles.lockBadge}>
-                        <Text style={styles.lockBadgeIcon}>🔒</Text>
-                      </View>
-                    )}
                     {status === 'completed' && (
                       <View style={styles.completedBadge}>
                         <Text style={styles.completedBadgeIcon}>✓</Text>
                       </View>
                     )}
                   </View>
-                  
+
                   <Text style={styles.trackTitle}>{config.title}</Text>
                   <Text style={styles.trackSubtitle}>{config.subtitle}</Text>
-                  
-                  {/* Progress Bar */}
-                  {status !== 'locked' && (
-                    <View style={styles.trackProgressContainer}>
-                      <View style={styles.trackProgressBar}>
-                        <MotiView
-                          from={{ width: '0%' }}
-                          animate={{ width: `${progressPercent}%` }}
-                          transition={{ duration: 600, delay: 400 + index * 35 }}
-                          style={[
-                            styles.trackProgressFill,
-                            { backgroundColor: status === 'completed' ? colors.trackFoundations : config.color }
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.trackProgressText}>
-                        {Math.round(progressPercent)}%
-                      </Text>
-                    </View>
-                  )}
 
-                  {status === 'in-progress' && (
+                  {/* Progress Bar */}
+                  <View style={styles.trackProgressContainer}>
+                    <View style={styles.trackProgressBar}>
+                      <MotiView
+                        from={{ width: '0%' }}
+                        animate={{ width: `${progressPercent}%` }}
+                        transition={{ duration: 600, delay: 400 + index * 35 }}
+                        style={[
+                          styles.trackProgressFill,
+                          { backgroundColor: status === 'completed' ? colors.trackFoundations : config.color },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.trackProgressText}>
+                      {Math.round(progressPercent)}%
+                    </Text>
+                  </View>
+
+                  {status === 'in-progress' ? (
                     <Text style={styles.continueLabel}>Continue →</Text>
-                  )}
-                  {status === 'available' && (
+                  ) : status === 'completed' ? (
+                    <Text style={styles.continueLabel}>Review →</Text>
+                  ) : (
                     <Text style={styles.startLabel}>Start →</Text>
-                  )}
-                  {status === 'locked' && (
-                    <Text style={styles.lockedLabel}>Coming up</Text>
                   )}
                 </LinearGradient>
               </Pressable>

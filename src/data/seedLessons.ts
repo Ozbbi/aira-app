@@ -464,4 +464,980 @@ export const SEED_LESSONS: SeedLesson[] = [
       'From now on, before you open an AI, ask: voice, freshness, or code? Then pick. You will save time and ship better work.',
     takeaway: 'Right tool, right job.',
   },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ROUND 2 — lessons inspired by Anthropic's AI Fluency curriculum.
+  // Topics borrowed; words, characters, examples are AIRA-original.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ---------- AI FLUENCY: THE 4 Ds ----------
+  {
+    id: 'fluency_four_ds',
+    trackId: 'critical',
+    title: 'The 4 Ds: a real framework for using AI',
+    character: 'Sam',
+    airaIntro:
+      'Most "AI tips" lists are random. There is one framework worth memorising. It has four parts. After this lesson you will use it for every AI task.',
+    learnFirst:
+      'Whenever you reach for AI, run through four moves: Delegate (decide what to hand over), Describe (be specific about what you want), Discern (check what you got), Diligence (verify before you ship). Skip any of the four and your output drops a grade.',
+    realWorldScenario:
+      'Sam teaches high-school history. He asks AI to "write a worksheet on the French Revolution." It comes back generic, with one wrong date. He almost prints it. The 4 Ds would have caught every problem.',
+    scenes: [
+      {
+        heading: 'Delegate',
+        vague: 'Hand the whole task to AI: "Write the worksheet."',
+        specific: 'Decide which parts only YOU should do (which questions matter for YOUR class) and let AI handle the boring scaffolding.',
+        note: 'Smart users delegate the typing, not the thinking.',
+      },
+      {
+        heading: 'Describe',
+        vague: '"Write a worksheet on the French Revolution."',
+        specific: '"Write 6 short-answer questions for a 10th-grade class. Focus on causes, not dates. Avoid the words bourgeoisie and proletariat — my students don\'t know them yet."',
+        note: 'Tell the AI who, what shape, and what to avoid. Three knobs, huge difference.',
+      },
+      {
+        heading: 'Discern',
+        vague: 'Skim it, looks fine, print.',
+        specific: 'Read each question. Spot anything the AI quietly oversimplified. Mark anything that needs a teacher\'s judgment.',
+        note: 'Your taste is the reason you\'re here. Use it.',
+      },
+      {
+        heading: 'Diligence',
+        vague: 'Trust the dates, names, and quotes.',
+        specific: 'Spot-check 1–2 facts. Wrong dates and invented quotes are AI\'s most common failure mode.',
+        note: '30 seconds of fact-checking saves 30 minutes of student emails.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Which of these is NOT one of the 4 Ds?',
+        options: ['Delegate', 'Describe', 'Decorate', 'Diligence'],
+        correctAnswer: 2,
+        explanation: 'Delegate, Describe, Discern, Diligence. "Decorate" is the trap — it sounds plausible but it\'s not in the framework.',
+        airaFeedback: {
+          correct: 'Memorised. Four Ds: Delegate, Describe, Discern, Diligence.',
+          incorrect: 'The four are Delegate, Describe, Discern, Diligence. Decorate is not on the list.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Sam should delegate every part of the worksheet to the AI.',
+        correctAnswer: false,
+        explanation: 'Delegate the boring scaffolding. Keep the thinking — which questions matter, what depth fits your class — for yourself.',
+        airaFeedback: {
+          correct: 'Right. Delegate the typing, never the thinking.',
+          incorrect: 'Delegating EVERYTHING is exactly the trap. Keep the parts only you can do.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'Sam noticed a wrong date in the worksheet. Which of the 4 Ds caught it?',
+        options: ['Delegate', 'Describe', 'Discern', 'Diligence'],
+        correctAnswer: 3,
+        explanation: 'Diligence is the verification step — fact-checking 1–2 specifics catches AI\'s most common failure mode.',
+        airaFeedback: {
+          correct: 'Yes. Diligence is the safety net.',
+          incorrect: 'Diligence = verify the facts. That\'s the step that catches wrong dates and invented quotes.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'fill_blank',
+        question: 'Fill in: ____ is the step where you tell the AI WHO it\'s for and WHAT shape the answer should take.',
+        correctAnswer: 'describe',
+        explanation: 'Describe = audience + format + tone + what to avoid. The single most undervalued step.',
+        airaFeedback: {
+          correct: 'Yes. Describe is where most users skimp — and most quality is lost.',
+          incorrect: 'Hint: it starts with D and is about specifying the brief.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'ordering',
+        question: 'Order the 4 Ds in the right sequence:',
+        options: ['Delegate', 'Describe', 'Discern', 'Diligence'],
+        correctAnswer: ['Delegate', 'Describe', 'Discern', 'Diligence'],
+        explanation: 'Delegate (decide what to hand over) → Describe (the brief) → Discern (read what came back) → Diligence (verify).',
+        airaFeedback: {
+          correct: 'Locked in. Run this loop every time.',
+          incorrect: 'First decide what to hand over, then write the brief, then read the output, then verify. Delegate → Describe → Discern → Diligence.',
+        },
+      },
+    ],
+    airaOutro: 'You now have a framework most professionals do not. Use it on every real task and your output will jump a grade.',
+    takeaway: 'Four Ds. Every task. Every time.',
+  },
+
+  // ---------- CAPABILITIES & LIMITATIONS ----------
+  {
+    id: 'capabilities_what_ai_cant',
+    trackId: 'critical',
+    title: 'What AI is bad at (and how to spot the signs)',
+    character: 'Maya',
+    airaIntro:
+      'AI looks like magic. Until you ask it the wrong question and it confidently lies. Today: a 90-second tour of where AI breaks.',
+    learnFirst:
+      'AI is great at language and patterns. It is bad at exact maths, fresh facts, your private context, and your taste. Knowing the boundary saves hours.',
+    realWorldScenario:
+      'Maya asks AI: "What\'s the closest sushi place to me right now?" AI gives an address. The address does not exist. She drives there. She is angry. The mistake is not the AI — it is the question.',
+    scenes: [
+      {
+        heading: 'Exact maths',
+        vague: '"What\'s 17.4% of $2,341.99?"',
+        specific: 'Use a calculator. Or tell the AI: "Use Python to compute this." Models slip on multi-step arithmetic.',
+        note: 'AI guesses numbers. A calculator does not.',
+      },
+      {
+        heading: 'Fresh facts',
+        vague: '"What\'s the score of tonight\'s game?"',
+        specific: 'Use a search-anchored tool (Perplexity, Gemini) or just open a sports site. Models ship months out of date.',
+        note: 'If the answer changes daily, do not ask a model trained last year.',
+      },
+      {
+        heading: 'Your private files',
+        vague: '"Summarise the meeting we had on Tuesday."',
+        specific: 'Paste the meeting notes. AI cannot access your calendar, email, or files unless you give them to it.',
+        note: 'The AI lives in a sandbox. Bring the data to it.',
+      },
+      {
+        heading: 'Your taste',
+        vague: '"Pick the best logo for my brand."',
+        specific: 'AI can show you 5 options + trade-offs. The choice is yours.',
+        note: 'AI hands you options. You decide.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Which of these is AI MOST likely to get wrong?',
+        options: [
+          'Rewrite my paragraph in a friendlier tone.',
+          'Compute 13.7% of $4,832.10 to the cent.',
+          'Brainstorm 10 names for my newsletter.',
+          'Explain photosynthesis simply.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Multi-step exact arithmetic is AI\'s weakest spot. Use a calculator, or ask the AI to use code.',
+        airaFeedback: {
+          correct: 'Yes. Language tasks: strong. Exact maths: weak. Pick the right tool.',
+          incorrect: 'AI is fine at the language tasks. Multi-step exact arithmetic is the trap.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: '"What happened in the news today?" is a great question for ChatGPT.',
+        correctAnswer: false,
+        explanation: 'Most chat AIs are trained months ago and do not know today\'s news. Use a search-anchored tool.',
+        airaFeedback: {
+          correct: 'Right. Fresh facts need fresh sources.',
+          incorrect: 'Most chat models are months out of date. For "today," use Perplexity, Gemini, or a search engine.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Fill in: AI cannot read your private ____ unless you paste them in.',
+        correctAnswer: 'files',
+        explanation: 'AI lives in a sandbox. It does not see your calendar, email, photos, notes, or files unless you provide them.',
+        airaFeedback: {
+          correct: 'Yes. Bring the data to the AI, not the other way around.',
+          incorrect: 'Hint: emails, calendars, notes — they\'re all this. AI cannot reach into your phone or laptop.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Maya\'s sushi mistake — which limitation did she hit?',
+        options: [
+          'Exact maths',
+          'Private files',
+          'Fresh facts (real-time location data)',
+          'Her own taste',
+        ],
+        correctAnswer: 2,
+        explanation: 'Real-time, location-based facts. The model has no live map. It guessed an address that sounded right.',
+        airaFeedback: {
+          correct: 'Yes. "Closest place right now" needs live data the AI does not have.',
+          incorrect: 'It\'s a fresh-facts limitation. AI has no live map and made up the address.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'multiple_choice',
+        question: 'Which task should you NOT delegate to AI alone?',
+        options: [
+          'Drafting an email response',
+          'Choosing what to name your new business',
+          'Brainstorming gift ideas',
+          'Summarising a long article you pasted in',
+        ],
+        correctAnswer: 1,
+        explanation: 'Naming is a taste decision. AI gives options; you pick. The other three are AI\'s strong suit.',
+        airaFeedback: {
+          correct: 'Yes. AI brainstorms; you decide.',
+          incorrect: 'Naming is a taste decision — AI hands you a shortlist, but the call is yours.',
+        },
+      },
+    ],
+    airaOutro: 'Now you know the four corners of AI\'s box. Stay inside them and AI feels like magic. Step outside and it lies confidently.',
+    takeaway: 'Know the box. Stay inside it.',
+  },
+
+  // ---------- ITERATION ----------
+  {
+    id: 'power_iteration',
+    trackId: 'power',
+    title: 'Iteration: why turn 2 is where it gets good',
+    character: 'Deniz',
+    airaIntro:
+      'Beginners send one prompt and copy the answer. Experts send five. The gap between them is one habit you will learn now.',
+    learnFirst:
+      'Treat every AI answer as a draft. The real work is the follow-up: tighten, sharpen, push against. Three smart follow-ups beat ten new prompts.',
+    realWorldScenario:
+      'Deniz writes a tagline for a client. AI gives "Where ideas come alive." It\'s fine. Generic. She used to ship it. Now she runs it through three follow-ups and gets something the client actually loves.',
+    scenes: [
+      {
+        heading: 'The tighten',
+        vague: 'Ship the first answer.',
+        specific: '"Cut it to 5 words. Make it less abstract — name a specific outcome."',
+        note: 'A constraint forces the AI to drop the corporate filler.',
+      },
+      {
+        heading: 'The sharpen',
+        vague: 'Accept the polished version.',
+        specific: '"Now write 3 versions in different tones: bold, dry-witty, and quietly confident."',
+        note: 'You learn what direction works by seeing them side by side.',
+      },
+      {
+        heading: 'The push-back',
+        vague: 'Move on to the next task.',
+        specific: '"What\'s wrong with the version you picked? What\'s the strongest case AGAINST it?"',
+        note: 'The case-against often surfaces the weak word you missed.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'AI gives Deniz "Where ideas come alive." What is the BEST follow-up?',
+        options: [
+          '"Make it better."',
+          '"Cut to 5 words. Replace the abstract verb with a specific outcome."',
+          '"Try again."',
+          '"That\'s perfect, thanks."',
+        ],
+        correctAnswer: 1,
+        explanation: '"Make it better" gives the AI nothing. The specific cut + replace gives it a target.',
+        airaFeedback: {
+          correct: 'Yes. Specific follow-up = sharper output. Always.',
+          incorrect: 'Vague follow-ups produce vague new drafts. The specific one with a length cap and a swap is the move.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'It\'s smarter to send 10 fresh prompts than to follow up 3 times on one.',
+        correctAnswer: false,
+        explanation: 'Follow-ups carry context. New prompts start cold. Three good follow-ups beat ten cold restarts.',
+        airaFeedback: {
+          correct: 'Right. Follow-ups carry context. Fresh prompts re-invent the wheel.',
+          incorrect: 'A follow-up keeps the conversation\'s memory. Re-prompting from scratch loses everything you both already worked out.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'What does the "push-back" follow-up do?',
+        options: [
+          'Asks the AI to start over.',
+          'Forces the AI to argue against its own answer.',
+          'Gets the AI to apologise.',
+          'Makes the AI shorter.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Asking for the case AGAINST surfaces weak assumptions the AI was glossing over.',
+        airaFeedback: {
+          correct: 'Yes. Push-back surfaces the weak word.',
+          incorrect: 'Push-back = "argue against your own answer." It\'s the underrated step.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'fill_blank',
+        question: 'Fill in: Treat every AI answer as a ____.',
+        correctAnswer: 'draft',
+        explanation: 'Drafts get edited. First answers get accepted. The mindset matters.',
+        airaFeedback: {
+          correct: 'Yes. Mindset shift: it\'s always a draft.',
+          incorrect: 'Hint: it\'s the opposite of "final." Something you edit.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'AI gave you a paragraph that\'s "fine but generic." Write 3 follow-ups (one each: tighten, sharpen, push-back).',
+        correctAnswer:
+          '1) Cut to 80 words. Drop any abstract verbs. 2) Now give me 3 versions: bold, dry-witty, quietly confident. 3) What\'s the strongest case against the version you\'d pick?',
+        explanation: 'Anything covering the three moves — a constraint cut, a tonal split, a self-critique — is a strong answer.',
+        airaFeedback: {
+          correct: 'Beautiful. You ran the loop. That\'s the muscle.',
+          incorrect: 'Aim for: one with a hard constraint (tighten), one asking for variants (sharpen), one asking it to argue against itself (push-back).',
+        },
+      },
+    ],
+    airaOutro: 'You now have the loop most users never learn. Use it once today on something real.',
+    takeaway: 'Send three. Not one.',
+  },
+
+  // ---------- SYSTEM PROMPTS ----------
+  {
+    id: 'power_system_prompts',
+    trackId: 'power',
+    title: 'Setting the rules: system prompts vs user prompts',
+    character: 'Lin',
+    airaIntro:
+      'Most users only know one kind of prompt. There are two. Knowing the difference between them is what separates "user" from "operator."',
+    learnFirst:
+      'A user prompt is what you type. A system prompt is the standing order — the rules the AI follows for the whole conversation. Set good rules once and every reply gets better automatically.',
+    realWorldScenario:
+      'Lin is a researcher. Every day she asks AI to summarise papers. Every day she repeats: "Be brief. Use bullet points. No speculation." She doesn\'t know about system prompts. She is doing five times the work.',
+    scenes: [
+      {
+        heading: 'Without a system prompt',
+        vague: 'Every chat: "Be brief. Bullets. No speculation. ... Now summarise this paper."',
+        specific: 'You repeat the rules every time. The AI sometimes forgets them mid-conversation.',
+        note: 'Repetition + drift. Two flavours of pain.',
+      },
+      {
+        heading: 'With a system prompt',
+        vague: '— (no standing rules)',
+        specific: 'Set once: "You are my research assistant. Always reply in 5-bullet summaries. Never speculate. Always cite the source line."',
+        note: 'Now every chat starts from the right baseline. You only type the new question.',
+      },
+      {
+        heading: 'Where you set it',
+        vague: 'Just send a regular message.',
+        specific: 'In ChatGPT: "Custom Instructions" or a Project. In Claude: "Custom style" or a Project. Same idea, different name.',
+        note: 'Look for the words "system," "instructions," "style," or "project." That\'s the right place.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Which is the BEST description of a system prompt?',
+        options: [
+          'A prompt the AI sends back to you.',
+          'Standing rules the AI follows for the whole conversation.',
+          'A way to crash the AI.',
+          'A prompt only paid users get.',
+        ],
+        correctAnswer: 1,
+        explanation: 'System prompts are the standing orders. User prompts are individual questions.',
+        airaFeedback: {
+          correct: 'Yes. Standing orders. Set once, applied always.',
+          incorrect: 'A system prompt is the standing rule layer — "always do X, never do Y" — applied to the whole conversation.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'You should put "be brief and use bullets" in your system prompt instead of repeating it every chat.',
+        correctAnswer: true,
+        explanation: 'That\'s exactly what system prompts are for — habits you want every time.',
+        airaFeedback: {
+          correct: 'Right. Set the habit at the system level. Stop repeating yourself.',
+          incorrect: 'Anything you find yourself repeating is a system-prompt candidate. Move it up.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'Lin sets a system prompt: "Always cite the source line." She forgets to repeat it. The AI stops citing. Why?',
+        options: [
+          'System prompts wear off after 5 minutes.',
+          'They\'re probably NOT in the system layer — they\'re in a user message that fell out of context.',
+          'AI is broken.',
+          'She needs to pay.',
+        ],
+        correctAnswer: 1,
+        explanation: 'If a rule "wears off," it was almost certainly in a user message that scrolled out of context, not in the system layer where it persists.',
+        airaFeedback: {
+          correct: 'Yes. If a rule fades, it\'s in the wrong layer.',
+          incorrect: 'System prompts don\'t wear off. If a rule did, it was actually in a user message — move it up to the system layer.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'fill_blank',
+        question: 'In Claude, system-style rules live in a "Project" or in your "Custom ____."',
+        correctAnswer: 'style',
+        explanation: 'Claude calls it "Custom style" (or you can attach instructions to a Project). ChatGPT calls the same thing "Custom Instructions."',
+        airaFeedback: {
+          correct: 'Yes. Custom style in Claude. Custom Instructions in ChatGPT.',
+          incorrect: 'Hint: it\'s a 5-letter word, and Claude\'s setting menu uses it. "Custom ___."',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'Write a system prompt for "AI as my email-writing assistant." 3-5 rules.',
+        correctAnswer:
+          'You are my email-writing assistant. Always reply with the email draft only — no preamble. Keep tone friendly but direct. Maximum 120 words. Never use the words "leverage," "synergy," or "circle back." If unclear, ask one clarifying question instead of guessing.',
+        explanation: 'Any answer with role + 2-4 standing rules + a graceful failure mode is on track.',
+        airaFeedback: {
+          correct: 'Strong. Role, rules, failure mode. That\'s a real system prompt.',
+          incorrect: 'Aim for: a role ("you are X"), 2-3 standing rules, and one failure mode ("if unclear, do Y"). That trio is the recipe.',
+        },
+      },
+    ],
+    airaOutro: 'You just stepped from "user" to "operator." Set one good system prompt today on the AI you use most.',
+    takeaway: 'Rules at the top. Questions at the bottom.',
+  },
+
+  // ---------- TOOL USE ----------
+  {
+    id: 'power_tool_use',
+    trackId: 'power',
+    title: 'When AI calls something else: tool use, simply',
+    character: 'Jordan',
+    airaIntro:
+      'You\'ve heard the phrase "tool use" or "function calling." Sounds technical. It\'s actually the most useful thing AI does in 2026. Here\'s the plain-English version.',
+    learnFirst:
+      'Tool use means the AI doesn\'t answer from memory — it calls something (a calculator, a search, your calendar, a database) and answers from the live result. It\'s how AI stops hallucinating numbers and dates.',
+    realWorldScenario:
+      'Jordan asks AI: "How long until our launch on March 14?" AI without tools guesses (and often gets it wrong). AI WITH tools opens a calendar function, computes the diff, returns the exact day count. Same model, very different reliability.',
+    scenes: [
+      {
+        heading: 'Without tools',
+        vague: 'AI: "Around 47 days, I think."',
+        specific: 'AI relies on its training and counts in its head. Often off by a few days.',
+        note: 'Memory is fuzzy. Date math is brittle.',
+      },
+      {
+        heading: 'With tools',
+        vague: '(same prompt)',
+        specific: 'AI: "Calling date_diff(today, 2026-03-14)... 49 days exactly."',
+        note: 'No guess. A real function ran. The number is right.',
+      },
+      {
+        heading: 'When to ask for it',
+        vague: 'Use it for everything.',
+        specific: 'Anything specific — exact maths, current data, real searches, your files. Skip it for creative writing.',
+        note: 'Tools = trust + speed for facts. Tools ≠ better creativity.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'What does "tool use" mean in plain English?',
+        options: [
+          'The AI uses a hammer.',
+          'The AI calls a function (calculator, search, calendar) instead of guessing.',
+          'A premium feature only enterprises get.',
+          'When you tell the AI it did a good job.',
+        ],
+        correctAnswer: 1,
+        explanation: 'The AI delegates the precise part to a tool — calculator, search, code execution — and reads the real result.',
+        airaFeedback: {
+          correct: 'Yes. AI calls a function for the part it can\'t fake.',
+          incorrect: 'Tool use = AI calling a real function (calculator, search, code) and using the real result, not its memory.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Tool use makes AI better at creative writing.',
+        correctAnswer: false,
+        explanation: 'Tools help with facts: maths, dates, searches, files. Creative writing is about language, not facts to look up.',
+        airaFeedback: {
+          correct: 'Right. Tools = facts. Creativity = language.',
+          incorrect: 'Tools help where AI is brittle — exact facts. They don\'t change how good the prose is.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'Which task BENEFITS most from tool use?',
+        options: [
+          'Writing a poem about autumn.',
+          'Brainstorming brand names.',
+          'Calculating compound interest on $4,200 over 7 years at 5.2%.',
+          'Summarising a paragraph in plain English.',
+        ],
+        correctAnswer: 2,
+        explanation: 'Compound interest is exact maths. A calculator-tool computes it correctly; a model alone often slips.',
+        airaFeedback: {
+          correct: 'Yes. Exact maths is the textbook tool-use case.',
+          incorrect: 'Compound interest is precise arithmetic. AI guesses; a calculator-tool gets it right.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'fill_blank',
+        question: 'Fill in: Tool use turns "I think" into "I _____."',
+        correctAnswer: 'looked',
+        explanation: 'The AI stops guessing and starts looking up real values. "Looked it up" / "looked at the calendar" / "checked."',
+        airaFeedback: {
+          correct: 'Yes. From "I think" to "I looked."',
+          incorrect: 'Hint: it\'s past-tense, 6 letters. Replaces guessing with checking.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'multiple_choice',
+        question: 'Jordan wants exact day counts to launch. What should he do?',
+        options: [
+          'Trust the AI\'s estimate.',
+          'Open a tool-enabled chat (like ChatGPT or Claude with code) and let it call a date function.',
+          'Send 5 follow-ups to verify.',
+          'Use a different AI brand.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Tool-enabled chats can run a real date diff. That\'s reliable; estimates and follow-ups won\'t fix the underlying guess.',
+        airaFeedback: {
+          correct: 'Yes. Reach for the tool-enabled chat for anything precise.',
+          incorrect: 'Estimates won\'t become exact through follow-ups. Reach for the tool-enabled chat that can actually compute.',
+        },
+      },
+    ],
+    airaOutro: 'You now know the magic word that turns "AI guesses" into "AI checks." Use it for anything that needs precision.',
+    takeaway: 'Facts? Use a tool. Words? Use the model.',
+  },
+
+  // ---------- CONFIDENCE READING ----------
+  {
+    id: 'critical_reading_confidence',
+    trackId: 'critical',
+    title: 'Reading AI\'s confidence (and when to distrust it)',
+    character: 'Sam',
+    airaIntro:
+      'AI sounds equally certain whether it knows the answer or just made it up. Today: how to read between the lines.',
+    learnFirst:
+      'Vague hedging language ("generally," "typically," "many studies") = the model is unsure. Sharp specifics = the model thinks it knows. Specifics can still be wrong, but vagueness is almost always a tell.',
+    realWorldScenario:
+      'Sam asks AI: "Does my favourite book, [obscure title], have a sequel?" AI confidently invents a sequel that doesn\'t exist. Sam catches it because the AI gave too-perfect detail without hedging.',
+    scenes: [
+      {
+        heading: 'The hedge tells',
+        vague: '"Generally, this is the case." "Many experts agree."',
+        specific: 'Read these as: "I am unsure. I am averaging the internet."',
+        note: 'Generic hedges = generic confidence = treat as a starting point only.',
+      },
+      {
+        heading: 'The over-confident hallucination',
+        vague: 'AI invents a fake citation: "(Smith, 2018, Journal of X, p.42)"',
+        specific: 'When AI gives weirdly specific details about something obscure with NO hedge, that\'s often the hallucination tell.',
+        note: 'Real expertise hedges. Fakes do not.',
+      },
+      {
+        heading: 'The "say it twice" check',
+        vague: 'Trust on the first reply.',
+        specific: 'Open a fresh chat. Re-ask. If the answer changes meaningfully, the model was guessing.',
+        note: 'Real knowledge is stable. Guesses drift.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'true_false',
+        question: 'A confident-sounding AI answer is more likely to be true than a hedged one.',
+        correctAnswer: false,
+        explanation: 'Confidence in tone has almost no relationship with truth. Sometimes the most confident answers are the made-up ones.',
+        airaFeedback: {
+          correct: 'Right. Tone is not truth.',
+          incorrect: 'Confidence doesn\'t correlate with correctness. Sometimes the boldest answers are the invented ones.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'multiple_choice',
+        question: 'Which is the BIGGEST hallucination warning?',
+        options: [
+          'AI hedges with "I think" or "approximately."',
+          'AI gives a perfectly specific obscure detail with no hedge at all.',
+          'AI cites a Wikipedia link.',
+          'AI says "let me think."',
+        ],
+        correctAnswer: 1,
+        explanation: 'Real expertise hedges on edge cases. When AI is over-specific about something obscure with zero hedge, it\'s often inventing.',
+        airaFeedback: {
+          correct: 'Yes. Over-specific + zero hedge = check it.',
+          incorrect: 'The tell is the OPPOSITE of hedging: a too-perfect, too-specific claim about something niche, with no uncertainty marker.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Open a ____ chat and re-ask. If the answer drifts, the AI was guessing.',
+        correctAnswer: 'fresh',
+        explanation: 'A fresh session removes context. Stable answers across fresh chats are more trustworthy than answers that wobble.',
+        airaFeedback: {
+          correct: 'Yes. A fresh chat is a free second opinion.',
+          incorrect: 'Hint: it\'s about a clean slate. A new... ?',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Sam suspects an answer is invented. What should he do FIRST?',
+        options: [
+          'Ask the AI "are you sure?"',
+          'Search the specific claim on the web.',
+          'Trust it.',
+          'Ask a different AI the same question.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Asking the AI "are you sure?" gets a yes whether it\'s right or not. Searching the actual claim is the only real check.',
+        airaFeedback: {
+          correct: 'Yes. Search the claim. AI self-checks are theatre.',
+          incorrect: 'AI will say "yes" to "are you sure?" regardless. Search the actual claim — that\'s the real test.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'multiple_choice',
+        question: 'Which phrase signals genuine uncertainty (not a hallucination)?',
+        options: [
+          '"In my analysis..."',
+          '"Recent research has firmly established that..."',
+          '"I\'m not sure about the specific date — you should verify this."',
+          '"As is well known..."',
+        ],
+        correctAnswer: 2,
+        explanation: 'Honest hedging that names the uncertainty AND tells you to verify is a good sign. "Well known" and "firmly established" are often filler.',
+        airaFeedback: {
+          correct: 'Yes. Honest hedge + verify-this = trustworthy.',
+          incorrect: 'The honest one names what it\'s unsure about and tells you to verify. The other phrases sound expert but signal nothing.',
+        },
+      },
+    ],
+    airaOutro: 'You now read AI like a poker game. Tone is bluff. Specifics are the hand. Always check the cards.',
+    takeaway: 'Hedge ≠ wrong. Confidence ≠ right.',
+  },
+
+  // ---------- TOOLS: CLAUDE 101 ----------
+  {
+    id: 'tools_claude_essentials',
+    trackId: 'tools',
+    title: 'Claude essentials: what makes it different',
+    character: 'Maya',
+    airaIntro:
+      'Claude is one of the big three AIs. It has a personality. Knowing it well means you can pick the right tool faster.',
+    learnFirst:
+      'Claude\'s strengths: long, careful writing; following nuanced instructions; admitting when it\'s unsure. It has Projects (persistent memory for a topic), Artifacts (it builds documents and code in a side panel), and a notably honest tone.',
+    realWorldScenario:
+      'Maya is writing a 1,500-word college essay. She tries ChatGPT and Claude with the same prompt. Claude\'s draft sounds less corporate. It\'s also the one that admits when a paragraph isn\'t working.',
+    scenes: [
+      {
+        heading: 'Long-form writing',
+        vague: 'Pick whatever AI is open.',
+        specific: 'For sustained voice and tone, Claude tends to win blind tests with writers right now.',
+        note: 'Voice is where the gap is biggest. Test it on something you\'ve written.',
+      },
+      {
+        heading: 'Projects',
+        vague: 'Start a fresh chat for everything.',
+        specific: 'Use a Project for any ongoing topic — your essay, your business, your studies. Upload reference files; Claude remembers them every chat in that project.',
+        note: 'Stop re-pasting. Start a project once, save hours.',
+      },
+      {
+        heading: 'Artifacts',
+        vague: 'Read AI\'s answer in the chat thread.',
+        specific: 'Long answers (a draft, a piece of code, a table) appear in a side panel you can edit and download.',
+        note: 'It\'s like having a Google Doc inside the chat. Underrated.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Maya needs to write a 1,500-word personal essay where voice matters. Best pick today?',
+        options: ['ChatGPT', 'Claude', 'Gemini', 'It really doesn\'t matter'],
+        correctAnswer: 1,
+        explanation: 'For long-form work where voice and nuance matter, Claude is the consistent pick among writers. (This may shift as models update.)',
+        airaFeedback: {
+          correct: 'Yes. Long-form, voice-sensitive = Claude\'s strength.',
+          incorrect: 'For the voice-and-nuance combination, Claude leads in current writer tests.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Claude\'s "Projects" feature is mostly a way to save chat history.',
+        correctAnswer: false,
+        explanation: 'Projects let you upload files Claude remembers across every chat in that project. Far more than chat history — it\'s persistent context.',
+        airaFeedback: {
+          correct: 'Right. Projects = persistent context, not just history.',
+          incorrect: 'Projects are bigger than that — they hold reference files Claude pulls from every chat in that project.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'What\'s an Artifact in Claude?',
+        options: [
+          'An ancient prompt.',
+          'A side-panel document or code that Claude builds and you can edit.',
+          'A premium feature.',
+          'A model error log.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Artifacts are the side panel where long content lives — drafts, tables, code. You can iterate on them without losing the chat.',
+        airaFeedback: {
+          correct: 'Yes. Artifacts = side-panel document you can edit.',
+          incorrect: 'Artifacts are the side panel for long content — drafts, code, tables — that you can edit live.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'fill_blank',
+        question: 'Fill in: For an ongoing topic, start a ____ once and stop re-pasting context.',
+        correctAnswer: 'project',
+        explanation: 'A Project holds your reference files and standing instructions, so every chat starts from the right baseline.',
+        airaFeedback: {
+          correct: 'Yes. Project once, write forever.',
+          incorrect: 'Hint: it\'s the persistent-context feature. Starts with P. 7 letters.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'multiple_choice',
+        question: 'Which is NOT one of Claude\'s known strengths?',
+        options: [
+          'Long, careful writing',
+          'Following nuanced instructions',
+          'Real-time news from today',
+          'Admitting when it\'s unsure',
+        ],
+        correctAnswer: 2,
+        explanation: 'For real-time news, use Perplexity or Gemini. Claude is trained months ago and is not search-anchored by default.',
+        airaFeedback: {
+          correct: 'Yes. For today\'s news, switch tools.',
+          incorrect: 'Real-time news is the limit. Use Perplexity or Gemini for anything from today.',
+        },
+      },
+    ],
+    airaOutro: 'You now know which lane Claude wins. Pick it for the work that fits.',
+    takeaway: 'Long-form, voice, careful — that\'s Claude.',
+  },
+
+  // ---------- CREATING WITH AI ----------
+  {
+    id: 'create_voice_clone',
+    trackId: 'critical',
+    title: 'Making AI write LIKE you (without sounding like AI)',
+    character: 'Deniz',
+    airaIntro:
+      'AI has a default voice. It is corporate-friendly, slightly bland, terrified of being wrong. Today you learn to override it with YOUR voice.',
+    learnFirst:
+      'AI mirrors examples better than it follows descriptions. Showing 2-3 samples of your writing, with one note about what to keep and what to drop, beats any "be playful" prompt.',
+    realWorldScenario:
+      'Deniz wants AI to draft her newsletter. She tries: "Write in my style." Output is generic. She tries again: pastes 3 of her past intros + "match this voice. Keep the contractions and the rhetorical questions. Cut the corporate-friendly polish." Now it sounds like her.',
+    scenes: [
+      {
+        heading: 'Describe your style',
+        vague: '"Write in my voice — playful and direct."',
+        specific: 'AI doesn\'t know what "playful" means to you. Output: generic.',
+        note: 'Adjectives are too soft. AI guesses your style based on a stereotype of those adjectives.',
+      },
+      {
+        heading: 'Show your style (few-shot)',
+        vague: '— (no examples)',
+        specific: 'Paste 3 short samples you wrote. End with: "Match this voice. Keep [X]. Drop [Y]."',
+        note: 'Examples > adjectives. Always.',
+      },
+      {
+        heading: 'Iterate the difference',
+        vague: 'Accept the first match.',
+        specific: 'Ask: "Where does the new draft NOT sound like the samples? Rewrite just those sentences."',
+        note: 'You\'re training a tiny model in real time. The closer you point at the difference, the closer it gets.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Which is the strongest way to make AI write in your voice?',
+        options: [
+          '"Write playfully and directly, like me."',
+          'Paste 2-3 samples of your real writing + one note about what to keep and drop.',
+          'Use lots of emojis in the prompt.',
+          'Write "BE LIKE ME" in caps.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Examples beat descriptions every time. AI mirrors what it sees, not what it\'s told.',
+        airaFeedback: {
+          correct: 'Yes. Show, don\'t tell. Always.',
+          incorrect: 'Describing a voice with adjectives never works. Showing 2-3 samples reliably does.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Adjectives like "playful" and "direct" are enough for AI to nail your voice.',
+        correctAnswer: false,
+        explanation: 'Adjectives let AI guess from a stereotype. Two real samples ground it in actual evidence.',
+        airaFeedback: {
+          correct: 'Right. Adjectives = guesses. Examples = ground truth.',
+          incorrect: 'Adjectives don\'t carry enough information. AI needs samples to mirror.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Showing AI examples of your work is called "____-shot" prompting.',
+        correctAnswer: 'few',
+        explanation: 'Few-shot = giving the model a small number of examples (typically 2-5). It\'s the most reliable way to shift output style.',
+        airaFeedback: {
+          correct: 'Yes. Few-shot. Memorise it.',
+          incorrect: 'Hint: it\'s a 3-letter word for "a small number of." Few-___?',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Deniz\'s draft mostly matches her voice but one paragraph still sounds AI-flavoured. Best move?',
+        options: [
+          'Throw it out and start over.',
+          '"Where does this NOT match the samples? Rewrite just those sentences."',
+          'Tell the AI to "be more like me."',
+          'Use a different model.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Pointing at the specific difference is the highest-leverage follow-up. Starting over loses the parts that already worked.',
+        airaFeedback: {
+          correct: 'Yes. Surgical edits beat starting over.',
+          incorrect: 'Don\'t throw out the parts that worked. Point at the specific paragraph and ask for a targeted rewrite.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'You\'re writing an Instagram caption. Sketch the structure of a few-shot prompt that makes AI sound like you.',
+        correctAnswer:
+          'Here are 3 captions I wrote: [caption 1] [caption 2] [caption 3]. Notice: contractions, short sentences, one rhetorical question. Match this voice. Keep the rhetorical question move. Drop any "as we all know" or filler. Now write a caption for: [topic].',
+        explanation: 'Anything with: 2-3 examples + a "keep this / drop that" note + the new task is on track.',
+        airaFeedback: {
+          correct: 'Strong. Examples + keep/drop note + the new task. That\'s the recipe.',
+          incorrect: 'Aim for: 2-3 of YOUR examples, one "keep [X]" note, one "drop [Y]" note, then the new task.',
+        },
+      },
+    ],
+    airaOutro: 'You now have the voice-cloning move. Save 3 of your best paragraphs as a snippet. Reuse them every time.',
+    takeaway: 'Show. Don\'t describe.',
+  },
+
+  // ---------- VERIFICATION WORKFLOW ----------
+  {
+    id: 'critical_verify_workflow',
+    trackId: 'critical',
+    title: 'Verify in 60 seconds: a workflow you\'ll use forever',
+    character: 'Lin',
+    airaIntro:
+      'Most "verify" advice is vague. Today you get a 60-second routine you can run on any AI claim. Real, simple, repeatable.',
+    learnFirst:
+      'Three steps: extract the specific claim, search for it, compare. If the AI\'s claim is real, you find it within 30 seconds. If you don\'t find it, treat it as unverified and rewrite.',
+    realWorldScenario:
+      'Lin wants to use this AI quote in her presentation: "According to a 2023 MIT study, 73% of remote workers report higher productivity." It sounds great. It would be embarrassing if she presented it and the study didn\'t exist.',
+    scenes: [
+      {
+        heading: 'Step 1 — Extract',
+        vague: 'Trust the whole sentence.',
+        specific: 'Pull out the SPECIFIC checkable parts: "MIT study, 2023, 73%, remote workers, productivity."',
+        note: 'You\'re looking for nouns and numbers. Not the framing words.',
+      },
+      {
+        heading: 'Step 2 — Search',
+        vague: 'Google "is this AI claim true?"',
+        specific: 'Search the specific phrase: "MIT 2023 remote workers 73% productivity." Look for the original source.',
+        note: 'Search the claim, not the question. The claim has the keywords.',
+      },
+      {
+        heading: 'Step 3 — Compare',
+        vague: 'If something looks similar, accept.',
+        specific: 'Find the actual source. Does the number match? Is the year right? Is "MIT" actually MIT? If anything is off, the AI either rounded creatively or invented it.',
+        note: 'Close-enough is not the same as right.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Which is the BEST search for verifying Lin\'s quote?',
+        options: [
+          '"is this AI quote real"',
+          '"MIT 2023 remote workers 73% productivity"',
+          '"productivity studies"',
+          '"how to verify AI"',
+        ],
+        correctAnswer: 1,
+        explanation: 'Search the specific keywords from the claim itself. The first option searches the question; the second searches the claim.',
+        airaFeedback: {
+          correct: 'Yes. Search the claim, not the question.',
+          incorrect: 'You want the actual nouns and numbers from the AI\'s claim — "MIT 2023 remote workers 73% productivity" — not a generic question.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'If you can\'t find the source within 30 seconds, the safe move is to treat the claim as unverified and rewrite.',
+        correctAnswer: true,
+        explanation: 'Real claims are usually findable fast. If you can\'t locate it, that\'s often because the AI invented it.',
+        airaFeedback: {
+          correct: 'Right. No source in 30 seconds = treat as unverified.',
+          incorrect: 'Real claims are usually findable in seconds. If you can\'t — write it as "studies suggest" or rephrase, don\'t cite the made-up specifics.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Step 1 of the verify workflow: ____ the specific checkable parts of the claim.',
+        correctAnswer: 'extract',
+        explanation: 'Extract = pull out the nouns + numbers. Skip the framing words. Search those specifics.',
+        airaFeedback: {
+          correct: 'Yes. Extract first, then search.',
+          incorrect: 'Hint: 7 letters, means "pull out the specific bits." Starts with E.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'You search the claim and find a similar study with DIFFERENT numbers. What now?',
+        options: [
+          'Use the AI\'s number, it\'s close enough.',
+          'Use the real source\'s number and cite the real source.',
+          'Don\'t mention either.',
+          'Ask the AI again to be sure.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Always use the real number from the real source. Even if the AI was "close," close-enough is wrong-enough to lose credibility.',
+        airaFeedback: {
+          correct: 'Yes. Real source, real number, every time.',
+          incorrect: 'Close-enough is the credibility killer. Always use the real number from the real source.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'ordering',
+        question: 'Order the 60-second verify workflow:',
+        options: ['Extract', 'Search', 'Compare'],
+        correctAnswer: ['Extract', 'Search', 'Compare'],
+        explanation: 'Extract the keywords, Search for them, Compare the AI\'s claim against the real source.',
+        airaFeedback: {
+          correct: 'Locked. Use this on every important AI claim.',
+          incorrect: 'Extract → Search → Compare. Pull out the specifics, look them up, check they match.',
+        },
+      },
+    ],
+    airaOutro: 'You now have a routine sharper than 90% of AI users. 60 seconds. Three steps. No more cringe-worthy citations.',
+    takeaway: 'Extract, search, compare. Every time.',
+  },
 ];

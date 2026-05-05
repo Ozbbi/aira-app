@@ -126,7 +126,7 @@ export function ProfileScreen({ navigation }: Props) {
   return (
     <ScrollView style={styles.container}>
       {/* Header with AiraCharacter */}
-      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+      <Animated.View entering={FadeInDown.duration(260)} style={styles.header}>
         <AiraCharacter mood="calm" size={80} />
         <Text style={styles.greeting}>
           {totalLessonsCompleted === 0
@@ -136,7 +136,7 @@ export function ProfileScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* Stats Grid 2x2 */}
-      <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.statsSection}>
+      <Animated.View entering={FadeInDown.duration(260).delay(45)} style={styles.statsSection}>
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>🏆</Text>
@@ -162,7 +162,7 @@ export function ProfileScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* Achievements Row */}
-      <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.achievementsSection}>
+      <Animated.View entering={FadeInDown.duration(260).delay(90)} style={styles.achievementsSection}>
         <Text style={styles.sectionTitle}>Achievements</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementsScroll}>
           {achievements.map((a) => (
@@ -185,7 +185,7 @@ export function ProfileScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* Settings Section */}
-      <Animated.View entering={FadeInDown.duration(400).delay(300)} style={styles.settingsSection}>
+      <Animated.View entering={FadeInDown.duration(260).delay(135)} style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Settings</Text>
         
         <Pressable style={styles.settingRow} onPress={() => {

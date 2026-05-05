@@ -184,7 +184,7 @@ export function LearningMapScreen({ navigation }: Props) {
       </View>
 
       {/* Overall Progress Card */}
-      <Animated.View entering={FadeIn.duration(400)} style={styles.overallProgressCard}>
+      <Animated.View entering={FadeIn.duration(260)} style={styles.overallProgressCard}>
         <LinearGradient colors={colors.gradientLesson} style={styles.progressGradient}>
           <View style={styles.progressHeader}>
             <View>
@@ -208,7 +208,7 @@ export function LearningMapScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* Track Cards Grid */}
-      <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.tracksGrid}>
+      <Animated.View entering={FadeInDown.duration(260).delay(90)} style={styles.tracksGrid}>
         {Object.entries(trackConfig).map(([trackId, config], index) => {
           const status = getTrackStatus(trackId);
           const progressPercent = getProgressPercent(trackId);
@@ -216,7 +216,7 @@ export function LearningMapScreen({ navigation }: Props) {
           return (
             <Animated.View
               key={trackId}
-              entering={FadeInDown.duration(400).delay(300 + index * 100)}
+              entering={FadeInDown.duration(260).delay(300 + index * 35)}
               style={styles.trackCardWrapper}
             >
               <Pressable
@@ -255,7 +255,7 @@ export function LearningMapScreen({ navigation }: Props) {
                         <MotiView
                           from={{ width: '0%' }}
                           animate={{ width: `${progressPercent}%` }}
-                          transition={{ duration: 600, delay: 400 + index * 100 }}
+                          transition={{ duration: 600, delay: 400 + index * 35 }}
                           style={[
                             styles.trackProgressFill,
                             { backgroundColor: status === 'completed' ? colors.trackFoundations : config.color }
@@ -285,7 +285,7 @@ export function LearningMapScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* AIRA Message */}
-      <Animated.View entering={FadeInUp.duration(400).delay(800)} style={styles.airaSection}>
+      <Animated.View entering={FadeInUp.duration(260).delay(360)} style={styles.airaSection}>
         <View style={styles.airaRow}>
           <AiraCharacter mood="calm" size={60} />
           <View style={styles.airaMessage}>

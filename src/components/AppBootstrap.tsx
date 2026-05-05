@@ -18,27 +18,48 @@ export function AppBootstrap() {
   }, []);
 
   const bootstrap = async () => {
-    // Check backend health
-    const healthy = await checkHealth();
+    // STEP 1: Wait for zustand-persist to finish rehydrating from AsyncStorage
+    // before we let RootNavigator read userId. Without this, initialRouteName
+    // is computed against the empty initial state and every cold-start lands
+    // back on Onboarding even when there's a saved userId.
+    if (!useUserStore.persist.hasHydrated()) {
+      await new Promise<void>((resolve) => {
+        const unsub = useUserStore.persist.onFinishHydration(() => {
+          unsub();
+          resolve();
+        });
+      });
+    }
+
+    // STEP 2: Try the backend, but don't block the UI on it. Render's free
+    // tier sleeps and a cold start can take 30s. We give it 4 seconds, then
+    // fall through using the persisted state.
+    const HEALTH_TIMEOUT_MS = 4000;
+    const healthy = await Promise.race([
+      checkHealth(),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), HEALTH_TIMEOUT_MS)),
+    ]);
     setOnline(healthy);
 
     if (healthy) {
-      // Try to fetch existing user from backend
-      const user = await fetchExistingUser();
-      if (user) {
-        setUser({
-          userId: user.userId ?? (user as unknown as { id: string }).id,
-          name: user.name,
-          xp: user.xp,
-          level: user.level,
-          streak: user.streak,
-          tier: user.tier,
-          lessonsCompletedToday: user.lessonsCompletedToday,
-          totalLessonsCompleted: user.totalLessonsCompleted,
-        });
+      try {
+        const user = await fetchExistingUser();
+        if (user) {
+          setUser({
+            userId: user.userId ?? (user as unknown as { id: string }).id,
+            name: user.name,
+            xp: user.xp,
+            level: user.level,
+            streak: user.streak,
+            tier: 'pro',
+            lessonsCompletedToday: user.lessonsCompletedToday,
+            totalLessonsCompleted: user.totalLessonsCompleted,
+          });
+        }
+      } catch {
+        // Network blip — keep the persisted state, move on.
       }
     }
-    // If not healthy, zustand persist will have last-known values
 
     setReady(true);
   };

@@ -68,7 +68,7 @@ export function JourneyScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <Animated.View entering={FadeInDown.duration(400)}>
+      <Animated.View entering={FadeInDown.duration(260)}>
         <Text style={styles.eyebrow}>YOUR 90-DAY JOURNEY</Text>
         <Text style={styles.headline}>From curious to dangerous.</Text>
         <Text style={styles.sub}>
@@ -79,7 +79,7 @@ export function JourneyScreen() {
       {PHASES.map((phase, i) => (
         <Animated.View
           key={phase.id}
-          entering={FadeInDown.duration(450).delay(150 + i * 120)}
+          entering={FadeInDown.duration(260).delay(150 + i * 120)}
           style={styles.phaseWrap}
         >
           <LinearGradient

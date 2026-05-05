@@ -39,7 +39,7 @@ export function LearnScreen() {
             {INSIGHTS.map((it, i) => (
               <Animated.View
                 key={it.id}
-                entering={FadeInDown.duration(300).delay(i * 40)}
+                entering={FadeInDown.duration(300).delay(i * 22)}
                 style={styles.card}
               >
                 <Text style={styles.cardTitle}>{it.title}</Text>
@@ -59,7 +59,7 @@ export function LearnScreen() {
             {PATTERNS.map((p, i) => (
               <Animated.View
                 key={p.id}
-                entering={FadeInDown.duration(300).delay(i * 40)}
+                entering={FadeInDown.duration(300).delay(i * 22)}
                 style={styles.card}
               >
                 <Text style={styles.cardEyebrow}>PATTERN</Text>
@@ -84,7 +84,7 @@ export function LearnScreen() {
             {MISTAKES.map((m, i) => (
               <Animated.View
                 key={m.id}
-                entering={FadeInDown.duration(300).delay(i * 40)}
+                entering={FadeInDown.duration(300).delay(i * 22)}
                 style={styles.card}
               >
                 <Text style={styles.cardEyebrow}>COMMON MISTAKE</Text>
@@ -106,7 +106,7 @@ export function LearnScreen() {
             {QUICK_WINS.map((q, i) => (
               <Animated.View
                 key={q.id}
-                entering={FadeInDown.duration(280).delay(i * 30)}
+                entering={FadeInDown.duration(280).delay(i * 20)}
                 style={[styles.card, styles.cardCompact]}
               >
                 <Text style={styles.cardEyebrow}>60-SEC WIN</Text>

@@ -167,7 +167,7 @@ export function DashboardScreen({ navigation }: Props) {
       }
     >
       {/* Greeting Card */}
-      <Animated.View entering={FadeIn.duration(400)} style={styles.greetingCard}>
+      <Animated.View entering={FadeIn.duration(260)} style={styles.greetingCard}>
         <View style={styles.greetingRow}>
           <View>
             <Text style={styles.welcomeLabel}>Welcome back</Text>
@@ -197,7 +197,7 @@ export function DashboardScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* Continue Learning Card */}
-      <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.heroSection}>
+      <Animated.View entering={FadeInDown.duration(260).delay(45)} style={styles.heroSection}>
         <Pressable
           onPress={handleContinueLearning}
           style={({ pressed }) => [
@@ -214,11 +214,11 @@ export function DashboardScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* Topic Grid 2x2 */}
-      <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.topicsGrid}>
+      <Animated.View entering={FadeInDown.duration(260).delay(90)} style={styles.topicsGrid}>
         {topics.map((topic, index) => (
           <Animated.View
             key={topic.label}
-            entering={FadeInDown.duration(400).delay(200 + index * 50)}
+            entering={FadeInDown.duration(260).delay(200 + index * 30)}
             style={{ flex: 1 }}
           >
             <Pressable
@@ -237,7 +237,7 @@ export function DashboardScreen({ navigation }: Props) {
 
       {/* ========== Today's Mission ========== */}
       <Animated.View
-        entering={FadeInDown.duration(400).delay(300)}
+        entering={FadeInDown.duration(260).delay(135)}
         style={styles.missionCard}
       >
         <View style={styles.missionLeft}>
@@ -267,7 +267,7 @@ export function DashboardScreen({ navigation }: Props) {
 
       {/* ========== Week-dot streak strip ========== */}
       <Animated.View
-        entering={FadeInDown.duration(400).delay(350)}
+        entering={FadeInDown.duration(260).delay(158)}
         style={styles.weekDotsCard}
       >
         <View style={styles.weekDotsHeader}>
@@ -294,7 +294,7 @@ export function DashboardScreen({ navigation }: Props) {
 
       {/* ========== Insight of the day ========== */}
       <Animated.View
-        entering={FadeInDown.duration(400).delay(420)}
+        entering={FadeInDown.duration(260).delay(189)}
         style={styles.insightCard}
       >
         <View style={styles.insightHeader}>
@@ -316,7 +316,7 @@ export function DashboardScreen({ navigation }: Props) {
 
       {/* ========== Lifetime stats row (animated count-up) ========== */}
       <Animated.View
-        entering={FadeInDown.duration(400).delay(490)}
+        entering={FadeInDown.duration(260).delay(221)}
         style={styles.statsRow}
       >
         <View style={styles.statCell}>

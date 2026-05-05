@@ -31,93 +31,95 @@ const OUT = path.resolve(__dirname, '..', 'assets');
 const BG = '#0A0A0F';
 
 /**
- * Build an SVG of the AIRA mark.
- * @param {object} opts
- * @param {number} opts.size       canvas square edge (px)
- * @param {number} [opts.markScale] mark size as a fraction of canvas (0..1)
- * @param {boolean} [opts.withWordmark] adds "AIRA" text under the mark
+ * Build an SVG of the AIRA "A" mark.
+ *
+ * Anatomy: a bold geometric capital A. Two thick diagonal legs meeting at
+ * the apex, a stout horizontal crossbar, no negative-space cleverness. The
+ * fill is a vertical brand gradient (cyan → purple → violet) so the letter
+ * itself carries the brand colour without needing extra orbs or glyphs.
+ * A subtle ambient glow sits behind the letter for depth.
  */
 function airaSvg({ size, markScale = 0.7, withWordmark = false }) {
   const cx = size / 2;
-  // Vertical centre is shifted up when the wordmark is present so the whole
-  // composition sits in the optical centre of the canvas.
   const cy = withWordmark ? size * 0.42 : size / 2;
 
   // Bounding box of the mark
   const markH = size * markScale;
-  const markW = markH * 0.95;
+  const markW = markH * 0.92;
   const top = cy - markH / 2;
   const bottom = cy + markH / 2;
   const apexX = cx;
-  const apexY = top;
 
-  // Stroke geometry — each leg is a trapezoid.
-  // Stroke thickness is ~22% of mark height — bold enough to read at 48 px.
-  const strokeT = markH * 0.22;
+  // Stroke geometry. Thicker strokes read better at favicon size.
+  const legT = markH * 0.20; // diagonal leg thickness
   const baseHalf = markW / 2;
+  const apexY = top + legT * 0.45; // tuck apex down slightly so corners aren't sharp at the edge
 
-  // Left stroke trapezoid corners
-  const lOuterB = `${apexX - baseHalf},${bottom}`;
-  const lInnerB = `${apexX - baseHalf + strokeT},${bottom}`;
-  const lInnerT = `${apexX - strokeT * 0.45},${apexY + strokeT * 0.6}`;
-  const lOuterT = `${apexX - strokeT * 0.95},${apexY + strokeT * 1.5}`;
-  const leftStroke = `${lOuterB} ${lInnerB} ${lInnerT} ${lOuterT}`;
+  // Apex top vertices (small flat top instead of needle-sharp point — looks
+  // more like a real geometric letterform, less like a triangle).
+  const apexHalf = legT * 0.42;
 
-  // Right stroke (mirror)
-  const rOuterB = `${apexX + baseHalf},${bottom}`;
-  const rInnerB = `${apexX + baseHalf - strokeT},${bottom}`;
-  const rInnerT = `${apexX + strokeT * 0.45},${apexY + strokeT * 0.6}`;
-  const rOuterT = `${apexX + strokeT * 0.95},${apexY + strokeT * 1.5}`;
-  const rightStroke = `${rOuterB} ${rInnerB} ${rInnerT} ${rOuterT}`;
+  // LEFT LEG polygon corners (clockwise from outer-bottom)
+  const ll = [
+    `${apexX - baseHalf},${bottom}`,                // outer bottom-left
+    `${apexX - baseHalf + legT * 1.05},${bottom}`,  // inner bottom-left
+    `${apexX - apexHalf * 0.4},${apexY + legT}`,    // inner near top
+    `${apexX - apexHalf},${apexY}`,                 // top inner
+    `${apexX - apexHalf * 1.4},${apexY}`,           // top outer
+  ].join(' ');
 
-  // The orb sits just above the apex, slightly inset so it visually "caps" the wedge.
-  const orbR = strokeT * 0.85;
-  const orbCx = apexX;
-  const orbCy = apexY + strokeT * 0.2;
-  const glowR = orbR * 1.9;
+  // RIGHT LEG polygon (mirror)
+  const rl = [
+    `${apexX + baseHalf},${bottom}`,
+    `${apexX + baseHalf - legT * 1.05},${bottom}`,
+    `${apexX + apexHalf * 0.4},${apexY + legT}`,
+    `${apexX + apexHalf},${apexY}`,
+    `${apexX + apexHalf * 1.4},${apexY}`,
+  ].join(' ');
 
-  // Wordmark
+  // CROSSBAR — full-width box with rounded corners that visually "rests"
+  // between the legs at ~62% down.
+  const crossY = top + markH * 0.62;
+  const crossH = legT * 0.85;
+  const crossInsetFromLeg = legT * 0.5;
+  const xLeft = apexX - baseHalf + (crossY - apexY) * (baseHalf - apexHalf) / (bottom - apexY) - crossInsetFromLeg;
+  const xRight = apexX + baseHalf - (crossY - apexY) * (baseHalf - apexHalf) / (bottom - apexY) + crossInsetFromLeg;
+  const crossX = Math.max(apexX - markW * 0.32, xLeft + legT * 0.7);
+  const crossW = Math.min(markW * 0.64, xRight - crossX - legT * 0.7);
+
   const wordmark = withWordmark
     ? `<text
          x="${cx}"
-         y="${size * 0.78}"
+         y="${size * 0.79}"
          text-anchor="middle"
          font-family="Space Grotesk, Inter, system-ui, sans-serif"
          font-weight="700"
-         font-size="${Math.round(size * 0.105)}"
-         letter-spacing="${(size * 0.012).toFixed(2)}"
+         font-size="${Math.round(size * 0.11)}"
+         letter-spacing="${(size * 0.014).toFixed(2)}"
          fill="url(#wordmarkGradient)">AIRA</text>`
     : '';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
-    <!-- Wedge fill: cyan apex → violet base, mirrors orb gradient -->
-    <linearGradient id="wedgeGradient" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0%"   stop-color="#9FE3FF" />
-      <stop offset="35%"  stop-color="#4FC3F7" />
-      <stop offset="100%" stop-color="#8B5CF6" />
-    </linearGradient>
-    <!-- Inner highlight on each stroke for tactile depth -->
-    <linearGradient id="strokeHighlight" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="rgba(255,255,255,0.18)" />
-      <stop offset="40%"  stop-color="rgba(255,255,255,0)" />
-      <stop offset="100%" stop-color="rgba(0,0,0,0.18)" />
-    </linearGradient>
-    <!-- Orb: bright core falls to violet edge -->
-    <radialGradient id="orbGradient" cx="38%" cy="32%" r="75%">
-      <stop offset="0%"   stop-color="#FFFFFF" />
-      <stop offset="25%"  stop-color="#9FE3FF" />
-      <stop offset="65%"  stop-color="#4FC3F7" />
+    <!-- Brand gradient: cyan top → AIRA core purple → violet bottom -->
+    <linearGradient id="aGradient" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%"   stop-color="#4FC3F7" />
+      <stop offset="50%"  stop-color="#8B5CF6" />
       <stop offset="100%" stop-color="#B388FF" />
-    </radialGradient>
-    <!-- Outer halo around the orb -->
-    <radialGradient id="orbGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="#B388FF" stop-opacity="0.55" />
-      <stop offset="55%"  stop-color="#8B5CF6" stop-opacity="0.20" />
+    </linearGradient>
+    <!-- Subtle inner highlight along the left edge of each leg -->
+    <linearGradient id="legShine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.22)" />
+      <stop offset="35%"  stop-color="rgba(255,255,255,0)" />
+      <stop offset="100%" stop-color="rgba(0,0,0,0.20)" />
+    </linearGradient>
+    <!-- Soft ambient halo behind the letter -->
+    <radialGradient id="ambient" cx="50%" cy="50%" r="60%">
+      <stop offset="0%"   stop-color="#8B5CF6" stop-opacity="0.30" />
+      <stop offset="60%"  stop-color="#8B5CF6" stop-opacity="0.08" />
       <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0" />
     </radialGradient>
-    <!-- Wordmark gradient (cool white → cool lavender) -->
     <linearGradient id="wordmarkGradient" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%"   stop-color="#FFFFFF" />
       <stop offset="100%" stop-color="#C4B5FD" />
@@ -127,24 +129,25 @@ function airaSvg({ size, markScale = 0.7, withWordmark = false }) {
   <!-- Background -->
   <rect width="${size}" height="${size}" fill="${BG}" />
 
-  <!-- Soft ambient glow behind the whole mark -->
-  <circle cx="${cx}" cy="${cy}" r="${markH * 0.55}" fill="url(#orbGlow)" opacity="0.4" />
+  <!-- Ambient halo -->
+  <ellipse cx="${cx}" cy="${cy}" rx="${markW * 0.65}" ry="${markH * 0.62}" fill="url(#ambient)" />
 
-  <!-- Left + right wedge strokes -->
-  <polygon points="${leftStroke}"  fill="url(#wedgeGradient)" />
-  <polygon points="${leftStroke}"  fill="url(#strokeHighlight)" opacity="0.55" />
-  <polygon points="${rightStroke}" fill="url(#wedgeGradient)" />
-  <polygon points="${rightStroke}" fill="url(#strokeHighlight)" opacity="0.55" />
+  <!-- Letter A -->
+  <polygon points="${ll}" fill="url(#aGradient)" />
+  <polygon points="${ll}" fill="url(#legShine)" opacity="0.6" />
 
-  <!-- Orb halo + orb -->
-  <circle cx="${orbCx}" cy="${orbCy}" r="${glowR}" fill="url(#orbGlow)" />
-  <circle cx="${orbCx}" cy="${orbCy}" r="${orbR}" fill="url(#orbGradient)" />
-  <ellipse
-    cx="${orbCx - orbR * 0.32}"
-    cy="${orbCy - orbR * 0.38}"
-    rx="${orbR * 0.28}"
-    ry="${orbR * 0.18}"
-    fill="rgba(255,255,255,0.65)" />
+  <polygon points="${rl}" fill="url(#aGradient)" />
+  <polygon points="${rl}" fill="url(#legShine)" opacity="0.6" />
+
+  <!-- Crossbar -->
+  <rect
+    x="${crossX}"
+    y="${crossY}"
+    width="${crossW}"
+    height="${crossH}"
+    rx="${crossH * 0.32}"
+    ry="${crossH * 0.32}"
+    fill="url(#aGradient)" />
 
   ${wordmark}
 </svg>`;

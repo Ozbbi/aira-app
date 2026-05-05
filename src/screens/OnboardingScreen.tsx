@@ -8,6 +8,8 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
+import { useUserStore } from '../store/userStore';
+import { getOrCreateUser } from '../services/userService';
 import type { RootStackParamList } from '../types';
 
 interface Props {
@@ -16,6 +18,9 @@ interface Props {
 
 type Step = 0 | 1 | 2 | 3;
 
+// Word-by-word reveal at a snappy cadence (≈ 70ms/word). The previous
+// 400ms/word felt like dial-up — a 10-word line took 4 seconds to render.
+// 70ms/word still reads as "AIRA is typing" but finishes in under a second.
 const TypewriterText = ({ text, onComplete }: { text: string; onComplete: () => void }) => {
   const words = text.split(' ');
   const [displayedWords, setDisplayedWords] = useState<string[]>([]);
@@ -26,7 +31,7 @@ const TypewriterText = ({ text, onComplete }: { text: string; onComplete: () => 
       const timer = setTimeout(() => {
         setDisplayedWords((prev) => [...prev, words[currentIndex]]);
         setCurrentIndex((prev) => prev + 1);
-      }, 400); // Word by word, not character
+      }, 70);
       return () => clearTimeout(timer);
     } else {
       onComplete();
@@ -36,9 +41,7 @@ const TypewriterText = ({ text, onComplete }: { text: string; onComplete: () => 
   return (
     <Text style={styles.messageText}>
       {displayedWords.join(' ')}
-      {currentIndex < words.length && (
-        <Text style={styles.cursor}>|</Text>
-      )}
+      {currentIndex < words.length && <Text style={styles.cursor}>|</Text>}
     </Text>
   );
 };
@@ -49,6 +52,9 @@ export function OnboardingScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [mood, setMood] = useState<'calm' | 'thinking' | 'happy' | 'celebrating' | 'encouraging' | 'proud'>('calm');
   const [showConfetti, setShowConfetti] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const setUser = useUserStore((s) => s.setUser);
 
   const handleMessageComplete = useCallback(() => {
     setMessageComplete(true);
@@ -73,12 +79,44 @@ export function OnboardingScreen({ navigation }: Props) {
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    if (creating) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setShowConfetti(true);
-    setTimeout(() => {
-      navigation.replace('MainTabs');
-    }, 500);
+    setCreating(true);
+
+    // CRITICAL: persist a real userId so the next launch skips onboarding.
+    // We try the backend first; if it's asleep/offline we fall back to a
+    // local UUID so the user is never trapped re-onboarding.
+    const trimmedName = (name || 'friend').trim();
+    let userId = '';
+    try {
+      const user = await getOrCreateUser(trimmedName);
+      userId = user.userId;
+      setUser({
+        userId,
+        name: user.name || trimmedName,
+        xp: user.xp ?? 0,
+        level: user.level ?? 1,
+        streak: user.streak ?? 0,
+        tier: 'pro',
+        totalLessonsCompleted: user.totalLessonsCompleted ?? 0,
+      });
+    } catch {
+      // Offline / backend asleep — generate a stable local id so the user
+      // proceeds. We tag with `offline_` so sync code can detect and avoid
+      // hitting the API for this id.
+      userId = `offline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      await AsyncStorage.setItem('aira_user_id', userId);
+      setUser({
+        userId,
+        name: trimmedName,
+        tier: 'pro',
+      });
+    }
+
+    // Onward.
+    setTimeout(() => navigation.replace('MainTabs'), 500);
   };
 
   const getStepContent = () => {

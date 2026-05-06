@@ -21,3 +21,10 @@ export {
   userDailyShuffle,
   hoursUntilTomorrow,
 } from './rotation';
+
+export {
+  seedToLesson,
+  findSeedLesson,
+  checkSeedAnswer,
+  isSeedLessonId,
+} from './lessonAdapter';

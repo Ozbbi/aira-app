@@ -1440,4 +1440,439 @@ export const SEED_LESSONS: SeedLesson[] = [
     airaOutro: 'You now have a routine sharper than 90% of AI users. 60 seconds. Three steps. No more cringe-worthy citations.',
     takeaway: 'Extract, search, compare. Every time.',
   },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ROUND 3 — closing the curriculum gaps. Each one targets a question
+  // we kept seeing in user testing: "what about [X]?".
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ---------- FOUNDATIONS — entry lesson ----------
+  {
+    id: 'foundations_1',
+    trackId: 'prompt',
+    title: 'Welcome to AIRA — your first lesson',
+    character: 'Maya',
+    airaIntro:
+      "Hey. This is your first AIRA lesson. It's short. By the end you'll know the single move that improves every prompt you write.",
+    learnFirst:
+      'A prompt is a request to an AI. Better prompts = better answers. The simplest move that always helps: name the audience. "Explain to a 10-year-old" produces a different answer than "explain to a doctor."',
+    realWorldScenario:
+      'Maya is making her first AI request. She types: "Explain quantum physics." She gets back something dense and academic. She is confused. She tries again with one small change.',
+    scenes: [
+      {
+        heading: 'Without an audience',
+        vague: '"Explain quantum physics."',
+        specific: 'AI defaults to "average internet expert" — dense, jargon-heavy, easy for the AI but useless for Maya.',
+        note: 'No audience = AI guesses your level.',
+      },
+      {
+        heading: 'With an audience',
+        vague: '"Explain quantum physics to a curious 10th grader."',
+        specific: 'AI now knows: skip the maths, use analogies, keep paragraphs short. The same model gives a wildly different answer.',
+        note: 'One change. Huge improvement.',
+      },
+      {
+        heading: 'Calibrating up',
+        vague: '"Explain quantum physics to me."',
+        specific: '"Explain to a software engineer who knows linear algebra but not physics."',
+        note: 'You can dial the level up or down. AI matches.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Which prompt is most likely to give Maya a useful answer?',
+        options: [
+          '"Explain quantum physics."',
+          '"Explain quantum physics to a curious 10th grader."',
+          '"Quantum physics. Now."',
+          '"Tell me everything."',
+        ],
+        correctAnswer: 1,
+        explanation: 'Naming the audience (10th grader) tells the AI what level to pitch the answer at.',
+        airaFeedback: {
+          correct: 'Yes! Naming the audience is the cheapest, biggest win in prompting.',
+          incorrect: 'Look for the one that names WHO the answer is for. That single word changes everything.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'A "prompt" just means: a question or request to an AI.',
+        correctAnswer: true,
+        explanation: 'That\'s it. Anything you type to the AI is a prompt. Better prompts produce better answers.',
+        airaFeedback: {
+          correct: 'Right. Prompt = your message to the AI.',
+          incorrect: 'A prompt is just what you say to the AI. Nothing fancy. Better prompts = better answers.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'The single biggest move that improves any prompt: name the ____.',
+        correctAnswer: 'audience',
+        explanation: 'Audience first. Once the AI knows who it\'s for, tone and depth fall into place automatically.',
+        airaFeedback: {
+          correct: 'Yes. Audience is everything.',
+          incorrect: 'Hint: it\'s WHO the answer is for. The reader.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'You want AI to write a recipe explanation. Best version?',
+        options: [
+          '"Explain how to make pasta."',
+          '"Explain how to make pasta to a 12-year-old learning to cook."',
+          '"Recipe."',
+          '"Make it good."',
+        ],
+        correctAnswer: 1,
+        explanation: 'Same trick. Naming the reader (12-year-old learning) shapes the difficulty and tone.',
+        airaFeedback: {
+          correct: 'Pattern locked. Audience = the cheat code.',
+          incorrect: 'The pattern is the same as quantum physics — name the reader, get a usable answer.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'Pick something you want to learn today. Write a one-line prompt that names the audience.',
+        correctAnswer:
+          'Explain compound interest to a college freshman who hates maths but understands money.',
+        explanation:
+          'Anything that names a specific reader (with one or two traits) is on track. Your answer is YOUR answer.',
+        airaFeedback: {
+          correct: 'You just used the move. Write it down somewhere — you will use it every day.',
+          incorrect: 'Just one detail about the reader is enough. Beginner / expert / age / context — pick any.',
+        },
+      },
+    ],
+    airaOutro:
+      "That's your first lesson. One move. Use it on every prompt you write today and tell me how it goes.",
+    takeaway: 'Always name the reader.',
+  },
+
+  // ---------- CRITICAL — the second prompt rule ----------
+  {
+    id: 'critical_1',
+    trackId: 'critical',
+    title: 'AI sounds confident. Don\'t fall for it.',
+    character: 'Jordan',
+    airaIntro:
+      "Today's lesson is the one most users skip — and the one that saves you from looking foolish. AI sounds equally sure when it's right and when it's wrong. Here's how to tell the difference.",
+    learnFirst:
+      'Confidence in AI is a TONE, not a truth signal. The way it sounds — calm, authoritative, complete — has almost nothing to do with whether the answer is correct. Your job is to verify, not to feel.',
+    realWorldScenario:
+      'Jordan asks AI to recommend a restaurant in his city. AI gives a name, an address, and a glowing description. Jordan drives there. The restaurant does not exist. The address is a parking lot.',
+    scenes: [
+      {
+        heading: 'The tell — too perfect, no hedge',
+        vague: '"Try The Golden Lantern at 412 Elm Street."',
+        specific: 'No hedge. No "I think." No "double-check this." That confidence around an obscure local fact is the signal to verify.',
+        note: 'Real expertise hedges. Confident specifics about niche things = often invented.',
+      },
+      {
+        heading: 'The 30-second check',
+        vague: 'Trust the recommendation.',
+        specific: 'Search the name. Check the address on a map. 30 seconds. Saves the drive.',
+        note: 'Verification is not paranoia. It\'s craft.',
+      },
+      {
+        heading: 'The right ask',
+        vague: '"Recommend a restaurant in [city]."',
+        specific: '"Recommend 3 restaurants in [city] WITH links to their websites so I can verify they exist."',
+        note: 'Asking for verifiable sources is a 5-word fix that prevents most hallucinations.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'true_false',
+        question: 'A confident-sounding AI answer is usually correct.',
+        correctAnswer: false,
+        explanation: 'Confidence in tone is unrelated to correctness. The most confident-sounding answers can be the most invented.',
+        airaFeedback: {
+          correct: 'Right. Tone is not truth.',
+          incorrect: 'Confidence is a vibe. Truth is a check. They\'re different.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'multiple_choice',
+        question: 'Jordan got a fake restaurant recommendation. What\'s the BEST way to prevent this?',
+        options: [
+          'Trust AI more next time.',
+          'Ask for restaurants WITH website links so he can verify.',
+          'Ask "are you sure?"',
+          'Use a different AI brand.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Asking for verifiable sources up front is the cheapest fix. Asking "are you sure?" gets you "yes" regardless of truth.',
+        airaFeedback: {
+          correct: 'Yes. Build verification INTO the prompt.',
+          incorrect: 'AI will say "yes I\'m sure" whether it\'s right or not. The fix is asking for sources you can click.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Real expertise hedges. AI confidence around obscure specifics is often a sign the answer is ____.',
+        correctAnswer: 'invented',
+        explanation: '"Invented" / "made up" / "hallucinated" — when AI gets too specific about something niche without hedging, it\'s often filling in gaps with plausible-sounding fiction.',
+        airaFeedback: {
+          correct: 'Yes. Too perfect = often fake.',
+          incorrect: 'Hint: when AI fills in details it doesn\'t actually know, it\'s "I-something." Made up.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Which AI answer is MOST trustworthy?',
+        options: [
+          '"The capital of France is Paris."',
+          '"Dr. Smith\'s 2019 paper found that 73% of users prefer X. (No source link.)"',
+          '"I\'m not certain — but I think the answer is around 2.5%. Worth verifying with a calculator."',
+          '"Trust me, this is correct."',
+        ],
+        correctAnswer: 2,
+        explanation: 'Honest hedging + asking you to verify is the trustworthy signal. Specific stats with no source are often invented. "Trust me" is a tell.',
+        airaFeedback: {
+          correct: 'Yes. Honest hedge = honest AI.',
+          incorrect: 'The trustworthy answer is the one that admits uncertainty AND tells you to verify.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'multiple_choice',
+        question: 'You ask AI for a quote from a famous book. AI gives a confident, perfectly polished quote. What now?',
+        options: [
+          'Use it. It sounds great.',
+          'Search the quote in quotes online to confirm it\'s real.',
+          'Ask the AI "did you make this up?"',
+          'Use it but credit "internet sources."',
+        ],
+        correctAnswer: 1,
+        explanation: 'A 10-second quote search confirms or kills the quote. AI invents fake but perfect-sounding quotes routinely.',
+        airaFeedback: {
+          correct: 'Yes. 10 seconds. Real or fake. Always check.',
+          incorrect: 'AI invents fake quotes that sound like the author. Quote search is the only reliable check.',
+        },
+      },
+    ],
+    airaOutro:
+      "Now you read AI like a poker player reads a table. Tone is bluff. Specifics are the hand. Always check the cards.",
+    takeaway: 'Confidence is a tone, not a truth.',
+  },
+
+  // ---------- POWER — entry lesson for the track ----------
+  {
+    id: 'power_1',
+    trackId: 'power',
+    title: 'The follow-up is the most underrated move',
+    character: 'Lin',
+    airaIntro:
+      "Beginners send one prompt and copy the answer. Experts send five. The difference between them isn't talent. It's one habit you'll learn now.",
+    learnFirst:
+      'Treat every AI answer as a draft. The real value comes from your follow-up. Three good follow-ups beat ten new prompts every time.',
+    realWorldScenario:
+      'Lin is a researcher. She asks AI to summarise a 30-page paper. The summary is fine. Generic. She used to copy it into her notes. Now she runs three follow-ups — and gets something an expert would write.',
+    scenes: [
+      {
+        heading: 'The "what did you skip" follow-up',
+        vague: 'Accept the summary.',
+        specific: '"What important detail did you skip in that summary?"',
+        note: 'Forces the AI to surface what it quietly compressed away.',
+      },
+      {
+        heading: 'The "argue the other side" follow-up',
+        vague: 'Trust the framing.',
+        specific: '"Now write the strongest case AGAINST what you just said."',
+        note: 'Surfaces the weakness in any conclusion. Free second opinion.',
+      },
+      {
+        heading: 'The "in 3 sentences" follow-up',
+        vague: 'Read the wall of text.',
+        specific: '"Now compress that into 3 sentences a non-expert could remember."',
+        note: 'A length cap forces the AI to drop fluff and keep substance.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'You get a fine-but-generic answer. BEST follow-up?',
+        options: [
+          '"Make it better."',
+          '"What important detail did you skip?"',
+          '"Try harder."',
+          '"That\'s perfect, thanks."',
+        ],
+        correctAnswer: 1,
+        explanation: '"Make it better" gives the AI nothing. "What did you skip?" forces it to surface the substance it compressed away.',
+        airaFeedback: {
+          correct: 'Yes. Specific follow-up surfaces specific value.',
+          incorrect: '"Make it better" is the lazy follow-up. The specific one ("what did you skip?") gets specific results.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Sending 10 fresh prompts is smarter than 3 good follow-ups on one.',
+        correctAnswer: false,
+        explanation: 'Follow-ups carry conversation context. Fresh prompts start cold. 3 follow-ups outperform 10 cold restarts almost always.',
+        airaFeedback: {
+          correct: 'Right. Follow-ups compound. Fresh prompts reset.',
+          incorrect: 'Each fresh prompt loses the context you both already built. Follow-ups carry it forward.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'Lin wants to compress a long answer. Best follow-up?',
+        options: [
+          '"Shorter."',
+          '"Now compress that into 3 sentences a non-expert could remember."',
+          '"Be brief."',
+          '"Less words."',
+        ],
+        correctAnswer: 1,
+        explanation: 'A specific length cap + audience hint forces real compression. "Shorter" is too vague.',
+        airaFeedback: {
+          correct: 'Yes. Number + audience = specific compression.',
+          incorrect: '"Shorter" is fuzzy. "3 sentences for a non-expert" is a target. Targets get hit.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'fill_blank',
+        question: 'Three good follow-ups beat ten new ____.',
+        correctAnswer: 'prompts',
+        explanation: 'Follow-ups carry context. New prompts start cold. The math favours follow-ups.',
+        airaFeedback: {
+          correct: 'Yes. Iterate, don\'t restart.',
+          incorrect: 'Hint: it\'s the thing you start fresh each time. Starts with P.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'Write a 3-step follow-up sequence for "AI gave me a fine-but-bland email draft."',
+        correctAnswer:
+          '1) What\'s the weakest sentence in this email? 2) Rewrite that sentence with one specific detail only I could know. 3) Now compress the whole thing to under 80 words.',
+        explanation:
+          'Anything covering: identify weak spot → fix specifically → compress, is on track. The structure beats the words.',
+        airaFeedback: {
+          correct: 'Strong. You ran the loop. Use it for real today.',
+          incorrect: 'Aim for: one diagnostic ("what\'s weak?"), one targeted fix, one compression. The pattern beats the exact words.',
+        },
+      },
+    ],
+    airaOutro:
+      "You now have the loop most users never learn. Use it once today on something real. Watch the difference.",
+    takeaway: 'Send three. Not one.',
+  },
+
+  // ---------- TOOLS — entry lesson ----------
+  {
+    id: 'tools_1',
+    trackId: 'tools',
+    title: 'AI tools 101: which one for which job',
+    character: 'Sam',
+    airaIntro:
+      "There's no single best AI. There are different AIs for different jobs. Here's the one-question test that gets you to the right one in 10 seconds.",
+    learnFirst:
+      'The big three for general use: ChatGPT (the generalist), Claude (the careful writer + coder), Gemini (the search-anchored researcher). Match the tool to the job\'s top need: voice, freshness, or code.',
+    realWorldScenario:
+      'Sam is a teacher. He uses one AI for everything — lesson plans, fact-checking, news clippings, creative writing. The output feels off half the time. He doesn\'t know he\'s using the wrong tool for half his work.',
+    scenes: [
+      {
+        heading: 'Job: long-form writing',
+        vague: 'Open whatever you usually open.',
+        specific: 'Use Claude. Strongest at sustained voice and tone in 2026 blind tests.',
+        note: 'For an essay where voice matters, Claude consistently wins.',
+      },
+      {
+        heading: 'Job: today\'s news',
+        vague: 'Ask any chat AI.',
+        specific: 'Use Perplexity or Gemini — both have search built in. Most chat AIs are months out of date.',
+        note: 'Fresh facts need fresh sources.',
+      },
+      {
+        heading: 'Job: code',
+        vague: 'Ask whichever opens fastest.',
+        specific: 'Use Claude or Cursor (which uses Claude). Both consistently top code benchmarks.',
+        note: 'Code is one place benchmark differences are felt daily.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Sam wants to write a heartfelt 1,000-word piece for the school newsletter. Best pick?',
+        options: ['ChatGPT', 'Claude', 'Gemini', 'Doesn\'t matter'],
+        correctAnswer: 1,
+        explanation: 'For long-form writing where voice matters, Claude consistently wins among writers right now.',
+        airaFeedback: {
+          correct: 'Yes. Long-form + voice = Claude\'s lane.',
+          incorrect: 'For sustained voice in long writing, Claude leads in 2026. (May shift as models update.)',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'For "what happened in tech this week," ChatGPT is the best pick because it\'s the most popular.',
+        correctAnswer: false,
+        explanation: 'Popularity is not freshness. For real-time news, anchor in a search-first tool like Perplexity or Gemini.',
+        airaFeedback: {
+          correct: 'Right. Popular ≠ fresh.',
+          incorrect: 'Most chat AIs are months out of date. For "today," use a search-anchored tool.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'You need to debug 80 lines of Python. Best pick?',
+        options: ['Gemini, for the search', 'Claude or Cursor', 'A general chatbot, any one', 'No AI'],
+        correctAnswer: 1,
+        explanation: 'Claude (and Cursor, which uses Claude) leads code benchmarks in 2026. The gap is real day-to-day.',
+        airaFeedback: {
+          correct: 'Yes. Code = Claude / Cursor.',
+          incorrect: 'For code, the gap matters. Claude and Cursor consistently outperform.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'fill_blank',
+        question: 'Match the tool to the job\'s top need: voice, freshness, or ____.',
+        correctAnswer: 'code',
+        explanation: 'The three big needs that map cleanly to tools. Voice → Claude. Freshness → Perplexity/Gemini. Code → Claude/Cursor.',
+        airaFeedback: {
+          correct: 'Yes. Three needs, three lanes.',
+          incorrect: 'Hint: the third is the technical one — programming. 4 letters.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'multiple_choice',
+        question: 'What\'s the one-question test for picking an AI?',
+        options: [
+          'Which one is most popular?',
+          'Which one is cheapest?',
+          'What is the job\'s top need: voice, freshness, or code?',
+          'Which logo do I like best?',
+        ],
+        correctAnswer: 2,
+        explanation: 'Match the tool to the job\'s top need. Habit and price come second. Brand loyalty comes last.',
+        airaFeedback: {
+          correct: 'Yes. Match the tool to the job, not your habit.',
+          incorrect: 'The trick is asking what the job needs most — then picking the AI strongest at that need.',
+        },
+      },
+    ],
+    airaOutro:
+      "From now on: voice, freshness, or code? Pick. Save time. Ship better work.",
+    takeaway: 'Right tool, right job.',
+  },
 ];

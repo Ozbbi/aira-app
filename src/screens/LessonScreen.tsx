@@ -10,6 +10,7 @@ import { AiraCharacter } from '../components/AiraCharacter';
 import { colors, radius, spacing } from '../theme';
 import { getLessonById, checkAnswer, saveProgress, getProgress } from '../api/client';
 import { useUserStore } from '../store/userStore';
+import { findSeedLesson, checkSeedAnswer, isSeedLessonId } from '../data';
 import type { RootStackParamList, Lesson, Question } from '../types';
 
 interface Props {
@@ -22,6 +23,12 @@ type Phase = 'loading' | 'intro' | 'question' | 'feedback' | 'complete' | 'error
 export function LessonScreen({ navigation, route }: Props) {
   const { userId, tier } = useUserStore((s) => s);
   const syncFromBackend = useUserStore((s) => s.syncFromBackend);
+  const loseHeart = useUserStore((s) => s.loseHeart);
+  const completeLessonLocal = useUserStore((s) => s.completeLesson);
+
+  // True for any lesson that we resolved out of the local seed bundle,
+  // either because the backend doesn't know the id or because we're offline.
+  const [isSeed, setIsSeed] = useState(false);
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -54,13 +61,37 @@ export function LessonScreen({ navigation, route }: Props) {
   const loadLesson = async () => {
     setPhase('loading');
     setErrorMsg('');
+    const lessonId = route.params?.lessonId || 'foundations_1';
+
+    // Local-first: if we have a hand-written seed lesson with this id,
+    // skip the network round-trip entirely. This is what makes Journey
+    // nodes + Practice + offline play work instantly.
+    const seed = findSeedLesson(lessonId);
+    if (seed) {
+      setLesson(seed);
+      setIsSeed(true);
+      setStartTime(Date.now());
+      setPhase('intro');
+      return;
+    }
+
     try {
-      const lessonId = route.params?.lessonId || 'foundations_1';
       const data = await getLessonById(lessonId, userId);
       setLesson(data);
+      setIsSeed(false);
       setStartTime(Date.now());
       setPhase('intro');
     } catch (err: any) {
+      // Even if the backend errors with something other than 402, see if
+      // we can still serve a seed lesson under the same id.
+      const fallback = findSeedLesson(lessonId);
+      if (fallback) {
+        setLesson(fallback);
+        setIsSeed(true);
+        setStartTime(Date.now());
+        setPhase('intro');
+        return;
+      }
       if (err.response?.status === 402) {
         navigation.navigate('Paywall');
       } else {
@@ -108,10 +139,22 @@ export function LessonScreen({ navigation, route }: Props) {
     const answer = getUserAnswer();
     let result: any;
 
-    try {
-      result = await checkAnswer(userId, lesson.id, currentQuestion.id, answer);
-    } catch (err) {
-      result = { correct: false, explanation: 'Something went wrong checking your answer.', xpEarned: 0 };
+    if (isSeed) {
+      // Local evaluation — no network. Mirrors backend shape closely.
+      result = checkSeedAnswer(lesson.id, currentQuestion.id, answer as any);
+    } else {
+      try {
+        result = await checkAnswer(userId, lesson.id, currentQuestion.id, answer);
+      } catch (err) {
+        // Backend dropped the call — fall back to a local check if we
+        // happen to have this lesson seeded. Otherwise mark wrong with
+        // a non-punishing message.
+        if (isSeedLessonId(lesson.id)) {
+          result = checkSeedAnswer(lesson.id, currentQuestion.id, answer as any);
+        } else {
+          result = { correct: false, explanation: 'Something went wrong checking your answer.', xpEarned: 0 };
+        }
+      }
     }
 
     if (result.correct) {
@@ -120,6 +163,11 @@ export function LessonScreen({ navigation, route }: Props) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } else {
+      // Lose a heart on a wrong answer — Duolingo-style. Hearts refill
+      // over time; we don't block lesson progress on hitting zero (we
+      // don't punish learning), but the visible hearts on Home are now
+      // a real signal of accuracy.
+      loseHeart();
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
@@ -144,11 +192,31 @@ export function LessonScreen({ navigation, route }: Props) {
 
   const handleLessonComplete = async () => {
     if (!lesson) return;
+
+    const prevLevel = useUserStore.getState().level;
+    const prevStreak = useUserStore.getState().streak;
+
+    if (isSeed) {
+      // Seed lessons skip the backend entirely — update the store locally.
+      // XP awarded scales with correctness so partial completion still
+      // feels rewarding.
+      const earnedXp = totalXpEarned > 0 ? totalXpEarned : correctCount * 10;
+      completeLessonLocal(earnedXp, lesson.topic || 'foundations');
+      const after = useUserStore.getState();
+      if (after.level > prevLevel) {
+        setLeveledUp(true);
+        setNewLevel(after.level);
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
+      }
+      setPhase('complete');
+      return;
+    }
+
     try {
-      const prevLevel = useUserStore.getState().level;
-      const prevStreak = useUserStore.getState().streak;
       const result = await saveProgress(userId, lesson.id, correctCount, lesson.questions.length);
-      
+
       if (result.newLevel > prevLevel) {
         setLeveledUp(true);
         setNewLevel(result.newLevel);
@@ -156,7 +224,7 @@ export function LessonScreen({ navigation, route }: Props) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         }
       }
-      
+
       if (prevStreak === 2 || prevStreak === 6 || prevStreak === 29 || prevStreak === 99) {
         setStreakMilestone(true);
         if (Platform.OS !== 'web') {
@@ -172,7 +240,10 @@ export function LessonScreen({ navigation, route }: Props) {
         totalLessonsCompleted: result.totalLessonsCompleted,
       });
     } catch (err) {
-      console.error('Failed to save progress:', err);
+      // Backend save failed — at least credit the user's XP locally so
+      // their progress isn't lost. Keep navigating to the complete screen.
+      const earnedXp = totalXpEarned > 0 ? totalXpEarned : correctCount * 10;
+      completeLessonLocal(earnedXp, lesson.topic || 'foundations');
     }
     setPhase('complete');
   };

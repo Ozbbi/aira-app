@@ -58,20 +58,12 @@ export function TrackDetailScreen({ navigation, route }: Props) {
     fetchData();
   }, [fetchData]);
 
-  const handleLessonPress = (lesson: any, index: number) => {
-    if (lesson.completed) return;
-
-    if (index === currentLessonIndex) {
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      navigation.navigate('Lesson', { lessonId: lesson.id });
-    } else if (index > currentLessonIndex) {
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
-      navigation.navigate('Paywall');
+  const handleLessonPress = (lesson: any) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    // Every lesson is tappable now — no more locked-future-paywall logic.
+    navigation.navigate('Lesson', { lessonId: lesson.id });
   };
 
   const handleBack = () => {
@@ -104,87 +96,73 @@ export function TrackDetailScreen({ navigation, route }: Props) {
 
       {/* AIRA Intro */}
       <View style={styles.airaSection}>
-        <AiraCharacter mood="calm" size={80} />
+        <AiraCharacter mood="encouraging" size={80} />
         <Text style={styles.airaText}>
           Welcome to {config.title}. This track will help you master {config.subtitle.toLowerCase()}.
-          Let's begin your journey.
+          Tap any lesson to start.
         </Text>
       </View>
 
-      {/* Lesson Path */}
-      <View style={styles.pathSection}>
-        {lessons.map((lesson, index) => {
-          const isCompleted = lesson.completed;
-          const isCurrent = index === currentLessonIndex;
-          const isLocked = index > currentLessonIndex;
-          const isProLocked = isLocked && tier === 'free' && config.title !== 'Foundations';
-
-          return (
-            <View key={lesson.id} style={styles.pathRow}>
-              {index % 2 === 0 ? (
-                <>
-                  <View style={styles.lessonNode}>
-                    <MotiView
-                      style={[
-                        styles.node,
-                        isCompleted && styles.nodeCompleted,
-                        isCurrent && styles.nodeCurrent,
-                        isLocked && styles.nodeLocked,
-                      ]}
-                      animate={isCurrent ? {
-                        scale: [1, 1.05, 1],
-                      } : {}}
-                      transition={{
-                        loop: true,
-                        duration: 1500,
-                      }}
-                    >
-                      {isCompleted ? (
-                        <Text style={styles.checkIcon}>✓</Text>
-                      ) : isProLocked ? (
-                        <Text style={styles.lockIcon}>🔒</Text>
-                      ) : (
-                        <Text style={styles.nodeNumber}>{index + 1}</Text>
-                      )}
-                    </MotiView>
-                    {isCurrent && <Text style={styles.startLabel}>START</Text>}
+      {/* Real lesson list — full-width tappable rows */}
+      <View style={styles.listSection}>
+        <Text style={styles.listEyebrow}>{lessons.length} LESSONS</Text>
+        {lessons.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyTitle}>No lessons yet on this track.</Text>
+            <Text style={styles.emptyHint}>Pull to refresh or come back soon.</Text>
+          </View>
+        ) : (
+          lessons.map((lesson: any, index: number) => {
+            const isCompleted = !!lesson.completed;
+            const isCurrent = index === currentLessonIndex;
+            return (
+              <Animated.View
+                key={lesson.id}
+                entering={FadeInDown.duration(220).delay(index * 28)}
+              >
+                <Pressable
+                  onPress={() => handleLessonPress(lesson)}
+                  style={({ pressed }) => [
+                    styles.lessonRow,
+                    isCurrent && styles.lessonRowCurrent,
+                    pressed && styles.lessonRowPressed,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.lessonBadge,
+                      isCompleted && styles.lessonBadgeDone,
+                      isCurrent && styles.lessonBadgeCurrent,
+                    ]}
+                  >
+                    {isCompleted ? (
+                      <Text style={styles.lessonBadgeText}>✓</Text>
+                    ) : (
+                      <Text style={styles.lessonBadgeText}>{index + 1}</Text>
+                    )}
                   </View>
-                  <View style={styles.spacer} />
-                </>
-              ) : (
-                <>
-                  <View style={styles.spacer} />
-                  <View style={styles.lessonNode}>
-                    <MotiView
-                      style={[
-                        styles.node,
-                        isCompleted && styles.nodeCompleted,
-                        isCurrent && styles.nodeCurrent,
-                        isLocked && styles.nodeLocked,
-                      ]}
-                      animate={isCurrent ? {
-                        scale: [1, 1.05, 1],
-                      } : {}}
-                      transition={{
-                        loop: true,
-                        duration: 1500,
-                      }}
-                    >
-                      {isCompleted ? (
-                        <Text style={styles.checkIcon}>✓</Text>
-                      ) : isProLocked ? (
-                        <Text style={styles.lockIcon}>🔒</Text>
-                      ) : (
-                        <Text style={styles.nodeNumber}>{index + 1}</Text>
-                      )}
-                    </MotiView>
-                    {isCurrent && <Text style={styles.startLabel}>START</Text>}
+                  <View style={styles.lessonTextCol}>
+                    <Text style={styles.lessonTitle} numberOfLines={1}>
+                      {lesson.title || `Lesson ${index + 1}`}
+                    </Text>
+                    {lesson.description ? (
+                      <Text style={styles.lessonDesc} numberOfLines={2}>
+                        {lesson.description}
+                      </Text>
+                    ) : null}
+                    {isCurrent ? (
+                      <Text style={styles.lessonCta}>START →</Text>
+                    ) : isCompleted ? (
+                      <Text style={styles.lessonCtaDone}>Review →</Text>
+                    ) : (
+                      <Text style={styles.lessonCtaMuted}>Open →</Text>
+                    )}
                   </View>
-                </>
-              )}
-            </View>
-          );
-        })}
+                </Pressable>
+              </Animated.View>
+            );
+          })
+        )}
       </View>
 
       <View style={styles.bottomSpacer} />
@@ -317,6 +295,115 @@ const styles = StyleSheet.create({
     color: colors.trackFoundations,
     letterSpacing: 1,
   },
+  // ----- Real lesson list -----
+  listSection: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  listEyebrow: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+  lessonRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  lessonRowCurrent: {
+    borderColor: colors.airaCore,
+    backgroundColor: colors.bgCardHover,
+  },
+  lessonRowPressed: {
+    transform: [{ scale: 0.99 }],
+    opacity: 0.96,
+  },
+  lessonBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bgCardHover,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  lessonBadgeDone: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  lessonBadgeCurrent: {
+    backgroundColor: colors.airaCore,
+    borderColor: colors.airaCore,
+  },
+  lessonBadgeText: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  lessonTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  lessonTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  lessonDesc: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+    marginBottom: 6,
+  },
+  lessonCta: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: colors.airaGlow,
+    letterSpacing: 0.6,
+  },
+  lessonCtaDone: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    color: '#10B981',
+    letterSpacing: 0.6,
+  },
+  lessonCtaMuted: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: colors.textMuted,
+    letterSpacing: 0.4,
+  },
+  emptyBox: {
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  emptyHint: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+
   bottomSpacer: {
     height: spacing.xxl,
   },

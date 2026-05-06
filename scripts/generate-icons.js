@@ -87,6 +87,16 @@ function mascotSvg({ size, bg = BG, scale = 0.7, withWordmark = false, sparkles 
   <!-- Halo -->
   <circle cx="${cx}" cy="${cy}" r="${half * 1.05}" fill="url(#halo)" />
 
+  <!-- Antennae with glowing tips -->
+  <path d="M ${X(46)} ${Y(26)} Q ${X(42)} ${Y(14)} ${X(38)} ${Y(8)}"
+        stroke="url(#body)" stroke-width="${u(2.6)}" stroke-linecap="round" fill="none" />
+  <path d="M ${X(74)} ${Y(26)} Q ${X(78)} ${Y(14)} ${X(82)} ${Y(8)}"
+        stroke="url(#body)" stroke-width="${u(2.6)}" stroke-linecap="round" fill="none" />
+  <circle cx="${X(38)}" cy="${Y(8)}" r="${u(3.8)}" fill="#FFD86B" />
+  <circle cx="${X(38)}" cy="${Y(8)}" r="${u(2.2)}" fill="#FFFFFF" />
+  <circle cx="${X(82)}" cy="${Y(8)}" r="${u(3.8)}" fill="#FFD86B" />
+  <circle cx="${X(82)}" cy="${Y(8)}" r="${u(2.2)}" fill="#FFFFFF" />
+
   <!-- Body -->
   <path d="M ${X(60)} ${Y(22)}
            C ${X(88)} ${Y(22)} ${X(96)} ${Y(34)} ${X(96)} ${Y(60)}
@@ -117,6 +127,9 @@ function mascotSvg({ size, bg = BG, scale = 0.7, withWordmark = false, sparkles 
   <!-- Smile -->
   <path d="M ${X(48)} ${Y(74)} Q ${X(60)} ${Y(82)} ${X(72)} ${Y(74)}"
         stroke="#0F1020" stroke-width="${u(2.8)}" stroke-linecap="round" fill="none" />
+
+  <!-- Signature sparkle -->
+  <path d="M ${X(104)} ${Y(80)} l ${u(1.8)} ${-u(5)} l ${u(1.8)} ${u(5)} l ${u(5)} ${u(1.8)} l ${-u(5)} ${u(1.8)} l ${-u(1.8)} ${u(5)} l ${-u(1.8)} ${-u(5)} l ${-u(5)} ${-u(1.8)} z" fill="#FFD86B" />
 
   ${sparkleSvg}
   ${wordmark}

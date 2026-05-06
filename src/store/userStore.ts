@@ -18,6 +18,18 @@ interface UserState {
   soundsEnabled: boolean;
   authToken: string | null;
 
+  /**
+   * Lives / hearts. Players start with 5. They lose one on a wrong
+   * lesson question. Hearts refill 1 every HEART_REFILL_MINUTES — we
+   * persist the timestamp of the last empty so refill works across
+   * cold starts without a server.
+   */
+  hearts: number;
+  heartsLastEmptiedAt: string | null;
+
+  /** Bookmarked Learn items (insight/pattern/mistake/quickwin ids). */
+  bookmarks: string[];
+
   // Actions
   setUser: (data: Partial<UserState>) => void;
   addXp: (amount: number) => void;
@@ -35,8 +47,14 @@ interface UserState {
   setNotificationsEnabled: (enabled: boolean) => void;
   setSoundsEnabled: (enabled: boolean) => void;
   setAuthToken: (token: string | null) => void;
+  loseHeart: () => void;
+  refillHearts: () => void;
+  toggleBookmark: (id: string) => void;
   resetStore: () => void;
 }
+
+export const MAX_HEARTS = 5;
+export const HEART_REFILL_MINUTES = 30;
 
 const initialState = {
   userId: '',
@@ -54,6 +72,9 @@ const initialState = {
   notificationsEnabled: false,
   soundsEnabled: true,
   authToken: null,
+  hearts: MAX_HEARTS,
+  heartsLastEmptiedAt: null,
+  bookmarks: [] as string[],
 };
 
 export const useUserStore = create<UserState>()(
@@ -105,6 +126,48 @@ export const useUserStore = create<UserState>()(
 
       setAuthToken: (token) => set({ authToken: token }),
 
+      // -------------------- Hearts --------------------
+      loseHeart: () =>
+        set((state) => {
+          const next = Math.max(0, state.hearts - 1);
+          return {
+            hearts: next,
+            heartsLastEmptiedAt:
+              next === 0 && !state.heartsLastEmptiedAt
+                ? new Date().toISOString()
+                : state.heartsLastEmptiedAt,
+          };
+        }),
+
+      refillHearts: () =>
+        set((state) => {
+          if (state.hearts >= MAX_HEARTS) return {};
+          if (!state.heartsLastEmptiedAt) {
+            return { hearts: MAX_HEARTS, heartsLastEmptiedAt: null };
+          }
+          const elapsedMin =
+            (Date.now() - new Date(state.heartsLastEmptiedAt).getTime()) / 60000;
+          const refilled = Math.floor(elapsedMin / HEART_REFILL_MINUTES);
+          if (refilled <= 0) return {};
+          const next = Math.min(MAX_HEARTS, state.hearts + refilled);
+          return {
+            hearts: next,
+            heartsLastEmptiedAt:
+              next >= MAX_HEARTS ? null : state.heartsLastEmptiedAt,
+          };
+        }),
+
+      // -------------------- Bookmarks --------------------
+      toggleBookmark: (id) =>
+        set((state) => {
+          const has = state.bookmarks.includes(id);
+          return {
+            bookmarks: has
+              ? state.bookmarks.filter((b) => b !== id)
+              : [...state.bookmarks, id],
+          };
+        }),
+
       resetStore: () => set(initialState),
     }),
     {
@@ -123,6 +186,9 @@ export const useUserStore = create<UserState>()(
         notificationsEnabled: state.notificationsEnabled,
         soundsEnabled: state.soundsEnabled,
         authToken: state.authToken,
+        hearts: state.hearts,
+        heartsLastEmptiedAt: state.heartsLastEmptiedAt,
+        bookmarks: state.bookmarks,
       }),
     }
   )

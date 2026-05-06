@@ -99,6 +99,28 @@ export function AiraMascot({ size = 120, mood = 'calm', static: isStatic }: Prop
         {/* Halo */}
         <Circle cx="60" cy="60" r="56" fill="url(#airaHalo)" />
 
+        {/* Antennae — two thin curves with glowing tips. Sit behind the
+            body so the body silhouette stays clean. This is what makes
+            AIRA recognisable at a glance vs. a generic blob mascot. */}
+        <Path
+          d="M 46 26 Q 42 14 38 8"
+          stroke="url(#airaBody)"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <Path
+          d="M 74 26 Q 78 14 82 8"
+          stroke="url(#airaBody)"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <Circle cx="38" cy="8" r="3.6" fill="#FFD86B" />
+        <Circle cx="38" cy="8" r="2.2" fill="#FFFFFF" />
+        <Circle cx="82" cy="8" r="3.6" fill="#FFD86B" />
+        <Circle cx="82" cy="8" r="2.2" fill="#FFFFFF" />
+
         {/* Body — squircle */}
         <Path
           d="M 60 22
@@ -127,12 +149,22 @@ export function AiraMascot({ size = 120, mood = 'calm', static: isStatic }: Prop
         <Eyes mood={mood} />
         <Mouth mood={mood} />
 
-        {/* Sparkles for celebrating */}
+        {/* Always-on signature sparkle — sits off the bottom-right
+            shoulder so AIRA reads as "AI character with a thought". */}
+        <Path
+          d="M 104 80 l 1.8 -5 l 1.8 5 l 5 1.8 l -5 1.8 l -1.8 5 l -1.8 -5 l -5 -1.8 z"
+          fill="#FFD86B"
+        />
+        <Path
+          d="M 104 80 l 1.8 -5 l 1.8 5 l 5 1.8 l -5 1.8 l -1.8 5 l -1.8 -5 l -5 -1.8 z"
+          fill="rgba(255,255,255,0.55)"
+        />
+
+        {/* Extra sparkle burst when celebrating */}
         {mood === 'celebrating' && (
           <G>
-            <Path d="M 22 30 l 2 -6 l 2 6 l 6 2 l -6 2 l -2 6 l -2 -6 l -6 -2 z" fill="#FFD86B" />
-            <Path d="M 96 32 l 1.4 -4 l 1.4 4 l 4 1.4 l -4 1.4 l -1.4 4 l -1.4 -4 l -4 -1.4 z" fill="#FFD86B" />
-            <Path d="M 100 96 l 1.6 -5 l 1.6 5 l 5 1.6 l -5 1.6 l -1.6 5 l -1.6 -5 l -5 -1.6 z" fill="#FFD86B" />
+            <Path d="M 14 36 l 2 -6 l 2 6 l 6 2 l -6 2 l -2 6 l -2 -6 l -6 -2 z" fill="#FFD86B" />
+            <Path d="M 96 24 l 1.4 -4 l 1.4 4 l 4 1.4 l -4 1.4 l -1.4 4 l -1.4 -4 l -4 -1.4 z" fill="#FFD86B" />
           </G>
         )}
       </Svg>

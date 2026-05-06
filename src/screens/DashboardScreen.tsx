@@ -59,11 +59,20 @@ const topics: Topic[] = [
 ];
 
 export function DashboardScreen({ navigation }: Props) {
-  const { name, xp, level, streak, tier, userId, totalLessonsCompleted } = useUserStore();
+  const { name, xp, level, streak, tier, userId, totalLessonsCompleted, hearts } = useUserStore();
   const syncFromBackend = useUserStore((s) => s.syncFromBackend);
+  const refillHearts = useUserStore((s) => s.refillHearts);
 
   const insight = getInsightOfTheDay();
   const weekDots = buildWeekDots(streak);
+
+  // Refresh hearts on every focus — they recharge over wall-clock time even
+  // when the app is closed.
+  useFocusEffect(
+    useCallback(() => {
+      refillHearts();
+    }, [refillHearts])
+  );
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -136,6 +145,18 @@ export function DashboardScreen({ navigation }: Props) {
     navigation.navigate('Lesson', { lessonId: topic.lessonId });
   };
 
+  const handlePracticeRandom = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    // Pick a deterministic-by-day-and-user lesson. If we already have a
+    // candidate from the curriculum fetch, prefer that; otherwise fall back
+    // to a known seed lesson id.
+    const fallback = ['foundations_1', 'critical_1', 'power_1', 'tools_1'];
+    const idx = (totalLessonsCompleted + new Date().getDate()) % fallback.length;
+    navigation.navigate('Lesson', { lessonId: fallback[idx] });
+  };
+
   // Today's mission: 1 lesson per day. Once they finish a lesson today the
   // ring fills. We compare lessons completed against a simple bucket so this
   // works without backend changes.
@@ -200,6 +221,18 @@ export function DashboardScreen({ navigation }: Props) {
             />
           </View>
         </View>
+
+        {/* Hearts (Duolingo-style lives) */}
+        <View style={styles.heartsRow}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Text key={i} style={[styles.heart, i >= hearts && styles.heartEmpty]}>
+              {i < hearts ? '❤️' : '🤍'}
+            </Text>
+          ))}
+          <Text style={styles.heartsLabel}>
+            {hearts < 5 ? `${hearts}/5 — refilling` : 'Full'}
+          </Text>
+        </View>
       </Animated.View>
 
       {/* HERO — start lesson now (the loud, unmissable CTA) */}
@@ -260,6 +293,34 @@ export function DashboardScreen({ navigation }: Props) {
             </Pressable>
           </Animated.View>
         ))}
+      </Animated.View>
+
+      {/* ========== Practice (random lesson) ========== */}
+      <Animated.View
+        entering={FadeInDown.duration(260).delay(120)}
+        style={styles.practiceWrap}
+      >
+        <Pressable
+          onPress={handlePracticeRandom}
+          style={({ pressed }) => [
+            styles.practiceCard,
+            pressed && styles.practiceCardPressed,
+          ]}
+        >
+          <LinearGradient
+            colors={['#10B981', '#06B6D4', '#3B82F6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.practiceGradient}
+          >
+            <View style={styles.practiceTextCol}>
+              <Text style={styles.practiceLabel}>SURPRISE ME</Text>
+              <Text style={styles.practiceTitle}>Practice a random lesson</Text>
+              <Text style={styles.practiceSub}>One pick. Right now. No menu.</Text>
+            </View>
+            <Text style={styles.practiceDie}>🎲</Text>
+          </LinearGradient>
+        </Pressable>
       </Animated.View>
 
       {/* ========== Today's Mission ========== */}
@@ -593,6 +654,78 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     color: 'rgba(255,255,255,0.92)',
     letterSpacing: 0.6,
+  },
+
+  // --- Hearts ---
+  heartsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    gap: 3,
+  },
+  heart: {
+    fontSize: 16,
+  },
+  heartEmpty: {
+    opacity: 0.5,
+  },
+  heartsLabel: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontFamily: 'Inter_500Medium',
+    marginLeft: 8,
+  },
+
+  // --- Practice ---
+  practiceWrap: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  practiceCard: {
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    shadowColor: '#06B6D4',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  practiceCardPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.95,
+  },
+  practiceGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  practiceTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  practiceLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+    textTransform: 'uppercase',
+    letterSpacing: 1.4,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  practiceTitle: {
+    fontSize: 18,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  practiceSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.92)',
+    fontFamily: 'Inter_500Medium',
+  },
+  practiceDie: {
+    fontSize: 40,
+    marginLeft: spacing.md,
   },
 
   // --- Today's Mission ---

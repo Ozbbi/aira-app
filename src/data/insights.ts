@@ -94,9 +94,10 @@ export const INSIGHTS: Insight[] = [
   },
 ];
 
+// Re-exported via the rotation utility so every "today's X" call shares
+// a single dayOfYear implementation (UTC-anchored). Keeps Home and Learn
+// in lockstep — same insight on Home and on the Learn featured card.
+import { dailyPick } from './rotation';
 export function getInsightOfTheDay(): Insight {
-  // Day-of-year deterministic pick — same insight all day, rotates over time.
-  const start = new Date(new Date().getFullYear(), 0, 0).getTime();
-  const dayOfYear = Math.floor((Date.now() - start) / 86_400_000);
-  return INSIGHTS[dayOfYear % INSIGHTS.length];
+  return dailyPick(INSIGHTS);
 }

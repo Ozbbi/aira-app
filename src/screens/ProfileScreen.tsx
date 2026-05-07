@@ -56,41 +56,97 @@ export function ProfileScreen({ navigation }: Props) {
     return 'Master';
   };
 
+  // Read additional state for achievement unlocks
+  const bookmarks = useUserStore((s) => s.bookmarks);
+
   const achievements: Achievement[] = [
+    // ── Lessons milestones ─────────────────────
     {
       id: 'first_lesson',
-      title: 'First Lesson',
+      title: 'First Step',
       description: 'Complete your first lesson',
       icon: '🌟',
       unlocked: totalLessonsCompleted >= 1,
     },
     {
-      id: 'streak_3',
-      title: '3-Day Streak',
-      description: 'Practice for 3 days in a row',
-      icon: '🔥',
-      unlocked: streak >= 3,
+      id: 'lessons_5',
+      title: 'Getting Started',
+      description: 'Complete 5 lessons',
+      icon: '🌱',
+      unlocked: totalLessonsCompleted >= 5,
     },
     {
       id: 'lessons_10',
-      title: '10 Lessons',
+      title: 'Sharp Learner',
       description: 'Complete 10 lessons',
       icon: '📚',
       unlocked: totalLessonsCompleted >= 10,
     },
     {
+      id: 'lessons_25',
+      title: 'Dedicated',
+      description: 'Complete 25 lessons',
+      icon: '🎓',
+      unlocked: totalLessonsCompleted >= 25,
+    },
+    // ── Streak milestones ─────────────────────
+    {
+      id: 'streak_3',
+      title: 'Warming Up',
+      description: 'Practice 3 days in a row',
+      icon: '🔥',
+      unlocked: streak >= 3,
+    },
+    {
+      id: 'streak_7',
+      title: 'Week Warrior',
+      description: 'Practice 7 days in a row',
+      icon: '⚡',
+      unlocked: streak >= 7,
+    },
+    {
+      id: 'streak_30',
+      title: 'Monthly Master',
+      description: 'Practice 30 days in a row',
+      icon: '👑',
+      unlocked: streak >= 30,
+    },
+    // ── Level milestones ─────────────────────
+    {
+      id: 'level_3',
+      title: 'Level 3',
+      description: 'Reach level 3',
+      icon: '⭐',
+      unlocked: level >= 3,
+    },
+    {
+      id: 'level_10',
+      title: 'AIRA Pro',
+      description: 'Reach level 10',
+      icon: '🏆',
+      unlocked: level >= 10,
+    },
+    // ── Accuracy / engagement ─────────────────
+    {
       id: 'perfect_score',
-      title: 'Perfect Score',
+      title: 'Bullseye',
       description: '100% accuracy in a lesson',
-      icon: '💯',
+      icon: '🎯',
       unlocked: avgAccuracy === 100,
     },
     {
-      id: 'foundations',
-      title: 'Foundations',
-      description: 'Complete all Foundations lessons',
-      icon: '🌱',
-      unlocked: totalLessonsCompleted >= 5,
+      id: 'first_bookmark',
+      title: 'Library Card',
+      description: 'Save your first card to Library',
+      icon: '💛',
+      unlocked: bookmarks.length >= 1,
+    },
+    {
+      id: 'bookmarks_10',
+      title: 'Curator',
+      description: 'Save 10 cards to Library',
+      icon: '📖',
+      unlocked: bookmarks.length >= 10,
     },
   ];
 

@@ -50,12 +50,15 @@ interface Topic {
   gradient: readonly [string, string, ...string[]];
 }
 
-// Each topic card carries its own gradient — same palette as the
-// LearningMap track gradients so the brand colours echo across screens.
+// Each topic card carries its own gradient. Labels avoid "AI" + lowercase
+// vowel combos because in some Inter weights at small sizes the capital I
+// reads as a lowercase l (so "AI Basics" looked like "Al Basics" on
+// Samsung devices). Naming each card after the verb/concept it teaches
+// fixes that and reads better anyway.
 const topics: Topic[] = [
-  { emoji: '✨', label: 'AI Basics',  lessonId: 'foundations_1', tier: 'free', gradient: ['#6366F1', '#8B5CF6'] as const },
+  { emoji: '✨', label: 'Prompt 101', lessonId: 'foundations_1', tier: 'free', gradient: ['#6366F1', '#8B5CF6'] as const },
   { emoji: '🧠', label: 'Thinking',   lessonId: 'critical_1',    tier: 'free', gradient: ['#EC4899', '#8B5CF6'] as const },
-  { emoji: '⚡', label: 'Prompts',    lessonId: 'power_1',       tier: 'free', gradient: ['#F59E0B', '#EC4899'] as const },
+  { emoji: '⚡', label: 'Power',      lessonId: 'power_1',       tier: 'free', gradient: ['#F59E0B', '#EC4899'] as const },
   { emoji: '🛠️', label: 'Tools',     lessonId: 'tools_1',       tier: 'free', gradient: ['#06B6D4', '#3B82F6'] as const },
 ];
 
@@ -224,15 +227,13 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Hearts (Duolingo-style lives) */}
+        {/* Lives — single icon + count. Cleaner than 5 hearts in a row. */}
         <View style={styles.heartsRow}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Text key={i} style={[styles.heart, i >= hearts && styles.heartEmpty]}>
-              {i < hearts ? '❤️' : '🤍'}
-            </Text>
-          ))}
-          <Text style={styles.heartsLabel}>
-            {hearts < 5 ? `${hearts}/5 — refilling` : 'Full'}
+          <Text style={styles.heartsIcon}>❤️</Text>
+          <Text style={styles.heartsCount}>{hearts}</Text>
+          <Text style={styles.heartsSlash}>/5</Text>
+          <Text style={styles.heartsHint}>
+            {hearts < 5 ? '· refills automatically' : '· lives full'}
           </Text>
         </View>
       </Animated.View>
@@ -659,24 +660,31 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
 
-  // --- Hearts ---
+  // --- Lives row ---
   heartsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: spacing.sm,
-    gap: 3,
+    gap: 6,
   },
-  heart: {
+  heartsIcon: {
     fontSize: 16,
   },
-  heartEmpty: {
-    opacity: 0.5,
+  heartsCount: {
+    fontSize: 16,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: colors.textPrimary,
   },
-  heartsLabel: {
-    fontSize: 11,
+  heartsSlash: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    color: colors.textMuted,
+    marginRight: 4,
+  },
+  heartsHint: {
+    fontSize: 12,
     color: colors.textMuted,
     fontFamily: 'Inter_500Medium',
-    marginLeft: 8,
   },
 
   // --- Practice ---

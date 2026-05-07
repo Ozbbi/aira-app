@@ -29,45 +29,49 @@ const trackConfig: Record<string, {
   gradient: readonly string[];
   lessons: number;
 }> = {
-  foundations: { 
-    title: 'AI Foundations', 
-    subtitle: '10 lessons', 
-    icon: '🌱', 
-    color: colors.trackFoundations, 
+  // Subtitles describe what the track teaches, not "10 lessons" — that
+  // number was lying anyway (we don't know how many lessons until the
+  // backend or seed pool is queried) and the user perceived it as both
+  // unimpressive and inaccurate.
+  foundations: {
+    title: 'AI Foundations',
+    subtitle: 'Prompts that work',
+    icon: '🌱',
+    color: colors.trackFoundations,
     gradient: colors.gradientLesson,
-    lessons: 10
+    lessons: 0,
   },
-  critical: { 
-    title: 'Critical Thinking', 
-    subtitle: '10 lessons', 
-    icon: '🧠', 
-    color: colors.trackCritical, 
+  critical: {
+    title: 'Critical Thinking',
+    subtitle: 'Spot the bullshit',
+    icon: '🧠',
+    color: colors.trackCritical,
     gradient: [colors.trackCritical, colors.airaCore] as const,
-    lessons: 10
+    lessons: 0,
   },
-  power: { 
-    title: 'Practical Power', 
-    subtitle: '10 lessons', 
-    icon: '⚡', 
-    color: colors.trackPower, 
+  power: {
+    title: 'Practical Power',
+    subtitle: 'Pro-level moves',
+    icon: '⚡',
+    color: colors.trackPower,
     gradient: [colors.trackPower, colors.airaCore] as const,
-    lessons: 10
+    lessons: 0,
   },
-  tools: { 
-    title: 'Tools & Taste', 
-    subtitle: '10 lessons', 
-    icon: '🛠️', 
-    color: colors.trackTools, 
+  tools: {
+    title: 'Tools & Taste',
+    subtitle: 'Right tool, right job',
+    icon: '🛠️',
+    color: colors.trackTools,
     gradient: [colors.trackTools, colors.airaCore] as const,
-    lessons: 10
+    lessons: 0,
   },
-  creators: { 
-    title: 'Creating with AI', 
-    subtitle: '10 lessons', 
-    icon: '✨', 
-    color: colors.trackCreators, 
+  creators: {
+    title: 'Creating with AI',
+    subtitle: 'Make AI sound like you',
+    icon: '✨',
+    color: colors.trackCreators,
     gradient: [colors.trackCreators, colors.airaCore] as const,
-    lessons: 10
+    lessons: 0,
   },
 };
 

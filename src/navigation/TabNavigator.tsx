@@ -3,11 +3,13 @@ import { Text, StyleSheet, View, Pressable, LayoutChangeEvent } from 'react-nati
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { LearningMapScreen } from '../screens/LearningMapScreen';
@@ -20,12 +22,15 @@ import type { TabParamList } from '../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
+// Tab labels chosen to disambiguate Lessons (the curriculum tracks)
+// from Library (the bite-size insights / patterns / mistakes feed).
+// "Learn" was confusing next to "Lessons"; same data, clearer label.
 const TAB_DEFS = [
-  { name: 'Dashboard', label: 'Home', glyph: '🏠' },
-  { name: 'Lessons', label: 'Lessons', glyph: '📚' },
-  { name: 'Journey', label: 'Journey', glyph: '🗺️' },
-  { name: 'Learn', label: 'Learn', glyph: '💡' },
-  { name: 'Profile', label: 'You', glyph: '👤' },
+  { name: 'Dashboard', label: 'Home',    glyph: '🏠' },
+  { name: 'Lessons',   label: 'Lessons', glyph: '📚' },
+  { name: 'Journey',   label: 'Journey', glyph: '🗺️' },
+  { name: 'Learn',     label: 'Library', glyph: '💡' },
+  { name: 'Profile',   label: 'You',     glyph: '👤' },
 ] as const;
 
 /**
@@ -82,7 +87,11 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.tabBarHost, { paddingBottom: Math.max(insets.bottom, 12) + 12 }]}
+      // Extra-tall bottom on Samsung devices: their gesture pill sits a
+      // few px above the screen edge and the OS reserves area below it
+      // that React Native's safe-area inset doesn't always account for.
+      // Adding a fixed +18 here ensures the floating bar always clears it.
+      style={[styles.tabBarHost, { paddingBottom: Math.max(insets.bottom, 12) + 18 }]}
     >
       <View style={styles.tabBar}>
         <Animated.View style={[styles.indicator, indicatorStyle]} pointerEvents="none">
@@ -155,25 +164,67 @@ function TabIcon({ glyph, focused }: { glyph: string; focused: boolean }) {
   );
 }
 
+/**
+ * Horizontal swipe between sibling tabs (Instagram-Reels-style).
+ *
+ * `@react-navigation/bottom-tabs` (v7) has no built-in swipe-between-tabs.
+ * Switching to material-top-tabs would force-rebuild every screen.
+ * Instead: mount a Gesture handler at the navigator root that detects
+ * left/right pan and programmatically calls navigation.navigate().
+ *
+ * `activeOffsetX([-25, 25])` ensures the gesture only claims the
+ * responder for clear horizontal intent — vertical scrolls inside
+ * screens still pass through.
+ */
 export function TabNavigator() {
+  const swipeRef = useRef<{ navigation: any; index: number } | null>(null);
+
+  const goRelative = (delta: number) => {
+    const ctx = swipeRef.current;
+    if (!ctx) return;
+    const next = ctx.index + delta;
+    if (next < 0 || next >= TAB_DEFS.length) return;
+    haptics.select();
+    ctx.navigation.navigate(TAB_DEFS[next].name);
+  };
+
+  const swipe = Gesture.Pan()
+    .activeOffsetX([-25, 25])
+    .failOffsetY([-30, 30])
+    .onEnd((e) => {
+      'worklet';
+      if (Math.abs(e.translationY) > 50) return;
+      if (e.translationX < -60) runOnJS(goRelative)(1);
+      else if (e.translationX > 60) runOnJS(goRelative)(-1);
+    });
+
   return (
-    <Tab.Navigator
-      tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        sceneStyle: { backgroundColor: colors.bg },
-      }}
-    >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Lessons" component={LearningMapScreen} />
-      <Tab.Screen name="Journey" component={JourneyScreen} />
-      <Tab.Screen name="Learn" component={LearnScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+    <GestureDetector gesture={swipe}>
+      <View style={styles.fill}>
+        <Tab.Navigator
+          tabBar={(props) => {
+            // Update the swipe-state bridge on every tab-state render.
+            swipeRef.current = { navigation: props.navigation, index: props.state.index };
+            return <FloatingTabBar {...props} />;
+          }}
+          screenOptions={{
+            headerShown: false,
+            sceneStyle: { backgroundColor: colors.bg },
+          }}
+        >
+          <Tab.Screen name="Dashboard" component={DashboardScreen} />
+          <Tab.Screen name="Lessons" component={LearningMapScreen} />
+          <Tab.Screen name="Journey" component={JourneyScreen} />
+          <Tab.Screen name="Learn" component={LearnScreen} />
+          <Tab.Screen name="Profile" component={ProfileScreen} />
+        </Tab.Navigator>
+      </View>
+    </GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   tabBarHost: {
     position: 'absolute',
     left: 12,

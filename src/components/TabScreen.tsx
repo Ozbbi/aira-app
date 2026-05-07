@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, ViewStyle } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,25 +9,27 @@ import Animated, {
   withSpring,
   Easing,
 } from 'react-native-reanimated';
+import { colors } from '../theme';
 
 /**
- * Wrap every tab screen with this. On focus, the screen springs from
- * scale 0.985 + opacity 0.0 → 1.0 in ~220ms. Off-focus it gently scales
- * down + fades. The transition is UI-thread (Reanimated), so it stays
- * smooth even while the new screen's data is loading.
+ * Wrap every tab screen with this. Two responsibilities:
  *
- * Why we wrap each tab instead of customising the navigator:
- * `@react-navigation/bottom-tabs` v7 supports `animation: 'shift' | 'fade'`
- * but those are coarse, JS-driven, and not springy. Wrapping the screen
- * gives us a single, designer-tunable transition that's the same on
- * every tab.
+ *   1. Focus animation — fade + spring scale on focus, gentle scale-down
+ *      + fade on blur. UI-thread Reanimated, ~220ms cross-fade.
+ *
+ *   2. Subtle dark-purple gradient background that bleeds top-to-bottom.
+ *      Replaces the old flat `#0A0A0F`. Same colour at the top of every
+ *      tab so the visual feels continuous; tiniest violet wash near the
+ *      bottom so each screen doesn't feel like a black void.
  */
 interface Props {
   children: React.ReactNode;
   style?: ViewStyle;
+  /** Hide the gradient — for screens that draw their own background. */
+  noGradient?: boolean;
 }
 
-export function TabScreen({ children, style }: Props) {
+export function TabScreen({ children, style, noGradient }: Props) {
   const focused = useIsFocused();
   const opacity = useSharedValue(focused ? 1 : 0);
   const scale = useSharedValue(focused ? 1 : 0.985);
@@ -46,9 +49,23 @@ export function TabScreen({ children, style }: Props) {
     transform: [{ scale: scale.value }],
   }));
 
-  return <Animated.View style={[styles.fill, animStyle, style]}>{children}</Animated.View>;
+  if (noGradient) {
+    return <Animated.View style={[styles.fill, animStyle, style]}>{children}</Animated.View>;
+  }
+
+  return (
+    <Animated.View style={[styles.fill, animStyle, style]}>
+      <LinearGradient
+        colors={[colors.bg, '#100B22', '#0A0A0F']}
+        locations={[0, 0.55, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {children}
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
+  fill: { flex: 1, backgroundColor: colors.bg },
 });

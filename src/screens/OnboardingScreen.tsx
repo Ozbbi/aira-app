@@ -35,19 +35,33 @@ interface Props {
  *     flow. Without this, onboarding loops forever.
  */
 
+/**
+ * Step kinds:
+ *   message  — straight read-and-tap-continue
+ *   choice   — pick one of N pills, tap continue
+ *   name     — text input + submit
+ */
+type StepKind = 'message' | 'choice' | 'name';
+
 interface Step {
   id: number;
+  kind: StepKind;
   bg: readonly [string, string, ...string[]];
   mood: MascotMood;
   eyebrow: string;
   headline: string;
   body: string;
   ctaLabel: string;
+  /** For choice steps: the option list. */
+  choices?: { id: string; label: string; sub?: string }[];
+  /** For choice steps: which user-store field this answers. */
+  answerKey?: 'skillLevel' | 'goal';
 }
 
 const STEPS: Step[] = [
   {
     id: 0,
+    kind: 'message',
     bg: ['#1A0B2E', '#3B0764', '#581C87'] as const,
     mood: 'calm',
     eyebrow: 'WELCOME',
@@ -57,29 +71,65 @@ const STEPS: Step[] = [
   },
   {
     id: 1,
+    kind: 'message',
     bg: ['#0F172A', '#1E3A8A', '#4F46E5'] as const,
     mood: 'thinking',
     eyebrow: 'THE PROMISE',
     headline: 'Sharper, in 5 minutes a day.',
-    body: 'Real lessons. Real questions. No fluff. By next week you\'ll prompt smarter than 90% of users.',
-    ctaLabel: 'I\'m in',
+    body: "Real lessons. Real questions. No fluff. By next week you'll prompt smarter than 90% of users.",
+    ctaLabel: "I'm in",
   },
   {
     id: 2,
+    kind: 'choice',
+    bg: ['#0F172A', '#1E3A8A', '#3730A3'] as const,
+    mood: 'thinking',
+    eyebrow: 'YOUR LEVEL',
+    headline: 'How much have you used AI?',
+    body: "Be honest. We adapt the lessons to you.",
+    ctaLabel: 'Continue',
+    answerKey: 'skillLevel',
+    choices: [
+      { id: 'beginner',     label: 'Beginner',     sub: "I've barely used AI tools." },
+      { id: 'intermediate', label: 'Intermediate', sub: 'I use AI weekly but want depth.' },
+      { id: 'advanced',     label: 'Advanced',     sub: 'I prompt daily, looking for sharper moves.' },
+    ],
+  },
+  {
+    id: 3,
+    kind: 'choice',
+    bg: ['#831843', '#9D174D', '#C026D3'] as const,
+    mood: 'encouraging',
+    eyebrow: 'YOUR GOAL',
+    headline: 'What pulls you here?',
+    body: 'We tailor your first weeks around this.',
+    ctaLabel: 'Continue',
+    answerKey: 'goal',
+    choices: [
+      { id: 'productive', label: 'Be more productive', sub: 'Faster work, sharper output.' },
+      { id: 'basics',     label: 'Learn AI basics',    sub: 'Build a real foundation.' },
+      { id: 'master',     label: 'Master prompting',   sub: 'Go from average to dangerous.' },
+      { id: 'creative',   label: 'Create with AI',     sub: 'Writing, ideas, projects.' },
+    ],
+  },
+  {
+    id: 4,
+    kind: 'name',
     bg: ['#831843', '#9D174D', '#C026D3'] as const,
     mood: 'encouraging',
     eyebrow: 'BEFORE WE START',
     headline: 'What should I call you?',
     body: 'Just a first name is fine. We can change it later.',
-    ctaLabel: 'Let\'s go',
+    ctaLabel: "Let's go",
   },
   {
-    id: 3,
+    id: 5,
+    kind: 'message',
     bg: ['#7C2D12', '#B45309', '#F59E0B'] as const,
     mood: 'celebrating',
     eyebrow: 'READY',
     headline: 'Nice to meet you.',
-    body: 'Your first lesson is waiting. Three minutes, then you\'ll feel the difference.',
+    body: "Your first lesson is waiting. Three minutes, then you'll feel the difference.",
     ctaLabel: 'Begin',
   },
 ];
@@ -88,10 +138,16 @@ export function OnboardingScreen({ navigation }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
+  // Answers from choice steps. Keyed by `answerKey` (e.g. 'skillLevel').
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const setUser = useUserStore((s) => s.setUser);
 
   const step = STEPS[stepIndex];
+
+  const isChoiceStep = step.kind === 'choice';
+  const isNameStep = step.kind === 'name';
+  const currentAnswer = step.answerKey ? answers[step.answerKey] : undefined;
 
   const tap = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -115,6 +171,12 @@ export function OnboardingScreen({ navigation }: Props) {
     setCreating(true);
 
     const trimmed = (name || 'friend').trim();
+    // Persist onboarding answers locally so the personalisation layer can
+    // read them. (UserStore exposes `setUser` with arbitrary fields via the
+    // partial-state shape; safe to add skillLevel + goal here.)
+    await AsyncStorage.setItem('aira_skill_level', answers.skillLevel || 'beginner');
+    await AsyncStorage.setItem('aira_goal', answers.goal || 'basics');
+
     let userId = '';
     try {
       const user = await getOrCreateUser(trimmed);
@@ -137,8 +199,10 @@ export function OnboardingScreen({ navigation }: Props) {
     navigation.replace('MainTabs');
   }, [creating, name, navigation, setUser]);
 
-  const isNameStep = stepIndex === 2;
-  const ctaDisabled = isNameStep && name.trim().length === 0;
+  // CTA gating: choice steps require an answer; name step requires a name.
+  const ctaDisabled =
+    (isChoiceStep && !currentAnswer) ||
+    (isNameStep && name.trim().length === 0);
 
   return (
     <LinearGradient colors={step.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.root}>
@@ -196,6 +260,38 @@ export function OnboardingScreen({ navigation }: Props) {
                   maxLength={24}
                   onSubmitEditing={() => !ctaDisabled && goNext()}
                 />
+              </View>
+            )}
+
+            {isChoiceStep && step.choices && (
+              <View style={styles.choiceList}>
+                {step.choices.map((c) => {
+                  const selected = currentAnswer === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => {
+                        if (Platform.OS !== 'web') {
+                          Haptics.selectionAsync().catch(() => {});
+                        }
+                        if (step.answerKey) {
+                          setAnswers((prev) => ({ ...prev, [step.answerKey as string]: c.id }));
+                        }
+                      }}
+                      style={({ pressed }) => [
+                        styles.choice,
+                        selected && styles.choiceSelected,
+                        pressed && styles.choicePressed,
+                      ]}
+                    >
+                      <View style={[styles.choiceDot, selected && styles.choiceDotSelected]} />
+                      <View style={styles.choiceTextCol}>
+                        <Text style={styles.choiceLabel}>{c.label}</Text>
+                        {c.sub ? <Text style={styles.choiceSub}>{c.sub}</Text> : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
             )}
           </Animated.View>
@@ -285,6 +381,54 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 25,
     color: 'rgba(255,255,255,0.92)',
+  },
+
+  // ---- Choice pills (level + goal selection) ----
+  choiceList: {
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+    width: '100%',
+  },
+  choice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    minHeight: 56,
+    gap: spacing.md,
+  },
+  choiceSelected: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: '#FFFFFF',
+  },
+  choicePressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
+  choiceDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: 'transparent',
+  },
+  choiceDotSelected: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  choiceTextCol: { flex: 1, minWidth: 0 },
+  choiceLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  choiceSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.78)',
+    fontFamily: 'Inter_400Regular',
   },
 
   inputWrap: {

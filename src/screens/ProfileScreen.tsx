@@ -213,7 +213,9 @@ export function ProfileScreen({ navigation }: Props) {
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>🎯</Text>
-            <Text style={styles.statValue}>{avgAccuracy}%</Text>
+            <Text style={styles.statValue}>
+              {totalLessonsCompleted === 0 ? '—' : `${avgAccuracy}%`}
+            </Text>
             <Text style={styles.statLabel}>Accuracy</Text>
           </View>
         </View>

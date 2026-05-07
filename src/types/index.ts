@@ -107,7 +107,6 @@ export type RootStackParamList = {
 export type TabParamList = {
   Dashboard: undefined;
   Lessons: undefined;
-  Journey: undefined;
-  Learn: undefined;
+  Progress: undefined;
   Profile: undefined;
 };

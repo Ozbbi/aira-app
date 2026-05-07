@@ -18,6 +18,18 @@ import { useUserStore } from '../store/userStore';
 import { getInsightOfTheDay } from '../data';
 import type { RootStackParamList, TabParamList } from '../types';
 
+// Time-of-day eyebrow shown above the user's name on Home. Rotates
+// "GOOD MORNING / GOOD AFTERNOON / GOOD EVENING / WELCOME BACK" so the
+// greeting feels alive without us shipping personalisation infra.
+function getGreetingLabel(): string {
+  const h = new Date().getHours();
+  if (h < 5) return 'WELCOME BACK';
+  if (h < 12) return 'GOOD MORNING';
+  if (h < 17) return 'GOOD AFTERNOON';
+  if (h < 22) return 'GOOD EVENING';
+  return 'WELCOME BACK';
+}
+
 // Past 7 days, oldest → today. We mark today as "active" (pulsing dot)
 // and synthesise the past 6 from streak — if streak >= n, that day is filled.
 // This is a temporary stand-in; once the backend exposes a per-day activity
@@ -193,13 +205,13 @@ export function DashboardScreen({ navigation }: Props) {
         />
       }
     >
-      {/* Greeting card — mascot says hi */}
+      {/* Greeting — time-of-day aware, no markdown / no exclamation soup */}
       <Animated.View entering={FadeIn.duration(260)} style={styles.greetingCard}>
         <View style={styles.greetingRow}>
           <View style={styles.greetingTextWrap}>
-            <Text style={styles.welcomeLabel}>WELCOME BACK</Text>
+            <Text style={styles.welcomeLabel}>{getGreetingLabel()}</Text>
             <Text style={styles.greeting} numberOfLines={1}>
-              Hey {name || 'there'} 👋
+              Hey {name || 'there'}
             </Text>
           </View>
           <View style={styles.greetingMascotWrap}>

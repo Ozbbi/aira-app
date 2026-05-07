@@ -13,8 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { LearningMapScreen } from '../screens/LearningMapScreen';
-import { JourneyScreen } from '../screens/JourneyScreen';
-import { LearnScreen } from '../screens/LearnScreen';
+import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { haptics } from '../utils/haptics';
 import { colors, radius, spacing, typography } from '../theme';
@@ -22,15 +21,15 @@ import type { TabParamList } from '../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-// Tab labels chosen to disambiguate Lessons (the curriculum tracks)
-// from Library (the bite-size insights / patterns / mistakes feed).
-// "Learn" was confusing next to "Lessons"; same data, clearer label.
+// 4 tabs (per the design-system brief). Journey was redundant with the
+// new Learn tab's skill tree; Library content is now folded into the
+// Home feed; Progress is split out from Profile to make stats and
+// achievements first-class.
 const TAB_DEFS = [
-  { name: 'Dashboard', label: 'Home',    glyph: '🏠' },
-  { name: 'Lessons',   label: 'Lessons', glyph: '📚' },
-  { name: 'Journey',   label: 'Journey', glyph: '🗺️' },
-  { name: 'Learn',     label: 'Library', glyph: '💡' },
-  { name: 'Profile',   label: 'You',     glyph: '👤' },
+  { name: 'Dashboard', label: 'Home',     glyph: '🏠' },
+  { name: 'Lessons',   label: 'Learn',    glyph: '📚' },
+  { name: 'Progress',  label: 'Progress', glyph: '📈' },
+  { name: 'Profile',   label: 'Profile',  glyph: '👤' },
 ] as const;
 
 /**
@@ -222,8 +221,7 @@ export function TabNavigator() {
         >
           <Tab.Screen name="Dashboard" component={DashboardScreen} />
           <Tab.Screen name="Lessons" component={LearningMapScreen} />
-          <Tab.Screen name="Journey" component={JourneyScreen} />
-          <Tab.Screen name="Learn" component={LearnScreen} />
+          <Tab.Screen name="Progress" component={ProgressScreen} />
           <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
       </View>

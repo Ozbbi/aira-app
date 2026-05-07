@@ -3,11 +3,13 @@ import { Text, StyleSheet, View, Pressable, LayoutChangeEvent } from 'react-nati
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { LearningMapScreen } from '../screens/LearningMapScreen';
@@ -162,28 +164,70 @@ function TabIcon({ glyph, focused }: { glyph: string; focused: boolean }) {
   );
 }
 
-// NOTE: an experimental swipe-between-tabs gesture lived here in v9.
-// Removed in v11 because the GestureDetector at the navigator root was
-// starving touch events on some Android builds (taps + scrolls felt
-// frozen — the "uygulama buglı" the user reported). If we want
-// horizontal swipe later, the safer path is to switch to
-// `@react-navigation/material-top-tabs` rather than wedge a gesture
-// handler over the bottom-tabs navigator.
+/**
+ * Horizontal swipe between sibling tabs.
+ *
+ * v9 had this and starved touch events. v12 brings it back with much
+ * tighter thresholds that let scroll/tap gestures win:
+ *
+ *   activeOffsetX([-30, 30])  — need 30px of horizontal movement before
+ *                                swipe activates (was 25 in v9)
+ *   failOffsetY([-12, 12])    — gesture FAILS as soon as vertical motion
+ *                                exceeds 12px (was 30 in v9). This is
+ *                                the key difference: vertical scrolls
+ *                                claim the responder almost immediately.
+ *
+ * Net effect: only deliberate, mostly-horizontal gestures swipe between
+ * tabs. Casual scrolls and taps pass through cleanly.
+ */
 export function TabNavigator() {
+  const swipeRef = useRef<{ navigation: any; index: number } | null>(null);
+
+  const goRelative = (delta: number) => {
+    const ctx = swipeRef.current;
+    if (!ctx) return;
+    const next = ctx.index + delta;
+    if (next < 0 || next >= TAB_DEFS.length) return;
+    haptics.select();
+    ctx.navigation.navigate(TAB_DEFS[next].name);
+  };
+
+  const swipe = Gesture.Pan()
+    .activeOffsetX([-30, 30])
+    .failOffsetY([-12, 12])
+    .onEnd((e) => {
+      'worklet';
+      // Sanity guard: never fire if vertical motion was significant.
+      if (Math.abs(e.translationY) > 40) return;
+      // Need clearly more horizontal than vertical motion.
+      if (Math.abs(e.translationX) < 60) return;
+      if (Math.abs(e.translationY) > Math.abs(e.translationX) * 0.6) return;
+      if (e.translationX < -60) runOnJS(goRelative)(1);
+      else if (e.translationX > 60) runOnJS(goRelative)(-1);
+    });
+
   return (
-    <Tab.Navigator
-      tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        sceneStyle: { backgroundColor: colors.bg },
-      }}
-    >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Lessons" component={LearningMapScreen} />
-      <Tab.Screen name="Journey" component={JourneyScreen} />
-      <Tab.Screen name="Learn" component={LearnScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+    <GestureDetector gesture={swipe}>
+      <View style={styles.fill}>
+        <Tab.Navigator
+          tabBar={(props) => {
+            // Bridge for the swipe handler — fresh tab state every render.
+            swipeRef.current = { navigation: props.navigation, index: props.state.index };
+            return <FloatingTabBar {...props} />;
+          }}
+          screenOptions={{
+            headerShown: false,
+            sceneStyle: { backgroundColor: colors.bg },
+          }}
+        >
+          <Tab.Screen name="Dashboard" component={DashboardScreen} />
+          <Tab.Screen name="Lessons" component={LearningMapScreen} />
+          <Tab.Screen name="Journey" component={JourneyScreen} />
+          <Tab.Screen name="Learn" component={LearnScreen} />
+          <Tab.Screen name="Profile" component={ProfileScreen} />
+        </Tab.Navigator>
+      </View>
+    </GestureDetector>
   );
 }
 

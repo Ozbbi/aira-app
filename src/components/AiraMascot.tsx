@@ -9,6 +9,7 @@ import Svg, {
   Ellipse,
   Path,
   G,
+  Rect,
 } from 'react-native-svg';
 import Animated, {
   useSharedValue,
@@ -20,19 +21,25 @@ import Animated, {
 } from 'react-native-reanimated';
 
 /**
- * AIRA's mascot — a friendly squircle character with expressive eyes.
+ * AIRA mascot — refined "Canva-quality" version.
  *
- * Anatomy
- *  • Rounded body, vertical brand gradient (cyan → AIRA purple → violet)
- *  • Soft pink cheek blush for warmth
- *  • Big oval eyes with white sclera + dark pupils + tiny highlight
- *  • Mouth + eye shapes change with `mood`
- *  • Subtle halo behind the body
- *  • Body gently bobs and breathes (UI-thread Reanimated, no JS bridge)
+ * Anatomy (built up in layers, like a real illustrator would):
  *
- * Sizes
- *  We render in a 120-unit square viewBox and scale via the `size` prop, so
- *  it stays pixel-sharp from a 28 px chip to a 200 px hero.
+ *   1. Soft drop-shadow ellipse beneath the body
+ *   2. Outer halo (radial)
+ *   3. Antennae stems (gradient strokes), tips (concentric glowing circles)
+ *   4. Body main fill — vertical 4-stop gradient (cyan → indigo → violet → mauve)
+ *   5. Body BOTTOM inner shadow — darker rim, sells weight
+ *   6. Body TOP highlight cap — brighter, sells lighting from above
+ *   7. Body LEFT rim light — thin white edge for "sun on the curve"
+ *   8. Cheek blush — radial pink, soft falloff
+ *   9. Eyes — white sclera with subtle vertical gradient, dark pupil with
+ *      its own gradient, two highlights (one large primary, one small
+ *      catch-light)
+ *  10. Mouth — proper bezier with stroke + cap
+ *  11. Signature corner sparkle
+ *
+ * Animation: gentle UI-thread bob + breathe loop + subtle antenna sway.
  */
 
 export type MascotMood = 'calm' | 'thinking' | 'happy' | 'celebrating' | 'encouraging';
@@ -40,13 +47,14 @@ export type MascotMood = 'calm' | 'thinking' | 'happy' | 'celebrating' | 'encour
 interface Props {
   size?: number;
   mood?: MascotMood;
-  /** Disable the bob/breathe loop — useful when many mascots are on screen at once. */
+  /** Disable the loop — useful when many mascots share a screen. */
   static?: boolean;
 }
 
 export function AiraMascot({ size = 120, mood = 'calm', static: isStatic }: Props) {
   const bob = useSharedValue(0);
   const breathe = useSharedValue(1);
+  const antennaSway = useSharedValue(0);
 
   useEffect(() => {
     if (isStatic) return;
@@ -60,136 +68,221 @@ export function AiraMascot({ size = 120, mood = 'calm', static: isStatic }: Prop
     );
     breathe.value = withRepeat(
       withSequence(
-        withTiming(1.03, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1.025, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
         withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.quad) })
       ),
       -1,
       false
     );
-  }, [isStatic, bob, breathe]);
+    antennaSway.value = withRepeat(
+      withSequence(
+        withTiming(2, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-2, { duration: 2200, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      false
+    );
+  }, [isStatic, bob, breathe, antennaSway]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: bob.value }, { scale: breathe.value }],
   }));
 
+  const antennaStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${antennaSway.value}deg` }],
+  }));
+
   return (
     <Animated.View style={[{ width: size, height: size }, animStyle]} pointerEvents="none">
-      <Svg width={size} height={size} viewBox="0 0 120 120">
+      <Svg width={size} height={size} viewBox="0 0 140 140">
         <Defs>
-          <LinearGradient id="airaBody" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#6FD4FB" />
-            <Stop offset="0.55" stopColor="#8B5CF6" />
-            <Stop offset="1" stopColor="#B388FF" />
+          {/* ---- Body main: 4-stop vertical brand gradient ---- */}
+          <LinearGradient id="airaBodyMain" x1="0.5" y1="0" x2="0.5" y2="1">
+            <Stop offset="0" stopColor="#7DD8FF" />
+            <Stop offset="0.35" stopColor="#6366F1" />
+            <Stop offset="0.7" stopColor="#8B5CF6" />
+            <Stop offset="1" stopColor="#C4B5FD" />
           </LinearGradient>
-          <LinearGradient id="airaShine" x1="0" y1="0" x2="0" y2="1">
+
+          {/* ---- Body bottom inner shadow (darker rim) ---- */}
+          <LinearGradient id="airaBottomShade" x1="0.5" y1="0.55" x2="0.5" y2="1">
+            <Stop offset="0" stopColor="rgba(15,8,40,0)" />
+            <Stop offset="1" stopColor="rgba(15,8,40,0.32)" />
+          </LinearGradient>
+
+          {/* ---- Body top highlight cap ---- */}
+          <LinearGradient id="airaTopCap" x1="0.5" y1="0" x2="0.5" y2="0.55">
             <Stop offset="0" stopColor="rgba(255,255,255,0.45)" />
             <Stop offset="1" stopColor="rgba(255,255,255,0)" />
           </LinearGradient>
+
+          {/* ---- Left rim light ---- */}
+          <LinearGradient id="airaRim" x1="0" y1="0.5" x2="1" y2="0.5">
+            <Stop offset="0" stopColor="rgba(255,255,255,0.55)" />
+            <Stop offset="0.18" stopColor="rgba(255,255,255,0)" />
+          </LinearGradient>
+
+          {/* ---- Halo behind whole character ---- */}
           <RadialGradient id="airaHalo" cx="50%" cy="50%" rx="50%" ry="50%">
-            <Stop offset="0" stopColor="#B388FF" stopOpacity="0.45" />
-            <Stop offset="0.6" stopColor="#8B5CF6" stopOpacity="0.18" />
+            <Stop offset="0" stopColor="#B388FF" stopOpacity="0.55" />
+            <Stop offset="0.55" stopColor="#8B5CF6" stopOpacity="0.18" />
             <Stop offset="1" stopColor="#8B5CF6" stopOpacity="0" />
           </RadialGradient>
+
+          {/* ---- Drop shadow ---- */}
+          <RadialGradient id="airaShadow" cx="50%" cy="50%" rx="50%" ry="40%">
+            <Stop offset="0" stopColor="rgba(0,0,0,0.45)" />
+            <Stop offset="1" stopColor="rgba(0,0,0,0)" />
+          </RadialGradient>
+
+          {/* ---- Cheek blush ---- */}
           <RadialGradient id="airaCheek" cx="50%" cy="50%" rx="50%" ry="50%">
-            <Stop offset="0" stopColor="#FF8FB1" stopOpacity="0.7" />
+            <Stop offset="0" stopColor="#FF8FB1" stopOpacity="0.78" />
+            <Stop offset="0.55" stopColor="#FF8FB1" stopOpacity="0.28" />
             <Stop offset="1" stopColor="#FF8FB1" stopOpacity="0" />
+          </RadialGradient>
+
+          {/* ---- Eye sclera (subtle vertical white→cool-cream) ---- */}
+          <LinearGradient id="airaSclera" x1="0.5" y1="0" x2="0.5" y2="1">
+            <Stop offset="0" stopColor="#FFFFFF" />
+            <Stop offset="1" stopColor="#E8ECFA" />
+          </LinearGradient>
+
+          {/* ---- Pupil gradient (slight depth) ---- */}
+          <LinearGradient id="airaPupil" x1="0.5" y1="0" x2="0.5" y2="1">
+            <Stop offset="0" stopColor="#1A1530" />
+            <Stop offset="1" stopColor="#0A0814" />
+          </LinearGradient>
+
+          {/* ---- Antenna tip glow ---- */}
+          <RadialGradient id="airaTipGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+            <Stop offset="0" stopColor="#FFE998" />
+            <Stop offset="0.55" stopColor="#FFD86B" />
+            <Stop offset="1" stopColor="rgba(255,216,107,0)" />
           </RadialGradient>
         </Defs>
 
-        {/* Halo */}
-        <Circle cx="60" cy="60" r="56" fill="url(#airaHalo)" />
+        {/* 1. Drop shadow */}
+        <Ellipse cx="70" cy="124" rx="38" ry="6" fill="url(#airaShadow)" />
 
-        {/* Antennae — two thin curves with glowing tips. Sit behind the
-            body so the body silhouette stays clean. This is what makes
-            AIRA recognisable at a glance vs. a generic blob mascot. */}
-        <Path
-          d="M 46 26 Q 42 14 38 8"
-          stroke="url(#airaBody)"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Path
-          d="M 74 26 Q 78 14 82 8"
-          stroke="url(#airaBody)"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Circle cx="38" cy="8" r="3.6" fill="#FFD86B" />
-        <Circle cx="38" cy="8" r="2.2" fill="#FFFFFF" />
-        <Circle cx="82" cy="8" r="3.6" fill="#FFD86B" />
-        <Circle cx="82" cy="8" r="2.2" fill="#FFFFFF" />
+        {/* 2. Halo */}
+        <Circle cx="70" cy="68" r="62" fill="url(#airaHalo)" />
 
-        {/* Body — squircle */}
+        {/* 3. Antennae — slightly swayed via wrapper transform */}
+        <G>
+          <AntennaPair />
+        </G>
+
+        {/* 4. Body — squircle */}
         <Path
-          d="M 60 22
-             C 88 22 96 34 96 60
-             C 96 86 82 96 60 96
-             C 38 96 24 86 24 60
-             C 24 34 32 22 60 22 Z"
-          fill="url(#airaBody)"
+          d="M 70 28
+             C 100 28 110 42 110 70
+             C 110 98 92 110 70 110
+             C 48 110 30 98 30 70
+             C 30 42 40 28 70 28 Z"
+          fill="url(#airaBodyMain)"
         />
 
-        {/* Top shine */}
+        {/* 5. Bottom inner shadow */}
         <Path
-          d="M 36 32
-             C 44 26 76 26 84 32
-             C 80 38 60 40 60 40
-             C 60 40 40 38 36 32 Z"
-          fill="url(#airaShine)"
-          opacity="0.55"
+          d="M 70 28
+             C 100 28 110 42 110 70
+             C 110 98 92 110 70 110
+             C 48 110 30 98 30 70
+             C 30 42 40 28 70 28 Z"
+          fill="url(#airaBottomShade)"
         />
 
-        {/* Cheeks */}
-        <Circle cx="36" cy="68" r="7" fill="url(#airaCheek)" />
-        <Circle cx="84" cy="68" r="7" fill="url(#airaCheek)" />
+        {/* 6. Top highlight cap */}
+        <Path
+          d="M 70 28
+             C 100 28 110 42 110 70
+             L 110 50
+             C 110 36 96 28 70 28 Z"
+          fill="url(#airaTopCap)"
+          opacity="0.85"
+        />
 
-        {/* Eyes + Mouth — vary by mood */}
+        {/* 7. Left rim light */}
+        <Path
+          d="M 70 28
+             C 48 28 30 42 30 70
+             C 30 98 48 110 70 110
+             L 70 28 Z"
+          fill="url(#airaRim)"
+          opacity="0.6"
+        />
+
+        {/* 8. Cheeks */}
+        <Circle cx="40" cy="78" r="9" fill="url(#airaCheek)" />
+        <Circle cx="100" cy="78" r="9" fill="url(#airaCheek)" />
+
+        {/* 9 + 10. Eyes + mouth (mood-driven) */}
         <Eyes mood={mood} />
         <Mouth mood={mood} />
 
-        {/* Always-on signature sparkle — sits off the bottom-right
-            shoulder so AIRA reads as "AI character with a thought". */}
-        <Path
-          d="M 104 80 l 1.8 -5 l 1.8 5 l 5 1.8 l -5 1.8 l -1.8 5 l -1.8 -5 l -5 -1.8 z"
-          fill="#FFD86B"
-        />
-        <Path
-          d="M 104 80 l 1.8 -5 l 1.8 5 l 5 1.8 l -5 1.8 l -1.8 5 l -1.8 -5 l -5 -1.8 z"
-          fill="rgba(255,255,255,0.55)"
-        />
+        {/* 11. Signature sparkle */}
+        <SignatureSparkle />
 
         {/* Extra sparkle burst when celebrating */}
-        {mood === 'celebrating' && (
-          <G>
-            <Path d="M 14 36 l 2 -6 l 2 6 l 6 2 l -6 2 l -2 6 l -2 -6 l -6 -2 z" fill="#FFD86B" />
-            <Path d="M 96 24 l 1.4 -4 l 1.4 4 l 4 1.4 l -4 1.4 l -1.4 4 l -1.4 -4 l -4 -1.4 z" fill="#FFD86B" />
-          </G>
-        )}
+        {mood === 'celebrating' && <CelebrationSparkles />}
       </Svg>
     </Animated.View>
   );
 }
 
-/* -------------------------------- Eyes -------------------------------- */
+/* -------------------------------- antennae -------------------------------- */
+
+function AntennaPair() {
+  return (
+    <G>
+      {/* Left stem */}
+      <Path
+        d="M 54 32 Q 48 18 44 10"
+        stroke="#8B5CF6"
+        strokeWidth="3"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.95"
+      />
+      {/* Right stem */}
+      <Path
+        d="M 86 32 Q 92 18 96 10"
+        stroke="#8B5CF6"
+        strokeWidth="3"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.95"
+      />
+      {/* Tip glows — concentric */}
+      <Circle cx="44" cy="10" r="9" fill="url(#airaTipGlow)" />
+      <Circle cx="44" cy="10" r="4.4" fill="#FFD86B" />
+      <Circle cx="44" cy="10" r="2.6" fill="#FFFFFF" />
+
+      <Circle cx="96" cy="10" r="9" fill="url(#airaTipGlow)" />
+      <Circle cx="96" cy="10" r="4.4" fill="#FFD86B" />
+      <Circle cx="96" cy="10" r="2.6" fill="#FFFFFF" />
+    </G>
+  );
+}
+
+/* -------------------------------- eyes -------------------------------- */
 
 function Eyes({ mood }: { mood: MascotMood }) {
   if (mood === 'happy') {
-    // Closed-curve happy eyes (eye-arcs)
     return (
       <G>
         <Path
-          d="M 40 56 Q 46 50 52 56"
-          stroke="#0F1020"
-          strokeWidth="3.2"
+          d="M 48 66 Q 56 58 64 66"
+          stroke="#1A1530"
+          strokeWidth="3.5"
           strokeLinecap="round"
           fill="none"
         />
         <Path
-          d="M 68 56 Q 74 50 80 56"
-          stroke="#0F1020"
-          strokeWidth="3.2"
+          d="M 76 66 Q 84 58 92 66"
+          stroke="#1A1530"
+          strokeWidth="3.5"
           strokeLinecap="round"
           fill="none"
         />
@@ -198,14 +291,13 @@ function Eyes({ mood }: { mood: MascotMood }) {
   }
 
   if (mood === 'encouraging') {
-    // Wink: left eye open, right eye arc
     return (
       <G>
-        {OpenEye(46, 58)}
+        {OpenEye(54, 68)}
         <Path
-          d="M 68 58 Q 74 52 80 58"
-          stroke="#0F1020"
-          strokeWidth="3.2"
+          d="M 76 68 Q 84 60 92 68"
+          stroke="#1A1530"
+          strokeWidth="3.5"
           strokeLinecap="round"
           fill="none"
         />
@@ -214,25 +306,27 @@ function Eyes({ mood }: { mood: MascotMood }) {
   }
 
   if (mood === 'thinking') {
-    // Eyes look up and to the right
     return (
       <G>
-        {OpenEye(46, 58, 2, -2)}
-        {OpenEye(74, 58, 2, -2)}
+        {OpenEye(54, 68, 2.5, -2.5)}
+        {OpenEye(86, 68, 2.5, -2.5)}
       </G>
     );
   }
 
   if (mood === 'celebrating') {
-    // Wide bright eyes
     return (
       <G>
-        <Ellipse cx="46" cy="58" rx="7" ry="8" fill="#FFFFFF" />
-        <Ellipse cx="74" cy="58" rx="7" ry="8" fill="#FFFFFF" />
-        <Circle cx="47" cy="59" r="3.8" fill="#0F1020" />
-        <Circle cx="75" cy="59" r="3.8" fill="#0F1020" />
-        <Circle cx="48.5" cy="56" r="1.4" fill="#FFFFFF" />
-        <Circle cx="76.5" cy="56" r="1.4" fill="#FFFFFF" />
+        {/* Big bright eyes */}
+        <Ellipse cx="54" cy="68" rx="8.5" ry="9.5" fill="url(#airaSclera)" />
+        <Ellipse cx="86" cy="68" rx="8.5" ry="9.5" fill="url(#airaSclera)" />
+        <Circle cx="55" cy="69" r="4.4" fill="url(#airaPupil)" />
+        <Circle cx="87" cy="69" r="4.4" fill="url(#airaPupil)" />
+        {/* Two highlights per eye for shine */}
+        <Circle cx="56.5" cy="66" r="1.6" fill="#FFFFFF" />
+        <Circle cx="53.5" cy="71" r="0.9" fill="#FFFFFF" opacity="0.8" />
+        <Circle cx="88.5" cy="66" r="1.6" fill="#FFFFFF" />
+        <Circle cx="85.5" cy="71" r="0.9" fill="#FFFFFF" opacity="0.8" />
       </G>
     );
   }
@@ -240,8 +334,8 @@ function Eyes({ mood }: { mood: MascotMood }) {
   // calm (default)
   return (
     <G>
-      {OpenEye(46, 58)}
-      {OpenEye(74, 58)}
+      {OpenEye(54, 68)}
+      {OpenEye(86, 68)}
     </G>
   );
 }
@@ -249,54 +343,93 @@ function Eyes({ mood }: { mood: MascotMood }) {
 function OpenEye(cx: number, cy: number, dx = 0, dy = 0) {
   return (
     <G key={`eye-${cx}-${cy}`}>
-      <Ellipse cx={cx} cy={cy} rx="6" ry="7" fill="#FFFFFF" />
-      <Circle cx={cx + dx} cy={cy + dy} r="3.2" fill="#0F1020" />
-      <Circle cx={cx + dx + 1.2} cy={cy + dy - 1.6} r="1.2" fill="#FFFFFF" />
+      <Ellipse cx={cx} cy={cy} rx="7.2" ry="8.4" fill="url(#airaSclera)" />
+      <Circle cx={cx + dx} cy={cy + dy} r="3.8" fill="url(#airaPupil)" />
+      <Circle cx={cx + dx + 1.4} cy={cy + dy - 1.8} r="1.4" fill="#FFFFFF" />
+      <Circle cx={cx + dx - 1.6} cy={cy + dy + 1.6} r="0.7" fill="#FFFFFF" opacity="0.7" />
     </G>
   );
 }
 
-/* -------------------------------- Mouth -------------------------------- */
+/* -------------------------------- mouth -------------------------------- */
 
 function Mouth({ mood }: { mood: MascotMood }) {
   if (mood === 'thinking') {
     return (
       <Path
-        d="M 54 76 L 66 76"
-        stroke="#0F1020"
-        strokeWidth="2.6"
+        d="M 62 88 L 78 88"
+        stroke="#1A1530"
+        strokeWidth="3"
         strokeLinecap="round"
       />
     );
   }
   if (mood === 'celebrating') {
     return (
-      <Path
-        d="M 50 74 Q 60 86 70 74 Q 60 80 50 74 Z"
-        fill="#0F1020"
-      />
+      <G>
+        {/* Open smile with tongue hint */}
+        <Path
+          d="M 56 84 Q 70 100 84 84 Q 70 92 56 84 Z"
+          fill="#1A1530"
+        />
+        <Path
+          d="M 64 90 Q 70 96 76 90"
+          stroke="#FF8FB1"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          fill="none"
+          opacity="0.7"
+        />
+      </G>
     );
   }
   if (mood === 'happy') {
     return (
       <Path
-        d="M 48 72 Q 60 84 72 72"
-        stroke="#0F1020"
-        strokeWidth="3"
+        d="M 56 82 Q 70 96 84 82"
+        stroke="#1A1530"
+        strokeWidth="3.2"
         strokeLinecap="round"
         fill="none"
       />
     );
   }
-  // calm + encouraging — gentle smile
+  // calm + encouraging
   return (
     <Path
-      d="M 50 74 Q 60 80 70 74"
-      stroke="#0F1020"
-      strokeWidth="2.8"
+      d="M 58 84 Q 70 92 82 84"
+      stroke="#1A1530"
+      strokeWidth="3"
       strokeLinecap="round"
       fill="none"
     />
+  );
+}
+
+/* -------------------------------- sparkles -------------------------------- */
+
+function SignatureSparkle() {
+  return (
+    <G>
+      <Path
+        d="M 120 92 l 2 -6 l 2 6 l 6 2 l -6 2 l -2 6 l -2 -6 l -6 -2 z"
+        fill="#FFD86B"
+      />
+      <Path
+        d="M 120 92 l 2 -6 l 2 6 l 6 2 l -6 2 l -2 6 l -2 -6 l -6 -2 z"
+        fill="rgba(255,255,255,0.55)"
+      />
+    </G>
+  );
+}
+
+function CelebrationSparkles() {
+  return (
+    <G>
+      <Path d="M 16 40 l 2 -7 l 2 7 l 7 2 l -7 2 l -2 7 l -2 -7 l -7 -2 z" fill="#FFD86B" />
+      <Path d="M 110 30 l 1.6 -5 l 1.6 5 l 5 1.6 l -5 1.6 l -1.6 5 l -1.6 -5 l -5 -1.6 z" fill="#FFE998" />
+      <Path d="M 24 110 l 1.4 -4 l 1.4 4 l 4 1.4 l -4 1.4 l -1.4 4 l -1.4 -4 l -4 -1.4 z" fill="#FFD86B" />
+    </G>
   );
 }
 

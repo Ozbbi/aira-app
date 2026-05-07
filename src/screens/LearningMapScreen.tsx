@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { FadeIn, FadeInDown, FadeInUp, useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
+import { TabScreen } from '../components/TabScreen';
 import { colors, radius, spacing } from '../theme';
 import { getProgress, getCurriculum } from '../api/client';
 import { useUserStore } from '../store/userStore';
@@ -164,7 +165,8 @@ export function LearningMapScreen({ navigation }: Props) {
   const overallProgress = totalLessons > 0 ? (totalCompleted / totalLessons) * 100 : 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <TabScreen>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollPad} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={handleBack}>
@@ -267,6 +269,40 @@ export function LearningMapScreen({ navigation }: Props) {
         })}
       </Animated.View>
 
+      {/* Learn how to code — separate gradient card with its own entry point */}
+      <Animated.View entering={FadeInDown.duration(260).delay(280)} style={styles.codeWrap}>
+        <Pressable
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            navigation.navigate('CodeTrack' as never);
+          }}
+          style={({ pressed }) => [pressed && { opacity: 0.95, transform: [{ scale: 0.99 }] }]}
+        >
+          <LinearGradient
+            colors={['#0F172A', '#1E3A8A', '#06B6D4']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.codeCard}
+          >
+            <Text style={styles.codeEyebrow}>NEW · CODE TRACK</Text>
+            <Text style={styles.codeTitle}>Learn how to code</Text>
+            <Text style={styles.codeBody}>
+              Python, Java, or HTML. Pick your language, pick your level, start.
+            </Text>
+            <View style={styles.codeChips}>
+              <View style={styles.codeChip}><Text style={styles.codeChipText}>🐍 Python</Text></View>
+              <View style={styles.codeChip}><Text style={styles.codeChipText}>☕ Java</Text></View>
+              <View style={styles.codeChip}><Text style={styles.codeChipText}>🌐 HTML</Text></View>
+            </View>
+            <View style={styles.codeCta}>
+              <Text style={styles.codeCtaText}>Get started →</Text>
+            </View>
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
+
       {/* AIRA Message */}
       <Animated.View entering={FadeInUp.duration(260).delay(360)} style={styles.airaSection}>
         <View style={styles.airaRow}>
@@ -281,10 +317,78 @@ export function LearningMapScreen({ navigation }: Props) {
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
+    </TabScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollPad: { paddingBottom: 100 },
+
+  // Learn how to code card
+  codeWrap: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  codeCard: {
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    shadowColor: '#06B6D4',
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  codeEyebrow: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 4,
+  },
+  codeTitle: {
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 22,
+    color: '#FFFFFF',
+    marginBottom: 6,
+    letterSpacing: -0.3,
+  },
+  codeBody: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    lineHeight: 20,
+    color: 'rgba(255,255,255,0.92)',
+    marginBottom: spacing.sm,
+  },
+  codeChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: spacing.sm,
+  },
+  codeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+  },
+  codeChipText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  codeCta: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginTop: 4,
+  },
+  codeCtaText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    color: '#0F172A',
+  },
   container: {
     flex: 1,
     backgroundColor: colors.bg,

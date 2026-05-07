@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
+import { TabScreen } from '../components/TabScreen';
 import { colors, radius, spacing } from '../theme';
 import { useUserStore } from '../store/userStore';
 import { getCurriculum, getProgress } from '../api/client';
@@ -124,7 +125,8 @@ export function ProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <TabScreen>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
       {/* Header with AiraCharacter */}
       <Animated.View entering={FadeInDown.duration(260)} style={styles.header}>
         <AiraCharacter mood="calm" size={80} />
@@ -279,6 +281,7 @@ export function ProfileScreen({ navigation }: Props) {
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
+    </TabScreen>
   );
 }
 

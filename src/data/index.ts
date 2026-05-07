@@ -28,3 +28,6 @@ export {
   checkSeedAnswer,
   isSeedLessonId,
 } from './lessonAdapter';
+
+export { CODE_LESSONS } from './codeLessons';
+export type { CodeLanguage, CodeLevel, CodeLesson } from './codeLessons';

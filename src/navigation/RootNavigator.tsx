@@ -7,6 +7,7 @@ import { TopicScreen } from '../screens/TopicScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { TrackDetailScreen } from '../screens/TrackDetailScreen';
 import { LearningMapScreen } from '../screens/LearningMapScreen';
+import { CodeTrackScreen } from '../screens/CodeTrackScreen';
 import { TabNavigator } from './TabNavigator';
 import { useUserStore } from '../store/userStore';
 import { colors } from '../theme';
@@ -64,6 +65,11 @@ export function RootNavigator() {
       <Stack.Screen
         name="LearningMap"
         component={LearningMapScreen}
+      />
+      <Stack.Screen
+        name="CodeTrack"
+        component={CodeTrackScreen}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );

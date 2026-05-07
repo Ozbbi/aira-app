@@ -101,6 +101,7 @@ export type RootStackParamList = {
   Paywall: undefined;
   TrackDetail: { trackId: string };
   LearningMap: undefined;
+  CodeTrack: undefined;
 };
 
 export type TabParamList = {

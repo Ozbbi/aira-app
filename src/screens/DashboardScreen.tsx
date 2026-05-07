@@ -11,6 +11,7 @@ import { MotiView } from 'moti';
 import { AiraCharacter } from '../components/AiraCharacter';
 import { AiraMascot } from '../components/AiraMascot';
 import { AnimatedNumber } from '../components/AnimatedNumber';
+import { TabScreen } from '../components/TabScreen';
 import { colors, radius, spacing, typography } from '../theme';
 import { getProgress, getCurriculum } from '../api/client';
 import { useUserStore } from '../store/userStore';
@@ -173,6 +174,7 @@ export function DashboardScreen({ navigation }: Props) {
   const xpProgress = (xp / xpForNextLevel) * 100;
 
   return (
+    <TabScreen>
     <SafeAreaView style={styles.safe} edges={['top']}>
     <ScrollView
       style={styles.container}
@@ -426,6 +428,7 @@ export function DashboardScreen({ navigation }: Props) {
       <View style={styles.bottomSpacer} />
     </ScrollView>
     </SafeAreaView>
+    </TabScreen>
   );
 }
 

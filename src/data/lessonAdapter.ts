@@ -7,7 +7,11 @@
 // `checkSeedAnswer` to evaluate against the seed's `correctAnswer` field.
 
 import { SEED_LESSONS, SeedLesson } from './seedLessons';
+import { CODE_LESSONS } from './codeLessons';
 import type { Lesson, Question, AnswerResult } from '../types';
+
+// Single union pool for any local lesson lookup.
+const ALL_LOCAL_LESSONS: SeedLesson[] = [...SEED_LESSONS, ...CODE_LESSONS];
 
 /**
  * Map track ids in seed lessons to the topic strings used elsewhere.
@@ -51,7 +55,7 @@ export function seedToLesson(seed: SeedLesson): Lesson {
 }
 
 export function findSeedLesson(lessonId: string): Lesson | null {
-  const seed = SEED_LESSONS.find((l) => l.id === lessonId);
+  const seed = ALL_LOCAL_LESSONS.find((l) => l.id === lessonId);
   return seed ? seedToLesson(seed) : null;
 }
 
@@ -73,7 +77,7 @@ export function checkSeedAnswer(
   questionId: string,
   userAnswer: number | boolean | string | string[]
 ): AnswerResult {
-  const lesson = SEED_LESSONS.find((l) => l.id === lessonId);
+  const lesson = ALL_LOCAL_LESSONS.find((l) => l.id === lessonId);
   const question = lesson?.questions.find((q) => q.id === questionId);
   if (!lesson || !question) {
     return {
@@ -127,5 +131,10 @@ export function checkSeedAnswer(
 }
 
 export function isSeedLessonId(lessonId: string): boolean {
-  return SEED_LESSONS.some((l) => l.id === lessonId);
+  return ALL_LOCAL_LESSONS.some((l) => l.id === lessonId);
+}
+
+/** Total count of locally-shipped lessons (AI + code). For UI badges. */
+export function localLessonCount(): number {
+  return ALL_LOCAL_LESSONS.length;
 }

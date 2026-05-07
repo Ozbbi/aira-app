@@ -10,10 +10,12 @@ import {
   QUICK_WINS,
   dailyPick,
   hoursUntilTomorrow,
+  userDailyShuffle,
 } from '../data';
 import { haptics } from '../utils/haptics';
 import { useUserStore } from '../store/userStore';
 import { AiraMascot } from '../components/AiraMascot';
+import { TabScreen } from '../components/TabScreen';
 
 /**
  * Learn — colourful, daily-rotating library.
@@ -34,14 +36,27 @@ interface SectionDef {
   id: Section;
   label: string;
   emoji: string;
-  count: number;
+  /** "savedCount" only matters for the Saved pill — every other section
+      hides its count to feel "always more". */
+  showCount?: boolean;
+  count?: number;
   gradient: readonly [string, string, ...string[]];
 }
 
 export function LearnScreen() {
+  const userId = useUserStore((s) => s.userId);
   const bookmarks = useUserStore((s) => s.bookmarks);
   const toggleBookmark = useUserStore((s) => s.toggleBookmark);
   const [active, setActive] = useState<Section>('today');
+
+  // Daily-rotating, per-user shuffles — the same user sees the same order
+  // all day, and tomorrow it shifts. Two users get different orders, so
+  // word-of-mouth recommendations stay accurate ("the one near the top
+  // about X") even when content is the same.
+  const insightsOrder = useMemo(() => userDailyShuffle(INSIGHTS, userId), [userId]);
+  const patternsOrder = useMemo(() => userDailyShuffle(PATTERNS, userId), [userId]);
+  const mistakesOrder = useMemo(() => userDailyShuffle(MISTAKES, userId), [userId]);
+  const winsOrder = useMemo(() => userDailyShuffle(QUICK_WINS, userId), [userId]);
 
   const todayInsight = useMemo(() => dailyPick(INSIGHTS), []);
   const todayPattern = useMemo(() => dailyPick(PATTERNS), []);
@@ -50,12 +65,12 @@ export function LearnScreen() {
   const hoursLeft = hoursUntilTomorrow();
 
   const sections: SectionDef[] = [
-    { id: 'today',    label: 'Today',    emoji: '🌅', count: 4, gradient: ['#F59E0B', '#EC4899'] as const },
-    { id: 'saved',    label: 'Saved',    emoji: '💛', count: bookmarks.length, gradient: ['#A855F7', '#EC4899'] as const },
-    { id: 'insights', label: 'Insights', emoji: '💡', count: INSIGHTS.length, gradient: ['#F59E0B', '#FB923C'] as const },
-    { id: 'patterns', label: 'Patterns', emoji: '🧩', count: PATTERNS.length, gradient: ['#06B6D4', '#3B82F6'] as const },
-    { id: 'mistakes', label: 'Mistakes', emoji: '⚠️',  count: MISTAKES.length, gradient: ['#EC4899', '#F43F5E'] as const },
-    { id: 'wins',     label: 'Quick Wins', emoji: '⚡', count: QUICK_WINS.length, gradient: ['#10B981', '#06B6D4'] as const },
+    { id: 'today',    label: 'Today',    emoji: '🌅', gradient: ['#F59E0B', '#EC4899'] as const },
+    { id: 'saved',    label: 'Saved',    emoji: '💛', showCount: true, count: bookmarks.length, gradient: ['#A855F7', '#EC4899'] as const },
+    { id: 'insights', label: 'Insights', emoji: '💡', gradient: ['#F59E0B', '#FB923C'] as const },
+    { id: 'patterns', label: 'Patterns', emoji: '🧩', gradient: ['#06B6D4', '#3B82F6'] as const },
+    { id: 'mistakes', label: 'Mistakes', emoji: '⚠️', gradient: ['#EC4899', '#F43F5E'] as const },
+    { id: 'wins',     label: 'Quick Wins', emoji: '⚡', gradient: ['#10B981', '#06B6D4'] as const },
   ];
 
   const onPickSection = (s: Section) => {
@@ -81,6 +96,7 @@ export function LearnScreen() {
   );
 
   return (
+    <TabScreen>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -103,6 +119,7 @@ export function LearnScreen() {
       >
         {sections.map((s) => {
           const isActive = active === s.id;
+          const label = s.showCount ? `${s.emoji}  ${s.label}  ·  ${s.count ?? 0}` : `${s.emoji}  ${s.label}`;
           if (isActive) {
             return (
               <LinearGradient
@@ -113,18 +130,14 @@ export function LearnScreen() {
                 style={[styles.pill, styles.pillActive]}
               >
                 <Pressable onPress={() => onPickSection(s.id)} style={styles.pillInner}>
-                  <Text style={[styles.pillText, styles.pillTextActive]}>
-                    {s.emoji}  {s.label}  ·  {s.count}
-                  </Text>
+                  <Text style={[styles.pillText, styles.pillTextActive]}>{label}</Text>
                 </Pressable>
               </LinearGradient>
             );
           }
           return (
             <Pressable key={s.id} onPress={() => onPickSection(s.id)} style={styles.pill}>
-              <Text style={styles.pillText}>
-                {s.emoji}  {s.label}  ·  {s.count}
-              </Text>
+              <Text style={styles.pillText}>{label}</Text>
             </Pressable>
           );
         })}
@@ -147,23 +160,24 @@ export function LearnScreen() {
       )}
 
       {active === 'insights' && (
-        <InsightsList bookmarks={bookmarks} onBookmark={onBookmark} />
+        <InsightsList items={insightsOrder} bookmarks={bookmarks} onBookmark={onBookmark} />
       )}
 
       {active === 'patterns' && (
-        <PatternsList bookmarks={bookmarks} onBookmark={onBookmark} />
+        <PatternsList items={patternsOrder} bookmarks={bookmarks} onBookmark={onBookmark} />
       )}
 
       {active === 'mistakes' && (
-        <MistakesList bookmarks={bookmarks} onBookmark={onBookmark} />
+        <MistakesList items={mistakesOrder} bookmarks={bookmarks} onBookmark={onBookmark} />
       )}
 
       {active === 'wins' && (
-        <WinsList bookmarks={bookmarks} onBookmark={onBookmark} />
+        <WinsList items={winsOrder} bookmarks={bookmarks} onBookmark={onBookmark} />
       )}
 
       <View style={styles.bottomSpace} />
     </ScrollView>
+    </TabScreen>
   );
 }
 
@@ -307,11 +321,11 @@ function SavedView({
 /* ---------------------------- per-category lists ---------------------------- */
 
 function InsightsList({
-  bookmarks, onBookmark,
-}: { bookmarks: string[]; onBookmark: (id: string) => void }) {
+  items, bookmarks, onBookmark,
+}: { items: typeof INSIGHTS; bookmarks: string[]; onBookmark: (id: string) => void }) {
   return (
     <View>
-      {INSIGHTS.map((it, i) => (
+      {items.map((it, i) => (
         <Animated.View key={it.id} entering={FadeInDown.duration(220).delay(i * 22)}>
           <ColorCard
             eyebrow="INSIGHT"
@@ -328,10 +342,10 @@ function InsightsList({
   );
 }
 
-function PatternsList({ bookmarks, onBookmark }: { bookmarks: string[]; onBookmark: (id: string) => void }) {
+function PatternsList({ items, bookmarks, onBookmark }: { items: typeof PATTERNS; bookmarks: string[]; onBookmark: (id: string) => void }) {
   return (
     <View>
-      {PATTERNS.map((p, i) => (
+      {items.map((p, i) => (
         <Animated.View key={p.id} entering={FadeInDown.duration(220).delay(i * 22)}>
           <ColorCard
             eyebrow="PATTERN"
@@ -353,10 +367,10 @@ function PatternsList({ bookmarks, onBookmark }: { bookmarks: string[]; onBookma
   );
 }
 
-function MistakesList({ bookmarks, onBookmark }: { bookmarks: string[]; onBookmark: (id: string) => void }) {
+function MistakesList({ items, bookmarks, onBookmark }: { items: typeof MISTAKES; bookmarks: string[]; onBookmark: (id: string) => void }) {
   return (
     <View>
-      {MISTAKES.map((m, i) => (
+      {items.map((m, i) => (
         <Animated.View key={m.id} entering={FadeInDown.duration(220).delay(i * 22)}>
           <ColorCard
             eyebrow="COMMON MISTAKE"
@@ -378,10 +392,10 @@ function MistakesList({ bookmarks, onBookmark }: { bookmarks: string[]; onBookma
   );
 }
 
-function WinsList({ bookmarks, onBookmark }: { bookmarks: string[]; onBookmark: (id: string) => void }) {
+function WinsList({ items, bookmarks, onBookmark }: { items: typeof QUICK_WINS; bookmarks: string[]; onBookmark: (id: string) => void }) {
   return (
     <View>
-      {QUICK_WINS.map((q, i) => (
+      {items.map((q, i) => (
         <Animated.View key={q.id} entering={FadeInDown.duration(220).delay(i * 18)}>
           <ColorCard
             eyebrow="60-SEC WIN"

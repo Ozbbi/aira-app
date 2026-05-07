@@ -6,6 +6,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AiraMascot } from '../components/AiraMascot';
+import { TabScreen } from '../components/TabScreen';
 import { colors, radius, spacing, typography } from '../theme';
 import { useUserStore } from '../store/userStore';
 import { haptics } from '../utils/haptics';
@@ -112,6 +113,7 @@ export function JourneyScreen() {
   };
 
   return (
+    <TabScreen>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scroll}
@@ -219,6 +221,7 @@ export function JourneyScreen() {
 
       <View style={styles.bottomSpace} />
     </ScrollView>
+    </TabScreen>
   );
 }
 

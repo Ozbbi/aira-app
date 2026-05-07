@@ -3,13 +3,11 @@ import { Text, StyleSheet, View, Pressable, LayoutChangeEvent } from 'react-nati
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { LearningMapScreen } from '../screens/LearningMapScreen';
@@ -164,62 +162,28 @@ function TabIcon({ glyph, focused }: { glyph: string; focused: boolean }) {
   );
 }
 
-/**
- * Horizontal swipe between sibling tabs (Instagram-Reels-style).
- *
- * `@react-navigation/bottom-tabs` (v7) has no built-in swipe-between-tabs.
- * Switching to material-top-tabs would force-rebuild every screen.
- * Instead: mount a Gesture handler at the navigator root that detects
- * left/right pan and programmatically calls navigation.navigate().
- *
- * `activeOffsetX([-25, 25])` ensures the gesture only claims the
- * responder for clear horizontal intent — vertical scrolls inside
- * screens still pass through.
- */
+// NOTE: an experimental swipe-between-tabs gesture lived here in v9.
+// Removed in v11 because the GestureDetector at the navigator root was
+// starving touch events on some Android builds (taps + scrolls felt
+// frozen — the "uygulama buglı" the user reported). If we want
+// horizontal swipe later, the safer path is to switch to
+// `@react-navigation/material-top-tabs` rather than wedge a gesture
+// handler over the bottom-tabs navigator.
 export function TabNavigator() {
-  const swipeRef = useRef<{ navigation: any; index: number } | null>(null);
-
-  const goRelative = (delta: number) => {
-    const ctx = swipeRef.current;
-    if (!ctx) return;
-    const next = ctx.index + delta;
-    if (next < 0 || next >= TAB_DEFS.length) return;
-    haptics.select();
-    ctx.navigation.navigate(TAB_DEFS[next].name);
-  };
-
-  const swipe = Gesture.Pan()
-    .activeOffsetX([-25, 25])
-    .failOffsetY([-30, 30])
-    .onEnd((e) => {
-      'worklet';
-      if (Math.abs(e.translationY) > 50) return;
-      if (e.translationX < -60) runOnJS(goRelative)(1);
-      else if (e.translationX > 60) runOnJS(goRelative)(-1);
-    });
-
   return (
-    <GestureDetector gesture={swipe}>
-      <View style={styles.fill}>
-        <Tab.Navigator
-          tabBar={(props) => {
-            // Update the swipe-state bridge on every tab-state render.
-            swipeRef.current = { navigation: props.navigation, index: props.state.index };
-            return <FloatingTabBar {...props} />;
-          }}
-          screenOptions={{
-            headerShown: false,
-            sceneStyle: { backgroundColor: colors.bg },
-          }}
-        >
-          <Tab.Screen name="Dashboard" component={DashboardScreen} />
-          <Tab.Screen name="Lessons" component={LearningMapScreen} />
-          <Tab.Screen name="Journey" component={JourneyScreen} />
-          <Tab.Screen name="Learn" component={LearnScreen} />
-          <Tab.Screen name="Profile" component={ProfileScreen} />
-        </Tab.Navigator>
-      </View>
-    </GestureDetector>
+    <Tab.Navigator
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: colors.bg },
+      }}
+    >
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Lessons" component={LearningMapScreen} />
+      <Tab.Screen name="Journey" component={JourneyScreen} />
+      <Tab.Screen name="Learn" component={LearnScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
   );
 }
 

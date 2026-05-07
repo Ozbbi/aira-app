@@ -1875,4 +1875,670 @@ export const SEED_LESSONS: SeedLesson[] = [
       "From now on: voice, freshness, or code? Pick. Save time. Ship better work.",
     takeaway: 'Right tool, right job.',
   },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ROUND 4 — six lessons filling concrete curriculum gaps:
+  // formatting outputs, few-shot, negative prompting, AI bias,
+  // reusable templates, the research workflow.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ---------- PROMPT — FORMAT THE OUTPUT ----------
+  {
+    id: 'prompt_format_output',
+    trackId: 'prompt',
+    title: 'Tell the AI what shape the answer should take',
+    character: 'Deniz',
+    airaIntro:
+      "AI defaults to walls of prose. You almost never want walls of prose. Today: a single sentence you can add to any prompt that gives you exactly the shape you need.",
+    learnFirst:
+      "End every prompt with the OUTPUT FORMAT — a 5-bullet list, a 2-column table, a 100-word paragraph, a JSON object with these keys. If you don't say the shape, AI picks one. The one it picks is usually too long and shapeless.",
+    realWorldScenario:
+      "Deniz needs a list of 8 newsletter ideas. AI gives her a long essay with 'a few interesting directions could include' baked in. She wanted a list. She didn't ask for one.",
+    scenes: [
+      {
+        heading: 'Without an output format',
+        vague: '"Give me newsletter ideas about AI."',
+        specific: 'AI returns 4 paragraphs of qualifications and meta-commentary. The actual ideas are buried.',
+        note: 'AI defaults to "essay-with-disclaimers." Almost never what you want.',
+      },
+      {
+        heading: 'Adding a list format',
+        vague: '— (still no format)',
+        specific: '"... Reply as a numbered list of 8 ideas. One sentence each. No intro paragraph."',
+        note: 'Now you get exactly 8 ideas, one sentence each, ready to copy.',
+      },
+      {
+        heading: 'Adding a table format',
+        vague: '"Compare ChatGPT and Claude for me."',
+        specific: '"Compare ChatGPT and Claude. Reply as a 4-column markdown table: criterion, ChatGPT, Claude, winner."',
+        note: 'Tables make decisions visible. Prose hides them.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Deniz wants a quick list of newsletter ideas. Best ending for her prompt?',
+        options: [
+          '"Be creative."',
+          '"Reply as a numbered list of 8 ideas. One sentence each. No intro."',
+          '"Make it good."',
+          '"Try harder."',
+        ],
+        correctAnswer: 1,
+        explanation: 'Specific shape (numbered list, count, length per item, what to skip) gives AI a target. The other options are vibes.',
+        airaFeedback: {
+          correct: 'Yes. Shape + count + length + "no intro." Four constraints, one clean output.',
+          incorrect: '"Be creative" / "make it good" leave the shape to AI. Specifying numbered list + count + length per item + "no intro" gets a clean usable output.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'AI usually picks the right format for your task without being told.',
+        correctAnswer: false,
+        explanation: 'AI defaults to a long-form prose essay regardless of what you actually need. Telling it the shape is one of the highest-leverage moves.',
+        airaFeedback: {
+          correct: 'Right. AI defaults to essay-with-disclaimers. Always specify.',
+          incorrect: 'AI defaults to long prose almost always. You almost always want something tighter — list, table, JSON, paragraph cap.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Tables make decisions ____. Prose hides them.',
+        correctAnswer: 'visible',
+        explanation: 'Side-by-side columns force the trade-offs into the open. Prose can blur them.',
+        airaFeedback: {
+          correct: 'Yes. Tables = visible trade-offs.',
+          incorrect: 'Hint: 7 letters. The opposite of "hidden."',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Which is the strongest format spec for "compare two products"?',
+        options: [
+          '"Tell me about both."',
+          '"Compare them."',
+          '"Reply as a 4-column markdown table: criterion, A, B, winner."',
+          '"Say which is better."',
+        ],
+        correctAnswer: 2,
+        explanation: 'A table with named columns AND a winner column forces a decision per criterion. The others let AI hide.',
+        airaFeedback: {
+          correct: 'Yes. Specify columns AND a winner column.',
+          incorrect: 'The strongest spec names columns. Adding a "winner" column forces AI to commit to a choice on each row.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'You need 5 subject lines for a launch email. Write the format spec.',
+        correctAnswer:
+          'Reply as a numbered list of 5 subject lines. Each under 50 characters. No emojis. No "introducing" or "announcing." End with my favourite ranked at the top.',
+        explanation:
+          'Anything covering: shape (list), count (5), length cap, banned words/elements, ordering/ranking is correct.',
+        airaFeedback: {
+          correct: 'Strong. List + count + length cap + bans + ordering. Five constraints, sharp output.',
+          incorrect: 'Aim for: list, count, length cap (chars or words), at least one ban (no emojis / no clichés), and ideally an ordering rule.',
+        },
+      },
+    ],
+    airaOutro: "From now on, every important prompt ends with the format. List, table, paragraph cap, JSON. Watch your output get usable.",
+    takeaway: 'Always specify the shape.',
+  },
+
+  // ---------- PROMPT — FEW-SHOT EXAMPLES ----------
+  {
+    id: 'prompt_few_shot',
+    trackId: 'prompt',
+    title: 'Show, don\'t tell — the few-shot trick',
+    character: 'Maya',
+    airaIntro:
+      "Adjectives like 'punchy' and 'witty' don't actually tell the AI what you mean. Showing two examples does. Today: the move that makes AI mirror your taste.",
+    learnFirst:
+      "Few-shot prompting means giving AI 2-3 examples of the kind of output you want, then asking for one more like them. AI mirrors examples better than it follows descriptions. It's the most reliable way to lock in tone, style, and shape.",
+    realWorldScenario:
+      "Maya needs Instagram captions in her brand voice. She types 'write punchy, witty captions.' Output: generic, sounds like an MBA. She tries again — pastes 2 captions she actually wrote. Output: now sounds like her.",
+    scenes: [
+      {
+        heading: 'The describe-it trap',
+        vague: '"Write 3 punchy, witty captions about morning runs."',
+        specific: 'Generic results, because AI guesses what punchy means based on a stereotype of those words.',
+        note: 'Adjectives are too soft. AI averages the internet\'s idea of "punchy."',
+      },
+      {
+        heading: 'Show 2 examples',
+        vague: '— (no examples)',
+        specific: '"Here are 2 captions in my voice: [example 1] [example 2]. Now write 3 more about morning runs in that same voice."',
+        note: 'AI mirrors examples reliably. It\'s the single biggest tool for matching tone.',
+      },
+      {
+        heading: 'Add a "what to keep / drop" note',
+        vague: 'Just trust the mirror.',
+        specific: '"...same voice. Keep the contractions and short sentences. Drop any "as we all know" filler."',
+        note: 'A keep/drop note tunes the mirror. Better than examples alone.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'You want AI to write in your voice. Strongest move?',
+        options: [
+          '"Write in my voice."',
+          'Give it 3 adjectives describing your voice.',
+          'Paste 2 things you actually wrote, then ask for one more in the same voice.',
+          'Ask AI to "guess my style."',
+        ],
+        correctAnswer: 2,
+        explanation: 'Examples beat descriptions. AI is a mirror — show it what you want it to mirror.',
+        airaFeedback: {
+          correct: 'Yes. Show, don\'t describe. AI mirrors examples reliably.',
+          incorrect: 'Adjectives are too soft. Examples are concrete. AI mirrors examples reliably; it averages adjectives generically.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'fill_blank',
+        question: 'Few-shot prompting means giving AI a few ____ then asking for one more like them.',
+        correctAnswer: 'examples',
+        explanation: 'Few-shot = small number of examples. The "shot" terminology comes from machine learning research.',
+        airaFeedback: {
+          correct: 'Yes. Examples are the move.',
+          incorrect: 'Hint: 8 letters. Things you show as patterns.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'true_false',
+        question: 'Two examples are usually enough — you don\'t need 10.',
+        correctAnswer: true,
+        explanation: '2-3 examples cover most cases. Beyond 5 you hit diminishing returns and bloat the prompt.',
+        airaFeedback: {
+          correct: 'Right. 2-3 examples is the sweet spot.',
+          incorrect: 'Diminishing returns kick in fast. 2-3 is usually enough; 5+ rarely helps and bloats the prompt.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Maya wrote 2 brand-voice examples. What\'s the smartest add-on?',
+        options: [
+          '"Try again."',
+          'Nothing — examples alone are perfect.',
+          '"Keep the contractions and short sentences. Drop any cliché openers."',
+          '"Be more creative."',
+        ],
+        correctAnswer: 2,
+        explanation: 'A keep/drop note tunes the mirror. AI knows what to copy AND what to leave out.',
+        airaFeedback: {
+          correct: 'Yes. Keep/drop note refines the match.',
+          incorrect: 'Examples alone get you 80%. The keep/drop note tunes the last 20% — what to copy and what to skip.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'You\'re asking AI to write a tweet. Sketch a few-shot prompt with 2 of your own examples + a keep/drop note.',
+        correctAnswer:
+          'Here are 2 tweets in my voice:\n1: [your tweet 1]\n2: [your tweet 2]\nNow write 3 tweets about [topic] in that same voice. Keep the dry humour and short sentences. Drop any "as we all know" or filler.',
+        explanation:
+          'Anything with 2 examples + the new task + a keep/drop tuning note is correct.',
+        airaFeedback: {
+          correct: 'Strong. 2 examples + new task + keep/drop. The recipe.',
+          incorrect: 'Aim for: 2 of YOUR examples, then the new task, then one "keep [X]" and one "drop [Y]" line. That trio.',
+        },
+      },
+    ],
+    airaOutro: "Save 2-3 of your best paragraphs as a snippet. Reuse them as the few-shot top of every voice-sensitive prompt. AI will mirror you instead of averaging the internet.",
+    takeaway: 'Show two. Drop one. Done.',
+  },
+
+  // ---------- PROMPT — NEGATIVE PROMPTING ----------
+  {
+    id: 'prompt_negative',
+    trackId: 'prompt',
+    title: 'Tell AI what NOT to do',
+    character: 'Sam',
+    airaIntro:
+      "Most people only tell AI what they want. Telling it what to AVOID is just as powerful. Today: the move that strips out the corporate filler.",
+    learnFirst:
+      "AI is trained to be helpful, which often means cautious + verbose + cliché. Banning specific words and patterns ('no leverage / no synergy / no introducing') reliably fixes this. Negative prompts work better than vague positive ones.",
+    realWorldScenario:
+      "Sam asks AI to write a casual email. AI returns 'I hope this email finds you well... I wanted to leverage this opportunity...' Generic corporate sludge. Sam adds one line: 'Ban the words leverage, hope, and leveraging. Ban the opener about emails finding people.' Now it sounds like a person.",
+    scenes: [
+      {
+        heading: 'Banning specific words',
+        vague: 'Hope AI knows your taste.',
+        specific: '"Don\'t use the words leverage, robust, seamless, or comprehensive."',
+        note: 'Word bans work reliably. AI obeys them more consistently than positive style notes.',
+      },
+      {
+        heading: 'Banning patterns',
+        vague: '"Make it less corporate."',
+        specific: '"No three-word intros like \"In today\'s world\". No closing summary. No clichés about the future."',
+        note: 'Banning patterns (not just words) catches more sludge.',
+      },
+      {
+        heading: 'Banning hedges',
+        vague: 'Accept the cautious AI default.',
+        specific: '"Don\'t hedge. No \"it depends\" or \"there are many factors.\" Pick a side and defend it."',
+        note: 'AI hedges by default. Banning hedges forces a real position.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Sam\'s AI keeps writing "I hope this email finds you well." Best fix?',
+        options: [
+          '"Be casual."',
+          '"Don\'t open with the hope-this-finds-you cliché. Open with the actual reason for the email."',
+          '"Try again."',
+          '"Make it shorter."',
+        ],
+        correctAnswer: 1,
+        explanation: 'Naming the specific cliché AND telling it what to do instead is the sharp move. Vague "be casual" doesn\'t name the trap.',
+        airaFeedback: {
+          correct: 'Yes. Name the cliché. Replace it.',
+          incorrect: '"Be casual" is too soft — AI doesn\'t know what specific clichés to avoid. Name them.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Negative prompts (telling AI what not to do) work better than vague positive prompts.',
+        correctAnswer: true,
+        explanation: '"Don\'t use the word leverage" is concrete and obeyable. "Be more direct" is fuzzy.',
+        airaFeedback: {
+          correct: 'Right. Bans are concrete. Vague positives are guesses.',
+          incorrect: 'Bans are easy to obey ("don\'t use word X"). Vague positives ("be direct") are hard — AI guesses.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Banning ____ forces AI to pick a side instead of saying "it depends."',
+        correctAnswer: 'hedges',
+        explanation: 'AI hedges by default — "it depends," "there are many factors," "consider both sides." Banning that pushes for a real opinion.',
+        airaFeedback: {
+          correct: 'Yes. Ban hedges. Get a real take.',
+          incorrect: 'Hint: 6 letters. The cautious "it depends" / "there are many factors" patterns.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Which is the WEAKEST negative-prompt move?',
+        options: [
+          '"Don\'t use the word leverage."',
+          '"No bullet points."',
+          '"Don\'t hedge. Pick a side."',
+          '"Don\'t be bad."',
+        ],
+        correctAnswer: 3,
+        explanation: '"Don\'t be bad" is meaningless. The other three name specific things to avoid.',
+        airaFeedback: {
+          correct: 'Yes. Specific bans win. "Don\'t be bad" is a vibe.',
+          incorrect: 'Negative prompts have to be specific. "Don\'t be bad" gives AI nothing to obey.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'You\'re asking AI for marketing copy. Write 3 specific bans you\'d add to clean up the output.',
+        correctAnswer:
+          '1) Don\'t use the words leverage, synergy, or seamless. 2) No three-word intros like "In today\'s world." 3) Don\'t hedge — pick the strongest claim and defend it.',
+        explanation: 'Anything with: word bans, pattern bans, OR hedge bans is correct. Specific is the only requirement.',
+        airaFeedback: {
+          correct: 'Sharp. Word bans + pattern bans + hedge bans = clean copy.',
+          incorrect: 'Aim for: at least one word ban (specific words), one pattern ban (intros, openers, closers), and one hedge ban.',
+        },
+      },
+    ],
+    airaOutro: "Save your top 5 banned words as a snippet. Paste them into every important prompt. Watch your output stop sounding like everyone else's.",
+    takeaway: 'Bans beat begs.',
+  },
+
+  // ---------- CRITICAL — AI BIAS ----------
+  {
+    id: 'critical_ai_bias',
+    trackId: 'critical',
+    title: 'Spotting AI bias before it spreads',
+    character: 'Lin',
+    airaIntro:
+      "AI mirrors its training data. The internet is biased. Therefore AI is biased. Today: the 30-second checks that catch the bias before you propagate it.",
+    learnFirst:
+      "AI bias usually shows up as missing perspectives, default-Western framings, and gendered assumptions. The fix is asking the same question from multiple angles and watching how the answer shifts. If the answer changes a lot when you swap one variable, the original was biased.",
+    realWorldScenario:
+      "Lin asks AI for 'examples of great leaders.' Gets back 8 men, mostly Western. Same prompt, same wording — she just adds 'global examples' and asks again. Now half are women, mostly non-Western. The first answer was biased. AI didn't lie; it averaged its training set.",
+    scenes: [
+      {
+        heading: 'The variable-swap test',
+        vague: 'Trust the first answer.',
+        specific: '"Now give me the same list but only women / non-Western / under 40." Compare. If the answer changed wildly, the original was biased.',
+        note: 'Variable-swapping is the cheapest bias detector. Costs 30 seconds.',
+      },
+      {
+        heading: 'The "what perspective is missing" prompt',
+        vague: 'Accept the framing.',
+        specific: '"What perspective or group is missing from this answer? Add it."',
+        note: 'AI surfaces blind spots when asked. It rarely surfaces them on its own.',
+      },
+      {
+        heading: 'Defaults are tells',
+        vague: '"A great leader" returns a man. Move on.',
+        specific: 'Notice the default. Defaults are training-data signals. The default tells you what AI assumes when you don\'t specify.',
+        note: 'The default isn\'t neutral. It\'s majority-data leaking through.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Lin gets a leadership-examples list with 8 men. What\'s the smartest next move?',
+        options: [
+          'Use the list. Move on.',
+          'Ask "are you biased?" — AI will say yes if it is.',
+          'Swap the variable: "Now give me only women global leaders." Compare.',
+          'Use a different AI.',
+        ],
+        correctAnswer: 2,
+        explanation: 'Variable-swapping reveals the bias. AI won\'t reliably self-diagnose if you ask "are you biased?" — that\'s a meta question it tends to deflect.',
+        airaFeedback: {
+          correct: 'Yes. Swap a variable, watch the answer shift. That\'s your bias signal.',
+          incorrect: 'Asking "are you biased?" is theatre. Swapping a variable and seeing how the answer changes is the real test.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'AI bias is mostly about overt offensive output.',
+        correctAnswer: false,
+        explanation: 'The dangerous bias is subtle — missing perspectives, default framings, gendered assumptions. Overt offensive output is rare and usually filtered out.',
+        airaFeedback: {
+          correct: 'Right. Subtle bias is the dangerous kind.',
+          incorrect: 'Overt offensive output is mostly filtered out by safety training. The dangerous bias is the quiet kind — defaults, missing perspectives.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Defaults are ____. They tell you what AI assumes when you don\'t specify.',
+        correctAnswer: 'tells',
+        explanation: 'A "tell" in poker is a signal of what someone has. AI defaults are training-data signals.',
+        airaFeedback: {
+          correct: 'Yes. Defaults reveal the training-data bias.',
+          incorrect: 'Hint: poker term. Five letters. A signal of what someone secretly has.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Which question reliably surfaces what AI left out?',
+        options: [
+          '"Are you missing anything?"',
+          '"What perspective or group is missing from this answer? Add it."',
+          '"Try harder."',
+          '"Is this biased?"',
+        ],
+        correctAnswer: 1,
+        explanation: 'Specific framing — "what perspective or group" — gets concrete additions. The yes/no questions are deflection bait.',
+        airaFeedback: {
+          correct: 'Yes. Specific question = specific answer.',
+          incorrect: 'The yes/no questions get deflected. The specific "what perspective or group is missing" gets concrete additions.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'multiple_choice',
+        question: 'You\'re using AI to draft hiring rubrics. Best bias-mitigation step BEFORE shipping?',
+        options: [
+          'Trust the AI — it\'s safety-trained.',
+          'Re-run the same prompt 5 times and pick the average.',
+          'Ask AI: "What kinds of candidates would this rubric quietly disadvantage?"',
+          'Skip the rubric and hire by gut.',
+        ],
+        correctAnswer: 2,
+        explanation: 'Asking AI to surface its own blind spots from a specific angle (here: who gets disadvantaged) consistently turns up real flaws.',
+        airaFeedback: {
+          correct: 'Yes. Surfacing blind spots beats hoping for none.',
+          incorrect: 'Trust + re-run + gut all skip the actual fix: asking AI which candidate types it might quietly screen out.',
+        },
+      },
+    ],
+    airaOutro: "Now you have the 30-second bias check. Variable-swap, ask what's missing, watch the defaults. Three habits that compound.",
+    takeaway: 'Defaults are tells.',
+  },
+
+  // ---------- POWER — PROMPT TEMPLATES ----------
+  {
+    id: 'power_prompt_templates',
+    trackId: 'power',
+    title: 'Build a personal prompt library you actually use',
+    character: 'Jordan',
+    airaIntro:
+      "Stop typing the same prompt structure from scratch every day. Today: how to build 5-10 reusable templates that cover 80% of your real AI use.",
+    learnFirst:
+      "A prompt template has placeholders for the variables that change ({audience}, {topic}, {format}) and is otherwise stable. You save it once. You paste-and-fill it forever. The savings compound — same prompt taking 10 seconds instead of 2 minutes adds up to hours per month.",
+    realWorldScenario:
+      "Jordan does the same kind of work each Tuesday: summarise the team's slack threads. He retypes the prompt every time. Different prompt, slightly worse output, slightly different format. After this lesson he has one template, one paste, consistent results.",
+    scenes: [
+      {
+        heading: 'Identify a recurring task',
+        vague: 'Treat every prompt as one-off.',
+        specific: 'Notice: "I do this every week / every Monday / every time a customer X." That\'s a template candidate.',
+        note: 'Anything you do twice is a template candidate.',
+      },
+      {
+        heading: 'Extract the variables',
+        vague: '"Summarise this slack thread for the team."',
+        specific: '"Summarise this {input_type} for {audience}. Reply in {format}. Length: {length_cap}."',
+        note: 'Variables in {curly_braces}. Everything else stays stable.',
+      },
+      {
+        heading: 'Save it somewhere you\'ll actually find it',
+        vague: 'Memorise it. Lose it.',
+        specific: 'Put your top 5-10 templates in a Notion page, the Mac Notes app, or a saved AI Project. The retrieval matters as much as the template.',
+        note: 'A template you can\'t find isn\'t a template. It\'s a memory.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'true_false',
+        question: 'Anything you ask AI more than twice is a template candidate.',
+        correctAnswer: true,
+        explanation: 'The threshold is "I\'m typing this kind of thing again." Two uses justifies a template — the third use pays it back.',
+        airaFeedback: {
+          correct: 'Right. Twice = automate it.',
+          incorrect: 'The threshold is twice. Once is one-off. Twice signals a pattern worth capturing.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'multiple_choice',
+        question: 'Which is the BEST template variable for "summarise X for Y"?',
+        options: [
+          '"Summarise something."',
+          '"Summarise {input} for {audience}. Reply in {format}, max {length}."',
+          '"Summarise this please."',
+          '"Make it shorter."',
+        ],
+        correctAnswer: 1,
+        explanation: 'Variables in placeholders. Everything else stable. Now you fill in and go.',
+        airaFeedback: {
+          correct: 'Yes. Placeholders for what changes; everything else stable.',
+          incorrect: 'A real template has placeholders for the variables that change ({input}, {audience}, {format}, {length}) and stable wording everywhere else.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'A template you can\'t ____ isn\'t a template. It\'s a memory.',
+        correctAnswer: 'find',
+        explanation: 'Retrieval matters as much as the template itself. If you can\'t find it in 10 seconds, you\'ll re-type from scratch and lose the gain.',
+        airaFeedback: {
+          correct: 'Yes. Retrieval beats authoring.',
+          incorrect: 'Hint: 4 letters. What you do when you need to retrieve it.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Where should Jordan save his templates?',
+        options: [
+          'Memorise them.',
+          'Email them to himself.',
+          'A Notion page, Mac Notes, or saved AI Project — somewhere he can find them in 5 seconds.',
+          'On a sticky note.',
+        ],
+        correctAnswer: 2,
+        explanation: 'The location matters. A template you can\'t reach in seconds gets re-typed every time.',
+        airaFeedback: {
+          correct: 'Yes. Fast-retrieval location is the key.',
+          incorrect: 'The location matters. Memory + email + sticky notes all fail when you actually need it. Pick a fast-retrieval location.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'Write a template for "draft a cold outreach email." Mark variables with {curly_braces}.',
+        correctAnswer:
+          'Draft a cold outreach email to {recipient_role} at {company}. The reason: {ask}. Tone: warm but direct. Max 80 words. Don\'t use "leverage" or "hope this email finds you." End with one specific question that\'s easy to answer.',
+        explanation:
+          'Anything with: a defined task, 2-3 placeholder variables, a length cap, a tone hint, and a banned phrase is a usable template.',
+        airaFeedback: {
+          correct: 'Real template. Save it. Use it tomorrow.',
+          incorrect: 'Aim for: a defined task, 2-3 {placeholders}, a length cap, a tone or style hint, and at least one banned phrase. That\'s a usable template.',
+        },
+      },
+    ],
+    airaOutro: "Build 5 templates this week for tasks you actually do twice a week. Save them somewhere you\'ll find them. Watch your speed jump.",
+    takeaway: 'Twice = template.',
+  },
+
+  // ---------- TOOLS — RESEARCH WORKFLOW ----------
+  {
+    id: 'tools_research_workflow',
+    trackId: 'tools',
+    title: 'AI for research: 10x your speed without losing rigour',
+    character: 'Lin',
+    airaIntro:
+      "Most AI advice for research either trusts AI too much (cite the hallucination) or too little (skip AI altogether). Today: the four-step workflow that uses AI for what it's good at and humans for what they're good at.",
+    learnFirst:
+      "The workflow: (1) AI for the lay of the land, (2) Search-anchored AI (Perplexity / Gemini) for sources, (3) Click into actual papers / articles, (4) AI for synthesising your notes. AI is great at the bookends, dangerous in the middle.",
+    realWorldScenario:
+      "Lin is researching how remote work affects team culture. Old workflow: 4 hours googling, scattered notes, half remembered. New workflow: 90 minutes, clean notes, every claim traceable to a real source.",
+    scenes: [
+      {
+        heading: 'Step 1 — AI for the landscape',
+        vague: 'Start by reading 20 articles.',
+        specific: 'Ask AI: "What are the main schools of thought on X? Who are the key authors? What\'s the disagreement between them?" Get a map in 60 seconds.',
+        note: 'AI gives you the shape. Saves hours of orienting.',
+      },
+      {
+        heading: 'Step 2 — Search-anchored AI for sources',
+        vague: 'Ask AI for citations.',
+        specific: 'Open Perplexity or Gemini (both have search). Ask the same question. Get answers WITH actual links to actual papers and articles.',
+        note: 'Chat AI invents citations. Search-anchored AI gives you real ones.',
+      },
+      {
+        heading: 'Step 3 — Read the actual sources',
+        vague: 'Trust the AI summary.',
+        specific: 'Click into the 5-7 most relevant sources. Read them. Take notes. AI never replaces this step — only speeds the steps around it.',
+        note: 'The middle step is human. AI doesn\'t do this.',
+      },
+      {
+        heading: 'Step 4 — AI for synthesis',
+        vague: 'Try to remember what you read.',
+        specific: 'Paste your notes into Claude. "Synthesise these into 3 themes with the strongest evidence for each." Now the work is yours but the structure is fast.',
+        note: 'AI is great at synthesising material you\'ve already verified. Trust it here.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'For citations, which tool should Lin use?',
+        options: [
+          'ChatGPT — cite whatever it gives.',
+          'Claude — same as ChatGPT.',
+          'Perplexity or Gemini (search-anchored) — get real links.',
+          'No AI; google it manually.',
+        ],
+        correctAnswer: 2,
+        explanation: 'Chat AIs invent citations. Search-anchored AIs (Perplexity, Gemini) fetch real ones with clickable links.',
+        airaFeedback: {
+          correct: 'Yes. Search-anchored = real sources. Chat AI = invented sources.',
+          incorrect: 'Chat AI hallucinates citations. Search-anchored AI fetches real ones. The link is the proof.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'AI replaces the step of actually reading the source paper.',
+        correctAnswer: false,
+        explanation: 'AI summaries miss nuance, miscompress, and sometimes hallucinate. The reading step is human work; AI speeds the bookends, not the middle.',
+        airaFeedback: {
+          correct: 'Right. The reading step is yours. AI does the bookends.',
+          incorrect: 'AI compression loses nuance and sometimes invents conclusions. You still read the source — AI just helps you find and synthesise it.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Step 4 of the workflow: AI for ____. (Combining your notes into themes with evidence.)',
+        correctAnswer: 'synthesis',
+        explanation: '"Synthesis" / "synthesising" / "combining" — taking material you\'ve already verified and finding the structure.',
+        airaFeedback: {
+          correct: 'Yes. Verified material in, structure out.',
+          incorrect: 'Hint: 9 letters. Combining things into a unified whole.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Lin\'s old workflow took 4 hours; the new one takes 90 minutes. Where do the savings come from?',
+        options: [
+          'Skipping the actual reading.',
+          'Faster orientation (step 1) + faster source-finding (step 2) + faster synthesis (step 4). Reading time stays the same.',
+          'Better AI models.',
+          'Just typing faster.',
+        ],
+        correctAnswer: 1,
+        explanation: 'AI compresses orientation, source-finding, and synthesis. Reading time stays human-paced — it\'s the bookend steps that get fast.',
+        airaFeedback: {
+          correct: 'Yes. Bookends fast, middle stays human.',
+          incorrect: 'Reading time stays the same. The savings are entirely in the bookend steps — orientation, source-finding, synthesis.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'ordering',
+        question: 'Order the 4-step research workflow:',
+        options: [
+          'AI for the landscape',
+          'Search-anchored AI for sources',
+          'Read the actual sources',
+          'AI for synthesis',
+        ],
+        correctAnswer: [
+          'AI for the landscape',
+          'Search-anchored AI for sources',
+          'Read the actual sources',
+          'AI for synthesis',
+        ],
+        explanation: 'Map → find → read → synthesise. AI on the bookends, human in the middle.',
+        airaFeedback: {
+          correct: 'Locked. Map → find → read → synthesise.',
+          incorrect: 'The order: AI maps the landscape, search-anchored AI finds real sources, you read them, AI synthesises your notes.',
+        },
+      },
+    ],
+    airaOutro: "Use this on your next real research task. The first time it feels slower (you\'re learning the rhythm). The third time it feels like a superpower.",
+    takeaway: 'AI on the bookends. Human in the middle.',
+  },
 ];

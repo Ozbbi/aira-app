@@ -4,8 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PencilSimple, SpeakerHigh, Vibrate, Bell, Eye, SignOut, Trash } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AiraMascot } from '../components/AiraMascot';
+import { totalDueAcrossDecks } from '../data/flashcards';
 import { colors, typography, spacing, radius, elevation } from '../theme';
+import type { RootStackParamList } from '../types';
 import { useUserStore } from '../store/userStore';
 
 export function ProfileScreen() {
@@ -90,6 +94,9 @@ export function ProfileScreen() {
             </View>
           )}
         </Animated.View>
+
+        {/* My Flashcards entry */}
+        <MyFlashcardsRow />
 
         {/* Sandbox history */}
         <SandboxHistorySection />
@@ -348,7 +355,57 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.textPrimary,
   },
+
+  // My Flashcards row
+  flashRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bgCard,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    minHeight: 72,
+  },
+  flashRowLeft: { flex: 1, minWidth: 0, gap: 2 },
+  flashRowTitle: { ...typography.body, color: colors.textPrimary, fontFamily: 'Inter_600SemiBold' },
+  flashRowSub: { ...typography.caption, color: colors.textSecondary },
+  flashRowChevron: { ...typography.headline, color: colors.textMuted, paddingLeft: spacing.sm },
 });
+
+/* ─────────────────────── My Flashcards Row ─────────────────────── */
+
+function MyFlashcardsRow() {
+  const decks = useUserStore((s) => s.flashcardDecks);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const due = totalDueAcrossDecks(decks);
+
+  return (
+    <Animated.View entering={FadeInDown.duration(250).delay(60)} style={styles.section}>
+      <Text style={styles.sectionTitle}>My Flashcards</Text>
+      <Pressable
+        onPress={() => navigation.navigate('Flashcards')}
+        style={({ pressed }) => [styles.flashRow, pressed && { opacity: 0.95 }]}
+      >
+        <View style={styles.flashRowLeft}>
+          <Text style={styles.flashRowTitle}>
+            {decks.length === 0
+              ? 'No decks yet'
+              : `${decks.length} deck${decks.length === 1 ? '' : 's'}`}
+          </Text>
+          <Text style={styles.flashRowSub}>
+            {decks.length === 0
+              ? 'Finish a lesson and tap “Create Flashcards” to spawn your first deck.'
+              : due > 0
+                ? `${due} card${due === 1 ? '' : 's'} due today`
+                : 'All caught up · review anyway from the deck list'}
+          </Text>
+        </View>
+        <Text style={styles.flashRowChevron}>›</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 /* ─────────────────────── Sandbox History Section ─────────────────────── */
 

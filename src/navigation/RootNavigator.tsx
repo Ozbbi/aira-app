@@ -9,6 +9,8 @@ import { TrackDetailScreen } from '../screens/TrackDetailScreen';
 import { LearningMapScreen } from '../screens/LearningMapScreen';
 import { CodeTrackScreen } from '../screens/CodeTrackScreen';
 import { PromptOrNotScreen } from '../screens/PromptOrNotScreen';
+import { FlashcardsScreen } from '../screens/FlashcardsScreen';
+import { FlashcardReviewScreen } from '../screens/FlashcardReviewScreen';
 import { TabNavigator } from './TabNavigator';
 import { useUserStore } from '../store/userStore';
 import { colors } from '../theme';
@@ -75,6 +77,16 @@ export function RootNavigator() {
       <Stack.Screen
         name="PromptOrNot"
         component={PromptOrNotScreen}
+        options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
+      />
+      <Stack.Screen
+        name="Flashcards"
+        component={FlashcardsScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="FlashcardReview"
+        component={FlashcardReviewScreen}
         options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
       />
     </Stack.Navigator>

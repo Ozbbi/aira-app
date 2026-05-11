@@ -103,6 +103,8 @@ export type RootStackParamList = {
   LearningMap: undefined;
   CodeTrack: undefined;
   PromptOrNot: undefined;
+  Flashcards: undefined;
+  FlashcardReview: { deckId: string; forceAll?: boolean };
 };
 
 export type TabParamList = {

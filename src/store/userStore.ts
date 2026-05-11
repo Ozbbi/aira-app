@@ -30,18 +30,27 @@ export interface SandboxEntry {
   followUps: { question: string; answer: string }[];
 }
 
+// Flashcard system — the rich schema lives in src/data/flashcards.ts.
+// Re-exporting here keeps store consumers from importing two modules.
+import type {
+  Flashcard,
+  FlashcardDeck,
+  RecallRating,
+} from '../data/flashcards';
+import {
+  updateCard,
+  mergeLessonIntoDeckSet,
+  FREE_DECK_LIMIT,
+  totalDueAcrossDecks,
+} from '../data/flashcards';
+import type { SeedLesson } from '../data/seedLessons';
+export type { Flashcard, FlashcardDeck, RecallRating };
+
 /**
- * Placeholder shapes for Phase 2 features. These exist as typed empty
- * arrays today so screens can read/write into them without forcing a
- * schema migration later when the actual features ship.
+ * Placeholder shapes for OTHER Phase-2 features (not flashcards —
+ * flashcards are now real). Kept so screens can read/write without
+ * forcing a schema migration when those features ship.
  */
-export interface FlashcardDeck {
-  id: string;
-  lessonId: string;
-  title: string;
-  createdAt: string;
-  cards: { id: string; front: string; back: string; nextReviewAt: string }[];
-}
 export interface ImportedContent {
   id: string;
   source: 'url' | 'pdf' | 'youtube' | 'image' | 'text';
@@ -119,6 +128,20 @@ interface UserState {
   incrementSandbox: () => void;
   addSandboxEntry: (entry: SandboxEntry) => void;
   toggleBookmark: (id: string) => void;
+
+  // ── Flashcard actions (real, not scaffolded) ──
+  /**
+   * Create or merge cards for the given seed lesson into a deck keyed
+   * by trackId. Returns { deckId, addedCount, blockedByPaywall }.
+   * Free tier: max 3 decks; attempting to create a 4th sets
+   * blockedByPaywall=true (screen should navigate to Paywall).
+   */
+  createFlashcardsForLesson: (
+    lesson: SeedLesson,
+    trackName: string,
+  ) => { deckId: string | null; addedCount: number; blockedByPaywall: boolean };
+  reviewFlashcard: (deckId: string, cardId: string, rating: RecallRating) => void;
+  deleteFlashcardDeck: (deckId: string) => void;
   syncFromBackend: (data: {
     xp: number;
     level: number;
@@ -229,6 +252,42 @@ export const useUserStore = create<UserState>()(
         set((s) => ({
           // Cap at 50 most-recent entries so persisted state doesn't bloat.
           sandboxHistory: [entry, ...s.sandboxHistory].slice(0, 50),
+        })),
+
+      // ── Flashcards ──────────────────────────────────────────────
+      createFlashcardsForLesson: (lesson, trackName) => {
+        const state = get();
+        const hasTrackDeck = state.flashcardDecks.some((d) => d.trackId === lesson.trackId);
+        const wouldCreateNew = !hasTrackDeck;
+        const atLimit = state.flashcardDecks.length >= FREE_DECK_LIMIT;
+
+        // Pro is unlimited. Free hits paywall only when minting a NEW deck
+        // at the cap. Merging into an existing deck always allowed.
+        if (wouldCreateNew && atLimit && state.tier !== 'pro') {
+          return { deckId: null, addedCount: 0, blockedByPaywall: true };
+        }
+
+        const { decks, deckId, addedCount } = mergeLessonIntoDeckSet(
+          state.flashcardDecks,
+          lesson,
+          trackName,
+        );
+        set({ flashcardDecks: decks });
+        return { deckId, addedCount, blockedByPaywall: false };
+      },
+
+      reviewFlashcard: (deckId, cardId, rating) =>
+        set((s) => ({
+          flashcardDecks: s.flashcardDecks.map((d) => {
+            if (d.id !== deckId) return d;
+            const cards = d.cards.map((c) => (c.id === cardId ? updateCard(c, rating) : c));
+            return { ...d, cards };
+          }),
+        })),
+
+      deleteFlashcardDeck: (deckId) =>
+        set((s) => ({
+          flashcardDecks: s.flashcardDecks.filter((d) => d.id !== deckId),
         })),
 
       toggleBookmark: (id) =>

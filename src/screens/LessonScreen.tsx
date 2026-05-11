@@ -13,6 +13,8 @@ import { colors, typography, spacing, radius, elevation } from '../theme';
 import { getLessonById, checkAnswer, saveProgress } from '../api/client';
 import { useUserStore } from '../store/userStore';
 import { findSeedLesson, checkSeedAnswer, isSeedLessonId } from '../data';
+import { SEED_LESSONS } from '../data';
+import { CODE_LESSONS } from '../data';
 import type { RootStackParamList, Lesson, Question } from '../types';
 
 type Phase = 'loading' | 'hook' | 'concept' | 'guided' | 'sandbox' | 'quiz' | 'feedback' | 'complete' | 'error';
@@ -444,6 +446,8 @@ export function LessonScreen({ navigation, route }: Props) {
             </View>
           )}
 
+          <CreateFlashcardsButton lessonId={lesson.id} navigation={navigation} />
+
           <Pressable style={styles.primaryBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.primaryBtnText}>Back to Home</Text>
           </Pressable>
@@ -596,4 +600,105 @@ const styles = StyleSheet.create({
   },
   takeawayLabel: { ...typography.label, color: colors.cyan, marginBottom: 8 },
   takeawayText: { ...typography.body, color: colors.textSecondary, lineHeight: 22 },
+
+  // Create-Flashcards button on lesson summary
+  flashBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.bgCardHover,
+    borderColor: colors.cyan,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  flashBtnText: { ...typography.button, color: colors.cyan, fontSize: 15 },
+  flashBtnSub: { ...typography.caption, color: colors.textSecondary, marginBottom: 18, textAlign: 'center' },
 });
+
+/* ─────────────────── CreateFlashcardsButton ─────────────────── */
+
+function CreateFlashcardsButton({
+  lessonId,
+  navigation,
+}: {
+  lessonId: string;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Lesson'>;
+}) {
+  const decks = useUserStore((s) => s.flashcardDecks);
+  const tier = useUserStore((s) => s.tier);
+  const createFlashcardsForLesson = useUserStore((s) => s.createFlashcardsForLesson);
+
+  // Find the seed lesson so we can generate. Try main pool first, then code lessons.
+  const seedLesson = React.useMemo(() => {
+    return SEED_LESSONS.find((l) => l.id === lessonId) ?? CODE_LESSONS.find((l) => l.id === lessonId);
+  }, [lessonId]);
+
+  if (!seedLesson) {
+    // Backend-only lesson — generator can't run. Hide silently.
+    return null;
+  }
+
+  // Show "View" if a deck for this track exists AND already contains this lesson.
+  const existingDeck = decks.find(
+    (d) => d.trackId === seedLesson.trackId && d.lessonIds.includes(seedLesson.id),
+  );
+
+  const trackName = trackNameFor(seedLesson.trackId);
+
+  const onCreate = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    const result = createFlashcardsForLesson(seedLesson, trackName);
+    if (result.blockedByPaywall) {
+      navigation.navigate('Paywall');
+      return;
+    }
+    if (result.deckId) {
+      navigation.navigate('Flashcards');
+    }
+  };
+
+  const onView = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    navigation.navigate('Flashcards');
+  };
+
+  if (existingDeck) {
+    return (
+      <>
+        <Pressable style={styles.flashBtn} onPress={onView}>
+          <Text style={styles.flashBtnText}>View flashcards →</Text>
+        </Pressable>
+        <Text style={styles.flashBtnSub}>{existingDeck.cardCount} cards in {existingDeck.name}</Text>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Pressable style={styles.flashBtn} onPress={onCreate}>
+        <Text style={styles.flashBtnText}>✨ Create flashcards from this lesson</Text>
+      </Pressable>
+      <Text style={styles.flashBtnSub}>Turn this lesson into 5-10 quick recall cards.</Text>
+    </>
+  );
+}
+
+function trackNameFor(trackId: string): string {
+  switch (trackId) {
+    case 'prompt':   return 'Prompt Craft';
+    case 'critical': return 'Critical Thinking';
+    case 'power':    return 'Power User Moves';
+    case 'tools':    return 'AI Tools Mastery';
+    case 'vibe':     return 'Vibe Code';
+    case 'create':   return 'Create with AI';
+    default:         return 'AI Foundations';
+  }
+}

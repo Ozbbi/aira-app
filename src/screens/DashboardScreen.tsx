@@ -12,6 +12,7 @@ import { AiraMascot } from '../components/AiraMascot';
 import { colors, typography, spacing, radius, elevation } from '../theme';
 import { useUserStore, XP_PER_LEVEL } from '../store/userStore';
 import { getInsightOfTheDay } from '../data';
+import { totalDueAcrossDecks } from '../data/flashcards';
 import type { RootStackParamList, TabParamList } from '../types';
 
 function getGreeting(): string {
@@ -140,6 +141,9 @@ export function DashboardScreen({ navigation }: { navigation: Nav }) {
             </LinearGradient>
           </Pressable>
         </Animated.View>
+
+        {/* Flashcards due today — only when there's something to do */}
+        <FlashcardsDueRow onPress={() => navigation.navigate('Flashcards' as never)} />
 
         {/* Section 5: Daily Insights - Horizontal Scroll */}
         <Animated.View entering={FadeInDown.duration(250).delay(120)}>
@@ -411,4 +415,91 @@ const styles = StyleSheet.create({
   statDivider: { width: 1, backgroundColor: colors.divider, marginVertical: spacing.xs },
   statNumber: { fontFamily: 'Inter_700Bold', fontSize: 22, color: colors.textPrimary, marginBottom: 2 },
   statLabel: { ...typography.label, fontSize: 9, color: colors.textDisabled },
+
+  // Flashcards-due row
+  flashRow: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  flashRowInner: {
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  flashRowTextCol: { flex: 1, minWidth: 0 },
+  flashRowEyebrow: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    letterSpacing: 1.4,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 4,
+  },
+  flashRowTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 18,
+    color: '#FFFFFF',
+    marginBottom: 2,
+    letterSpacing: -0.2,
+  },
+  flashRowSub: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.92)',
+  },
+  flashRowBadge: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    minWidth: 56,
+    alignItems: 'center',
+  },
+  flashRowBadgeNum: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 18,
+    color: '#0F0A1F',
+  },
+  flashRowBadgeLabel: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 10,
+    color: '#0F0A1F',
+    letterSpacing: 0.4,
+  },
 });
+
+/* ─────────────────────────── FlashcardsDueRow ─────────────────────────── */
+
+function FlashcardsDueRow({ onPress }: { onPress: () => void }) {
+  const decks = useUserStore((s) => s.flashcardDecks);
+  const due = totalDueAcrossDecks(decks);
+  if (due === 0) return null;
+  return (
+    <Animated.View entering={FadeInDown.duration(250).delay(90)}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.flashRow, pressed && { opacity: 0.94, transform: [{ scale: 0.99 }] }]}
+      >
+        <LinearGradient
+          colors={['#7C3AED', '#A855F7'] as const}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.flashRowInner}
+        >
+          <View style={styles.flashRowTextCol}>
+            <Text style={styles.flashRowEyebrow}>FLASHCARDS</Text>
+            <Text style={styles.flashRowTitle}>Review {due} card{due === 1 ? '' : 's'} now</Text>
+            <Text style={styles.flashRowSub}>~30 seconds. Locks in what you learned.</Text>
+          </View>
+          <View style={styles.flashRowBadge}>
+            <Text style={styles.flashRowBadgeNum}>{due}</Text>
+            <Text style={styles.flashRowBadgeLabel}>DUE</Text>
+          </View>
+        </LinearGradient>
+      </Pressable>
+    </Animated.View>
+  );
+}

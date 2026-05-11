@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Dimensions, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -187,6 +187,11 @@ export function PromptOrNotScreen({ navigation }: Props) {
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
+  // Cards the user got wrong — surfaced as "Review Mistakes" on the
+  // result screen. Each entry carries its teaching reason so the review
+  // panel doubles as a study moment.
+  const [mistakes, setMistakes] = useState<Card[]>([]);
+  const [showingReview, setShowingReview] = useState(false);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
   const [lastFeedback, setLastFeedback] = useState<{ correct: boolean; reason: string } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -230,6 +235,8 @@ export function PromptOrNotScreen({ navigation }: Props) {
     setBestCombo(0);
     setTimeLeft(ROUND_SECONDS);
     setLastFeedback(null);
+    setMistakes([]);
+    setShowingReview(false);
     x.value = 0;
     rotation.value = 0;
     setPhase('playing');
@@ -242,11 +249,24 @@ export function PromptOrNotScreen({ navigation }: Props) {
       const correct = userChoseGood === current.isGood;
 
       if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(
-          correct
-            ? Haptics.NotificationFeedbackType.Success
-            : Haptics.NotificationFeedbackType.Error
-        ).catch(() => {});
+        if (correct) {
+          // Light impact + success chime per the v16 brief.
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          setTimeout(() => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          }, 60);
+        } else {
+          // Heavy impact for wrong — clearly distinct from correct.
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+          setTimeout(() => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+          }, 60);
+        }
+      }
+
+      // Stash for the Review Mistakes panel
+      if (!correct) {
+        setMistakes((m) => [...m, current]);
       }
 
       const newCombo = correct ? combo + 1 : 0;
@@ -340,28 +360,50 @@ export function PromptOrNotScreen({ navigation }: Props) {
 
   // -------------------- RESULT --------------------
   if (phase === 'result') {
-    const correctCount = score / 10; // simple but ok for display
+    const correctCount = score / 10;
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.introWrap}>
-          <View style={styles.introCenter}>
-            <Animated.View entering={ZoomIn.duration(280)}>
-              <Text style={styles.introEyebrow}>ROUND OVER</Text>
-              <Text style={styles.resultScore}>+{score}<Text style={styles.resultXp}> XP</Text></Text>
-              <Text style={styles.resultBest}>Best streak: {bestCombo}</Text>
-            </Animated.View>
-          </View>
-          <View style={{ gap: space['3'] }}>
-            <Button label="Play again" onPress={startRound} variant="primary" size="lg" fullWidth />
-            <Button
-              label="Back to Home"
-              onPress={() => navigation.goBack()}
-              variant="secondary"
-              size="md"
-              fullWidth
-            />
-          </View>
-        </View>
+        <ScrollView contentContainerStyle={styles.introWrap} showsVerticalScrollIndicator={false}>
+          {showingReview ? (
+            <ReviewMistakesPanel mistakes={mistakes} onBack={() => setShowingReview(false)} />
+          ) : (
+            <>
+              <View style={styles.introCenter}>
+                <Animated.View entering={ZoomIn.duration(280)}>
+                  <Text style={styles.introEyebrow}>ROUND OVER</Text>
+                  <Text style={styles.resultScore}>+{score}<Text style={styles.resultXp}> XP</Text></Text>
+                  <Text style={styles.resultBest}>Best streak: {bestCombo}</Text>
+                  {mistakes.length > 0 ? (
+                    <Text style={styles.resultMistakes}>
+                      {mistakes.length} card{mistakes.length === 1 ? '' : 's'} missed.
+                    </Text>
+                  ) : (
+                    <Text style={styles.resultMistakes}>No misses. Sharp.</Text>
+                  )}
+                </Animated.View>
+              </View>
+              <View style={{ gap: space['3'] }}>
+                {mistakes.length > 0 ? (
+                  <Button
+                    label={`Review ${mistakes.length} mistake${mistakes.length === 1 ? '' : 's'}`}
+                    onPress={() => setShowingReview(true)}
+                    variant="secondary"
+                    size="md"
+                    fullWidth
+                  />
+                ) : null}
+                <Button label="Play again" onPress={startRound} variant="primary" size="lg" fullWidth />
+                <Button
+                  label="Back to Home"
+                  onPress={() => navigation.goBack()}
+                  variant="secondary"
+                  size="md"
+                  fullWidth
+                />
+              </View>
+            </>
+          )}
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -464,6 +506,39 @@ export function PromptOrNotScreen({ navigation }: Props) {
   );
 }
 
+/* ─────────────────── Review Mistakes panel ─────────────────── */
+
+function ReviewMistakesPanel({ mistakes, onBack }: { mistakes: Card[]; onBack: () => void }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Pressable onPress={onBack} hitSlop={12} style={styles.back}>
+        <Text style={styles.backIcon}>‹</Text>
+      </Pressable>
+      <Text style={[styles.introEyebrow, { marginTop: space['2'] }]}>REVIEW</Text>
+      <Text style={[styles.introTitle, { fontSize: 28, marginBottom: space['4'] }]}>
+        The ones that got you
+      </Text>
+      <View style={{ gap: space['3'] }}>
+        {mistakes.map((m, i) => (
+          <View key={i} style={styles.reviewCard}>
+            <Text style={styles.reviewLabel}>
+              {m.isGood ? 'GOOD PROMPT · you swiped LEFT' : 'BAD PROMPT · you swiped RIGHT'}
+            </Text>
+            <Text style={styles.reviewPrompt}>"{m.text}"</Text>
+            <View style={styles.reviewReasonBox}>
+              <Text style={styles.reviewReasonLabel}>WHY</Text>
+              <Text style={styles.reviewReason}>{m.reason}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      <View style={{ marginTop: space['6'] }}>
+        <Button label="Back to result" onPress={onBack} variant="primary" size="md" fullWidth />
+      </View>
+    </View>
+  );
+}
+
 /* ───────────────────────────── styles ───────────────────────────── */
 
 const styles = StyleSheet.create({
@@ -508,6 +583,38 @@ const styles = StyleSheet.create({
   },
   resultXp: { fontSize: 24, color: palette.textSecondary },
   resultBest: { ...text.body, color: palette.textSecondary },
+  resultMistakes: {
+    ...text.caption,
+    color: palette.textMuted,
+    marginTop: space['2'],
+  },
+
+  // Review panel
+  reviewCard: {
+    backgroundColor: palette.bgRaised,
+    borderColor: palette.border,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: space['4'],
+  },
+  reviewLabel: { ...text.label, color: palette.brandSoft, marginBottom: space['2'] },
+  reviewPrompt: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    lineHeight: 22,
+    color: palette.textPrimary,
+    marginBottom: space['3'],
+  },
+  reviewReasonBox: {
+    backgroundColor: palette.bgRaised2,
+    borderLeftColor: palette.brand,
+    borderLeftWidth: 3,
+    paddingHorizontal: space['3'],
+    paddingVertical: space['2'],
+    borderRadius: radii.sm,
+  },
+  reviewReasonLabel: { ...text.label, color: palette.textMuted, marginBottom: 4 },
+  reviewReason: { ...text.bodySmall, color: palette.textPrimary },
 
   // Play screen
   playHeader: {

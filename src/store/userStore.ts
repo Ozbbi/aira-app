@@ -10,6 +10,66 @@ interface CompletedLesson {
   completedAt: string;
 }
 
+/**
+ * Sandbox submission entry — captures the full multi-judge breakdown
+ * so Profile > History can replay it.
+ */
+export interface SandboxEntry {
+  id: string;
+  timestamp: string;
+  lessonId?: string;
+  prompt: string;
+  scores: {
+    clarity: number;
+    specificity: number;
+    audience: number;
+    format: number;
+  };
+  overallStars: number;
+  /** Free-form Q&A as the user taps "Ask Why?" chips. */
+  followUps: { question: string; answer: string }[];
+}
+
+/**
+ * Placeholder shapes for Phase 2 features. These exist as typed empty
+ * arrays today so screens can read/write into them without forcing a
+ * schema migration later when the actual features ship.
+ */
+export interface FlashcardDeck {
+  id: string;
+  lessonId: string;
+  title: string;
+  createdAt: string;
+  cards: { id: string; front: string; back: string; nextReviewAt: string }[];
+}
+export interface ImportedContent {
+  id: string;
+  source: 'url' | 'pdf' | 'youtube' | 'image' | 'text';
+  rawText?: string;
+  importedAt: string;
+  summary?: string;
+}
+export interface PodcastRecap {
+  id: string;
+  lessonId: string;
+  scriptText: string;
+  audioUri?: string; // populated when audio gets generated
+  createdAt: string;
+}
+export interface MockExamRecord {
+  id: string;
+  trackId: string;
+  takenAt: string;
+  score: number;
+  durationSec: number;
+}
+export interface LeagueData {
+  leagueTier: 'bronze' | 'silver' | 'gold' | 'sapphire' | 'ruby' | 'diamond';
+  weeklyXp: number;
+  rank: number;
+  cohortIds: string[];
+}
+
 interface UserState {
   userId: string;
   name: string;
@@ -38,6 +98,17 @@ interface UserState {
     iteration: number;
   };
   sandboxSubmissions: number;
+  /** Persisted sandbox submissions for Profile > History. */
+  sandboxHistory: SandboxEntry[];
+
+  // ── Phase-2 feature scaffolding ──
+  // These start empty / null and are populated when their features ship.
+  // Adding them now avoids a store migration when Phase 2 lands.
+  flashcardDecks: FlashcardDeck[];
+  importedContent: ImportedContent[];
+  podcastRecaps: PodcastRecap[];
+  mockExams: MockExamRecord[];
+  leagueData: LeagueData | null;
 
   setUser: (data: Partial<UserState>) => void;
   completeLesson: (lessonId: string, xpEarned: number) => void;
@@ -46,6 +117,7 @@ interface UserState {
   earnLife: (count: number) => void;
   updateSkillScore: (skill: keyof UserState['skillScores'], score: number) => void;
   incrementSandbox: () => void;
+  addSandboxEntry: (entry: SandboxEntry) => void;
   toggleBookmark: (id: string) => void;
   syncFromBackend: (data: {
     xp: number;
@@ -90,6 +162,14 @@ const initialState = {
     iteration: 20,
   },
   sandboxSubmissions: 0,
+  sandboxHistory: [] as SandboxEntry[],
+
+  // Phase-2 scaffolding: empty until those features ship.
+  flashcardDecks: [] as FlashcardDeck[],
+  importedContent: [] as ImportedContent[],
+  podcastRecaps: [] as PodcastRecap[],
+  mockExams: [] as MockExamRecord[],
+  leagueData: null as LeagueData | null,
 };
 
 export const useUserStore = create<UserState>()(
@@ -145,6 +225,12 @@ export const useUserStore = create<UserState>()(
       incrementSandbox: () =>
         set((s) => ({ sandboxSubmissions: s.sandboxSubmissions + 1 })),
 
+      addSandboxEntry: (entry) =>
+        set((s) => ({
+          // Cap at 50 most-recent entries so persisted state doesn't bloat.
+          sandboxHistory: [entry, ...s.sandboxHistory].slice(0, 50),
+        })),
+
       toggleBookmark: (id) =>
         set((s) => ({
           bookmarks: s.bookmarks.includes(id)
@@ -189,6 +275,13 @@ export const useUserStore = create<UserState>()(
         bookmarks: s.bookmarks,
         skillScores: s.skillScores,
         sandboxSubmissions: s.sandboxSubmissions,
+        sandboxHistory: s.sandboxHistory,
+        // Phase-2 fields persisted now to avoid migration later.
+        flashcardDecks: s.flashcardDecks,
+        importedContent: s.importedContent,
+        podcastRecaps: s.podcastRecaps,
+        mockExams: s.mockExams,
+        leagueData: s.leagueData,
       }),
     },
   ),

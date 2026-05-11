@@ -1,33 +1,42 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { palette, radii, space, text, elevation } from '../theme/system';
 import { Button } from './Button';
 import { AiraMascot } from './AiraMascot';
+import { useUserStore } from '../store/userStore';
+import { haptics } from '../utils/haptics';
 
 /**
- * Open Practice — rule-based, client-side prompt evaluator.
+ * Open Practice — multi-judge prompt evaluator with "Ask Why?" follow-ups.
  *
- * Per the brief: "the user writes a prompt to an embedded AI and
- * receives instant tutor feedback on their prompt quality." The brief
- * also says "design the service layer so it can be swapped with real
- * API endpoints later."
+ * Architecture (per the v16 brief):
  *
- * Architecture: a pure scoring function (`evaluatePrompt`) returns a
- * `PromptEvaluation`. A future commit can replace the function body
- * with a real API call without touching the UI. Same shape returned.
+ *   1. Four named judges score the user's prompt independently:
+ *        Clarity     — sentence structure, length, readability
+ *        Specificity — numbers, length caps, banned words, "step by step"
+ *        Audience    — names a target reader (CFO, 10-year-old, etc.)
+ *        Format      — explicit shape (list, table, JSON, paragraph cap)
  *
- * What we score (each 0-100):
- *   • Clarity         — readable, complete sentences, not too short
- *   • Specificity     — names audience, numbers, concrete nouns
- *   • Context         — gives the AI a role / scenario / examples
- *   • Format          — explicitly asks for a shape (list, table, count)
+ *   2. Each judge returns an internal 0-100 score that we render as
+ *      1-5 stars. The overall headline is the average of the 4 star
+ *      ratings (1-5, one decimal).
  *
- * Plus an overall band: green (≥75 avg) / amber (50–74) / red (<50).
+ *   3. Tap any judge row to expand a rationale panel that explains
+ *      WHY that judge scored what it did + the specific fix.
  *
- * Honest caveat: rule-based scoring is an approximation. Real Claude
- * grading would be more nuanced. But this is good enough to teach the
- * user the *shape* of a strong prompt — which is the lesson.
+ *   4. Three follow-up chips below the judges:
+ *        "Why this score?"     — overall reasoning
+ *        "How to improve?"     — actionable next steps
+ *        "Show me an example"  — exemplar prompt
+ *      Free users: 3 follow-ups per sandbox session. Pro: unlimited.
+ *      When the user runs out, the chip shows an upgrade nudge.
+ *
+ *   5. Every submission auto-saves to the user store's sandboxHistory
+ *      with the full multi-judge breakdown so Profile > History can
+ *      replay it later.
+ *
+ * The 0-100 single-score API is GONE. No legacy compatibility kept.
  */
 
 interface Props {
@@ -35,38 +44,131 @@ interface Props {
   prompt: string;
   /** Optional reference example shown when user taps "Show example". */
   exampleAnswer?: string;
+  /** The lesson id this sandbox belongs to (for history). */
+  lessonId?: string;
+  /** Per-lesson follow-up text. Generated fallback used when absent. */
+  followUpExplanations?: {
+    whyScore?: string;
+    howToImprove?: string;
+    example?: string;
+  };
   /** Called after the user submits and reads their feedback. */
   onContinue?: () => void;
 }
 
-export interface PromptEvaluation {
-  scores: {
-    clarity: number;
-    specificity: number;
-    context: number;
-    format: number;
-  };
-  overall: number;
-  band: 'great' | 'good' | 'try-again';
-  tips: string[];
+export type Judge = 'clarity' | 'specificity' | 'audience' | 'format';
+
+interface JudgeRationale {
+  /** WHY the judge scored what it did. */
+  why: string;
+  /** Concrete tip to improve. */
+  tip: string;
 }
 
-export function OpenPracticeSandbox({ prompt, exampleAnswer, onContinue }: Props) {
+export interface PromptEvaluation {
+  /** Internal 0-100 scores (kept for tooling / future analytics). */
+  scores: Record<Judge, number>;
+  /** 1-5 stars, rendered. */
+  stars: Record<Judge, number>;
+  /** Average of the four star ratings, e.g. 3.8. */
+  overallStars: number;
+  band: 'great' | 'good' | 'try-again';
+  /** Per-judge "why + tip" content. */
+  rationale: Record<Judge, JudgeRationale>;
+}
+
+type FollowUpKey = 'why' | 'improve' | 'example';
+
+const FREE_FOLLOWUP_LIMIT = 3;
+
+const JUDGE_LABELS: Record<Judge, string> = {
+  clarity: 'Clarity',
+  specificity: 'Specificity',
+  audience: 'Audience',
+  format: 'Format',
+};
+
+export function OpenPracticeSandbox({
+  prompt,
+  exampleAnswer,
+  lessonId,
+  followUpExplanations,
+  onContinue,
+}: Props) {
+  const tier = useUserStore((s) => s.tier);
+  const addSandboxEntry = useUserStore((s) => s.addSandboxEntry);
+  const incrementSandbox = useUserStore((s) => s.incrementSandbox);
+
   const [draft, setDraft] = useState('');
-  const [submitted, setSubmitted] = useState<PromptEvaluation | null>(null);
+  const [evaluation, setEvaluation] = useState<PromptEvaluation | null>(null);
   const [showingExample, setShowingExample] = useState(false);
+  /** Which judges have their detailed rationale panel open. */
+  const [expandedJudges, setExpandedJudges] = useState<Set<Judge>>(new Set());
+  /** Which follow-up chips have been opened in this session. */
+  const [openedFollowUps, setOpenedFollowUps] = useState<Set<FollowUpKey>>(new Set());
+  /** Total follow-ups tapped this session (counts toward free limit). */
+  const [followUpsUsed, setFollowUpsUsed] = useState(0);
 
   const onSubmit = useCallback(() => {
     if (draft.trim().length < 5) return;
-    const evalResult = evaluatePrompt(draft);
-    setSubmitted(evalResult);
-  }, [draft]);
+    const result = evaluatePrompt(draft);
+    setEvaluation(result);
+    setExpandedJudges(new Set());
+    setOpenedFollowUps(new Set());
+    setFollowUpsUsed(0);
+    // Save submission to history + bump sandbox counter
+    incrementSandbox();
+    addSandboxEntry({
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: new Date().toISOString(),
+      lessonId,
+      prompt: draft,
+      scores: result.scores,
+      overallStars: result.overallStars,
+      followUps: [],
+    });
+    haptics.success();
+  }, [draft, addSandboxEntry, incrementSandbox, lessonId]);
 
   const onTryAgain = useCallback(() => {
-    setSubmitted(null);
+    setEvaluation(null);
+    setExpandedJudges(new Set());
+    setOpenedFollowUps(new Set());
+    setFollowUpsUsed(0);
   }, []);
 
-  const charsLeft = 600 - draft.length;
+  const toggleJudge = useCallback((judge: Judge) => {
+    haptics.select();
+    setExpandedJudges((prev) => {
+      const next = new Set(prev);
+      if (next.has(judge)) next.delete(judge);
+      else next.add(judge);
+      return next;
+    });
+  }, []);
+
+  const onFollowUp = useCallback(
+    (key: FollowUpKey) => {
+      if (openedFollowUps.has(key)) {
+        // Toggle closed without spending a follow-up
+        setOpenedFollowUps((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        return;
+      }
+      // Check free-tier follow-up limit
+      if (tier !== 'pro' && followUpsUsed >= FREE_FOLLOWUP_LIMIT) {
+        haptics.warning();
+        return; // The chip renders a "Pro" badge that the user can tap separately
+      }
+      haptics.tap();
+      setOpenedFollowUps((prev) => new Set(prev).add(key));
+      setFollowUpsUsed((n) => n + 1);
+    },
+    [openedFollowUps, followUpsUsed, tier]
+  );
 
   return (
     <KeyboardAvoidingView
@@ -92,17 +194,15 @@ export function OpenPracticeSandbox({ prompt, exampleAnswer, onContinue }: Props
             value={draft}
             onChangeText={setDraft}
             placeholder="Write your prompt here…"
-            placeholderTextColor={palette.textDisabled}
+            placeholderTextColor={palette.textMuted}
             multiline
             maxLength={600}
-            editable={!submitted}
+            editable={!evaluation}
             textAlignVertical="top"
           />
           <View style={styles.inputFooter}>
-            <Text style={styles.charCount}>
-              {draft.length} / 600
-            </Text>
-            {!submitted && exampleAnswer ? (
+            <Text style={styles.charCount}>{draft.length} / 600</Text>
+            {!evaluation && exampleAnswer ? (
               <Button
                 label={showingExample ? 'Hide example' : 'Show example'}
                 onPress={() => setShowingExample((v) => !v)}
@@ -120,8 +220,8 @@ export function OpenPracticeSandbox({ prompt, exampleAnswer, onContinue }: Props
           ) : null}
         </Animated.View>
 
-        {/* Actions */}
-        {!submitted ? (
+        {/* Submit / Feedback */}
+        {!evaluation ? (
           <Animated.View entering={FadeInDown.duration(220).delay(140)} style={styles.actions}>
             <Button
               label="Get feedback"
@@ -135,7 +235,22 @@ export function OpenPracticeSandbox({ prompt, exampleAnswer, onContinue }: Props
           </Animated.View>
         ) : (
           <Animated.View entering={FadeInDown.duration(220)} style={styles.feedbackBlock}>
-            <FeedbackPanel evaluation={submitted} />
+            <JudgePanel
+              evaluation={evaluation}
+              expanded={expandedJudges}
+              onToggle={toggleJudge}
+            />
+
+            <FollowUpRow
+              opened={openedFollowUps}
+              onTap={onFollowUp}
+              followUpsUsed={followUpsUsed}
+              tier={tier}
+              evaluation={evaluation}
+              draft={draft}
+              followUpExplanations={followUpExplanations}
+            />
+
             <View style={styles.actions}>
               <Button
                 label="Try a stronger version"
@@ -152,7 +267,6 @@ export function OpenPracticeSandbox({ prompt, exampleAnswer, onContinue }: Props
                   size="md"
                   fullWidth
                   trailingIcon="arrow-right"
-                  style={styles.continueBtn}
                   hapticOnPress="medium"
                 />
               ) : null}
@@ -164,60 +278,174 @@ export function OpenPracticeSandbox({ prompt, exampleAnswer, onContinue }: Props
   );
 }
 
-/* ────────────────────────── feedback panel ────────────────────────── */
+/* ─────────────────────────── Judge panel ─────────────────────────── */
 
-function FeedbackPanel({ evaluation }: { evaluation: PromptEvaluation }) {
-  const { scores, band, tips } = evaluation;
+function JudgePanel({
+  evaluation, expanded, onToggle,
+}: {
+  evaluation: PromptEvaluation;
+  expanded: Set<Judge>;
+  onToggle: (j: Judge) => void;
+}) {
+  const { stars, overallStars, band, rationale } = evaluation;
   const headline =
-    band === 'great' ? 'Sharp prompt.' : band === 'good' ? 'Solid start.' : 'Let\'s sharpen it.';
-  const subhead =
-    band === 'great' ? 'You hit specificity, context, and format.'
-    : band === 'good' ? 'A couple of moves away from a great prompt.'
-    : 'Three quick wins will lift this fast.';
+    band === 'great' ? 'Sharp prompt.' :
+    band === 'good'  ? 'Solid start.' :
+                       "Let's sharpen it.";
+  const subhead = `Your prompt scored ${overallStars.toFixed(1)} / 5.`;
+  const mascotMood =
+    band === 'great' ? 'celebrating' :
+    band === 'good'  ? 'encouraging' :
+                       'thinking';
 
   return (
     <View style={styles.feedbackCard}>
       <View style={styles.feedbackHead}>
-        <AiraMascot size={56} mood={band === 'great' ? 'celebrating' : band === 'good' ? 'encouraging' : 'thinking'} />
+        <AiraMascot size={56} mood={mascotMood} />
         <View style={styles.feedbackHeadText}>
           <Text style={styles.feedbackTitle}>{headline}</Text>
           <Text style={styles.feedbackSubtitle}>{subhead}</Text>
         </View>
       </View>
 
-      <View style={styles.scoresGrid}>
-        <ScoreBar label="Clarity" value={scores.clarity} />
-        <ScoreBar label="Specificity" value={scores.specificity} />
-        <ScoreBar label="Context" value={scores.context} />
-        <ScoreBar label="Format" value={scores.format} />
+      <View style={styles.judgesList}>
+        {(['clarity', 'specificity', 'audience', 'format'] as Judge[]).map((j) => (
+          <JudgeRow
+            key={j}
+            label={JUDGE_LABELS[j]}
+            stars={stars[j]}
+            expanded={expanded.has(j)}
+            rationale={rationale[j]}
+            onPress={() => onToggle(j)}
+          />
+        ))}
       </View>
+    </View>
+  );
+}
 
-      {tips.length > 0 ? (
-        <View style={styles.tipsBlock}>
-          <Text style={styles.tipsLabel}>NEXT MOVES</Text>
-          {tips.map((t, i) => (
-            <View key={i} style={styles.tipRow}>
-              <Text style={styles.tipBullet}>•</Text>
-              <Text style={styles.tipText}>{t}</Text>
-            </View>
+function JudgeRow({
+  label, stars, expanded, rationale, onPress,
+}: {
+  label: string;
+  stars: number;
+  expanded: boolean;
+  rationale: JudgeRationale;
+  onPress: () => void;
+}) {
+  return (
+    <View>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.judgeRow, pressed && { opacity: 0.85 }]}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${label}: ${stars} out of 5 stars. Tap to ${expanded ? 'collapse' : 'expand'} reasoning.`}
+      >
+        <View style={styles.judgeLabelCol}>
+          <Text style={styles.judgeLabel}>{label}</Text>
+        </View>
+        <View style={styles.judgeStars}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Text
+              key={i}
+              style={[styles.star, i < stars ? styles.starFilled : styles.starEmpty]}
+            >
+              {i < stars ? '★' : '☆'}
+            </Text>
           ))}
         </View>
+        <Text style={styles.judgeCaret}>{expanded ? '▴' : '▾'}</Text>
+      </Pressable>
+      {expanded ? (
+        <Animated.View entering={FadeIn.duration(160)} style={styles.judgeRationale}>
+          <Text style={styles.rationaleLabel}>WHY</Text>
+          <Text style={styles.rationaleText}>{rationale.why}</Text>
+          <Text style={[styles.rationaleLabel, { marginTop: space['2'] }]}>NEXT MOVE</Text>
+          <Text style={styles.rationaleText}>{rationale.tip}</Text>
+        </Animated.View>
       ) : null}
     </View>
   );
 }
 
-function ScoreBar({ label, value }: { label: string; value: number }) {
-  const colour = value >= 75 ? palette.success : value >= 50 ? palette.orange : palette.error;
+/* ────────────────────────── Ask Why? chips ────────────────────────── */
+
+function FollowUpRow({
+  opened, onTap, followUpsUsed, tier, evaluation, draft, followUpExplanations,
+}: {
+  opened: Set<FollowUpKey>;
+  onTap: (key: FollowUpKey) => void;
+  followUpsUsed: number;
+  tier: 'free' | 'pro';
+  evaluation: PromptEvaluation;
+  draft: string;
+  followUpExplanations?: Props['followUpExplanations'];
+}) {
+  const remaining = tier === 'pro' ? Infinity : Math.max(0, FREE_FOLLOWUP_LIMIT - followUpsUsed);
+  const showLimitBadge = tier !== 'pro';
+
+  const chips: { key: FollowUpKey; label: string; render: () => string }[] = [
+    {
+      key: 'why',
+      label: 'Why this score?',
+      render: () => followUpExplanations?.whyScore || fallbackWhy(evaluation),
+    },
+    {
+      key: 'improve',
+      label: 'How to improve?',
+      render: () => followUpExplanations?.howToImprove || fallbackHowToImprove(evaluation),
+    },
+    {
+      key: 'example',
+      label: 'Show me an example',
+      render: () => followUpExplanations?.example || fallbackExample(draft),
+    },
+  ];
+
   return (
-    <View style={styles.scoreRow}>
-      <View style={styles.scoreLabelRow}>
-        <Text style={styles.scoreLabel}>{label}</Text>
-        <Text style={[styles.scoreValue, { color: colour }]}>{value}</Text>
+    <View style={styles.followUpBlock}>
+      <View style={styles.followUpHead}>
+        <Text style={styles.followUpLabel}>ASK ARA</Text>
+        {showLimitBadge ? (
+          <Text style={styles.followUpRemain}>
+            {remaining > 0 ? `${remaining} follow-up${remaining === 1 ? '' : 's'} left` : 'Free limit reached'}
+          </Text>
+        ) : null}
       </View>
-      <View style={styles.scoreTrack}>
-        <View style={[styles.scoreFill, { width: `${value}%`, backgroundColor: colour }]} />
+
+      <View style={styles.chipsRow}>
+        {chips.map((c) => {
+          const isOpen = opened.has(c.key);
+          const locked = !isOpen && tier !== 'pro' && followUpsUsed >= FREE_FOLLOWUP_LIMIT;
+          return (
+            <Pressable
+              key={c.key}
+              onPress={() => onTap(c.key)}
+              style={({ pressed }) => [
+                styles.chip,
+                isOpen && styles.chipActive,
+                locked && styles.chipLocked,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.chipText, isOpen && styles.chipTextActive, locked && styles.chipTextLocked]}>
+                {locked ? `${c.label} · Pro` : c.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
+
+      {chips
+        .filter((c) => opened.has(c.key))
+        .map((c) => (
+          <Animated.View key={c.key} entering={FadeIn.duration(160)} style={styles.followUpAnswer}>
+            <Text style={styles.followUpAnswerLabel}>{c.label.toUpperCase()}</Text>
+            <Text style={styles.followUpAnswerText}>{c.render()}</Text>
+          </Animated.View>
+        ))}
     </View>
   );
 }
@@ -225,10 +453,29 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 /* ────────────────────────── evaluator (pure) ────────────────────────── */
 
 /**
- * Rule-based scoring. Each dimension returns 0-100. Designed to teach
- * the user the *shape* of a strong prompt; real Claude grading later
- * will return the same shape.
+ * Score 0-100 → 1-5 stars. Linear bucketing.
+ *   0-19   ⇒ 1
+ *   20-39  ⇒ 2
+ *   40-59  ⇒ 3
+ *   60-79  ⇒ 4
+ *   80-100 ⇒ 5
  */
+function toStars(score: number): number {
+  if (score >= 80) return 5;
+  if (score >= 60) return 4;
+  if (score >= 40) return 3;
+  if (score >= 20) return 2;
+  return 1;
+}
+
+const AUDIENCE_WORDS = [
+  'beginner', 'expert', 'student', 'teacher', 'engineer', 'cfo', 'pm',
+  'manager', 'executive', 'developer', 'designer', 'audience', 'reader',
+  'kid', 'child', '10-year-old', '10 year old', 'parent', 'investor', 'customer',
+  'colleague', 'team', 'recruiter', 'client', 'user', 'doctor', 'nurse', 'founder',
+  'senior', 'junior', 'apprentice', 'analyst', 'professor', 'undergrad', 'high school',
+];
+
 export function evaluatePrompt(rawDraft: string): PromptEvaluation {
   const draft = rawDraft.trim();
   const lower = draft.toLowerCase();
@@ -236,42 +483,33 @@ export function evaluatePrompt(rawDraft: string): PromptEvaluation {
   const hasMultipleSentences = /[.!?].+[.!?]/.test(draft);
 
   // ---------- Clarity ----------
-  // Reward: complete sentences, reasonable length (not 1 word, not 500).
-  // Penalise: all-caps, single fragment, gibberish.
   let clarity = 50;
   if (wordCount >= 8) clarity += 15;
   if (wordCount >= 18) clarity += 10;
   if (hasMultipleSentences) clarity += 15;
   if (/[.!?]\s/.test(draft)) clarity += 5;
-  if (draft === draft.toUpperCase() && draft.length > 10) clarity -= 25; // shouting
-  if (wordCount > 120) clarity -= 10; // probably bloated
+  if (draft === draft.toUpperCase() && draft.length > 10) clarity -= 25;
+  if (wordCount > 120) clarity -= 10;
   clarity = clamp(clarity);
 
   // ---------- Specificity ----------
-  // Look for: numbers, named audiences, specific nouns, length caps.
   let specificity = 30;
-  if (/\b\d+\b/.test(draft)) specificity += 20; // any number
-  const audienceWords = [
-    'beginner', 'expert', 'student', 'teacher', 'engineer', 'cfo', 'pm',
-    'manager', 'executive', 'developer', 'designer', 'audience', 'reader',
-    'kid', 'child', '10-year-old', '10 year old', 'parent', 'investor', 'customer',
-  ];
-  if (audienceWords.some((w) => lower.includes(w))) specificity += 25;
-  if (/(in \d+ words|under \d+ words|max \d+ words|\d+ bullets|\d+ sentences|\d+ words)/i.test(draft)) specificity += 25;
-  if (/\b(specifically|exactly|precisely|step.by.step)\b/i.test(draft)) specificity += 10;
+  if (/\b\d+\b/.test(draft)) specificity += 20;
+  if (/(in \d+ words|under \d+ words|max \d+ words|\d+ bullets|\d+ sentences|\d+ words)/i.test(draft)) specificity += 30;
+  if (/\b(specifically|exactly|precisely|step.by.step)\b/i.test(draft)) specificity += 15;
+  if (/\b(don't use|avoid|skip|no )\b/i.test(draft)) specificity += 15;
   specificity = clamp(specificity);
 
-  // ---------- Context ----------
-  // Look for: role priming, scenario, examples, "I am X / my situation".
-  let context = 20;
-  if (/\b(act as|you are|imagine you are|roleplay as|pretend you are)\b/i.test(draft)) context += 30;
-  if (/\b(my (situation|goal|audience|context)|i am|i'm|i want to)\b/i.test(draft)) context += 25;
-  if (/\b(for example|e\.g\.|like this|here's an example)\b/i.test(draft)) context += 15;
-  if (/\b(constraint|requirement|rule|must|should not|don't use)\b/i.test(draft)) context += 15;
-  context = clamp(context);
+  // ---------- Audience ----------
+  // Focused on naming WHO the answer is for.
+  let audience = 20;
+  if (AUDIENCE_WORDS.some((w) => lower.includes(w))) audience += 50;
+  if (/\b(act as|you are|imagine you are|roleplay as|pretend you are)\b/i.test(draft)) audience += 20;
+  if (/\bfor (a |an |the |my )/i.test(draft)) audience += 15;
+  if (/\b(my (situation|goal|audience|context)|i am|i'm|i want to)\b/i.test(draft)) audience += 15;
+  audience = clamp(audience);
 
   // ---------- Format ----------
-  // Look for explicit shape: bullet list, table, JSON, paragraph cap, sentence count.
   let format = 25;
   if (/\b(bullet|bullets|list|numbered list)\b/i.test(draft)) format += 25;
   if (/\btable\b/i.test(draft)) format += 25;
@@ -280,27 +518,142 @@ export function evaluatePrompt(rawDraft: string): PromptEvaluation {
   if (/\b(no intro|no preamble|skip the disclaimer|don't apologi[sz]e)\b/i.test(draft)) format += 15;
   format = clamp(format);
 
-  const overall = Math.round((clarity + specificity + context + format) / 4);
-  const band: PromptEvaluation['band'] = overall >= 75 ? 'great' : overall >= 50 ? 'good' : 'try-again';
-
-  // ---------- Tips ----------
-  const tips: string[] = [];
-  if (specificity < 65) tips.push('Add a number or a named audience. "For a busy CFO" beats "for someone."');
-  if (context < 60) tips.push('Open with "Act as a [role]" or one sentence about your situation.');
-  if (format < 60) tips.push('End with the shape you want: "Reply as a 5-bullet list" or "Max 80 words."');
-  if (clarity < 60 && wordCount < 10) tips.push('Stretch to a full sentence — single phrases are too thin.');
-  if (clarity < 60 && wordCount > 120) tips.push('Trim — long prompts often produce vaguer answers.');
-
-  return {
-    scores: { clarity, specificity, context, format },
-    overall,
-    band,
-    tips: tips.slice(0, 3),
+  const scores = { clarity, specificity, audience, format };
+  const stars = {
+    clarity: toStars(clarity),
+    specificity: toStars(specificity),
+    audience: toStars(audience),
+    format: toStars(format),
   };
+  const overallStars = Number(
+    (((stars.clarity + stars.specificity + stars.audience + stars.format) / 4).toFixed(1))
+  );
+  const band: PromptEvaluation['band'] =
+    overallStars >= 4.0 ? 'great' :
+    overallStars >= 3.0 ? 'good' :
+                          'try-again';
+
+  const rationale = {
+    clarity: rationaleFor('clarity', clarity, wordCount),
+    specificity: rationaleFor('specificity', specificity, wordCount),
+    audience: rationaleFor('audience', audience, wordCount),
+    format: rationaleFor('format', format, wordCount),
+  };
+
+  return { scores, stars, overallStars, band, rationale };
+}
+
+function rationaleFor(judge: Judge, score: number, _wordCount: number): JudgeRationale {
+  // Score band: low (<40), medium (40-69), high (>=70).
+  const band = score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
+  const lookup: Record<Judge, Record<'low' | 'mid' | 'high', JudgeRationale>> = {
+    clarity: {
+      low: {
+        why: 'Your prompt is too short or fragmented for the AI to grip. Single words and shouting both confuse it.',
+        tip: 'Stretch to at least one full sentence. Lower-case unless you mean to shout.',
+      },
+      mid: {
+        why: "There's enough structure for the AI to follow, but the prompt could use one more sentence to set up the ask.",
+        tip: 'Add a quick sentence explaining what you actually want done.',
+      },
+      high: {
+        why: 'The prompt reads cleanly and has enough length to anchor the AI.',
+        tip: 'Lock this clarity in and move to sharpening Specificity or Audience.',
+      },
+    },
+    specificity: {
+      low: {
+        why: 'Nothing concrete to anchor the AI: no numbers, no length caps, no constraints.',
+        tip: 'Add a count or length: "5 bullets", "under 80 words", "step by step." Numbers anchor.',
+      },
+      mid: {
+        why: 'Some specifics, but the AI still has room to be vague where you wanted sharp.',
+        tip: 'Layer one more constraint: a word ban, a maximum length, or a "step by step" instruction.',
+      },
+      high: {
+        why: 'Constraints are well-defined: the AI has to hit your specific targets, not guess.',
+        tip: 'Excellent — keep this constraint discipline in every prompt going forward.',
+      },
+    },
+    audience: {
+      low: {
+        why: 'No named reader. The AI defaults to "average internet expert," which is rarely what you want.',
+        tip: 'Add who this is for: "for a busy CFO" / "for a curious 10-year-old" / "for a junior engineer."',
+      },
+      mid: {
+        why: 'Audience is hinted but not committed. AI takes its best guess.',
+        tip: 'Name the reader explicitly with one trait: their role + one thing about them.',
+      },
+      high: {
+        why: 'The reader is named, so the AI can pitch tone and depth correctly.',
+        tip: 'Optional: layer a second trait ("a CFO who hates jargon") for even sharper output.',
+      },
+    },
+    format: {
+      low: {
+        why: "No shape requested — the AI will default to a wall of prose, almost never what you want.",
+        tip: 'End with the format: "Reply as a 5-bullet list" or "Reply as a 2-column table."',
+      },
+      mid: {
+        why: 'A shape is suggested but loosely. Strong prompts state the shape unambiguously.',
+        tip: 'Be explicit: name the format AND the count (5 bullets, 3 sentences, 2-column table).',
+      },
+      high: {
+        why: 'Format is locked in. The AI has no excuse to drift back to essay-with-disclaimers.',
+        tip: 'Worth saving this prompt structure as a reusable template.',
+      },
+    },
+  };
+  return lookup[judge][band];
 }
 
 function clamp(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+/* ────────────────────── follow-up fallback text ────────────────────── */
+
+function fallbackWhy(ev: PromptEvaluation): string {
+  const weakest = pickLowestJudge(ev);
+  return (
+    `Your overall ${ev.overallStars.toFixed(1)}/5 is the average of four independent judges. ` +
+    `The weakest one was ${JUDGE_LABELS[weakest]} — that's where the AI had the least to work with. ` +
+    'Strong prompts hit all four: a clear sentence, a named audience, a number or two, and an explicit shape.'
+  );
+}
+
+function fallbackHowToImprove(ev: PromptEvaluation): string {
+  const weakest = pickLowestJudge(ev);
+  const tipMap: Record<Judge, string> = {
+    clarity:
+      'Stretch your prompt to a complete sentence or two. State the task in one clean line, then the constraints in the next.',
+    specificity:
+      'Add a number. "5 bullets", "under 80 words", "step by step" — pick whichever makes sense. Numbers anchor AI.',
+    audience:
+      'Name the reader. "For a busy CFO." "For a curious 10-year-old." That single phrase is the cheapest win in prompting.',
+    format:
+      'End with the format you want. "Reply as a 5-bullet list" or "Reply as a 2-column table" or "Max 80 words."',
+  };
+  return tipMap[weakest];
+}
+
+function fallbackExample(draft: string): string {
+  // Build a stronger version using a templated structure.
+  const seed = draft.slice(0, 50).replace(/[.!?]+$/, '');
+  return (
+    'Here\'s the same idea, prompted properly:\n\n' +
+    `"${seed || 'Explain compound interest'} — for a curious 10-year-old. ` +
+    'Reply as a 4-bullet list, one sentence each. ' +
+    'No analogies that involve money — use food. ' +
+    'End with one question I should ask next."\n\n' +
+    'Notice the four moves: named audience, count + length cap, banned device, and a follow-up nudge.'
+  );
+}
+
+function pickLowestJudge(ev: PromptEvaluation): Judge {
+  const entries = Object.entries(ev.scores) as [Judge, number][];
+  entries.sort((a, b) => a[1] - b[1]);
+  return entries[0][0];
 }
 
 /* ────────────────────────── styles ────────────────────────── */
@@ -309,7 +662,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { padding: space['4'], paddingBottom: space['12'] },
 
-  eyebrow: { ...text.label, color: palette.cyanGlow, marginBottom: space['1'] },
+  eyebrow: { ...text.label, color: palette.brandSoft, marginBottom: space['1'] },
   title: { ...text.headline, color: palette.textPrimary, marginBottom: space['2'] },
   body: { ...text.body, color: palette.textSecondary, marginBottom: space['5'] },
 
@@ -317,8 +670,8 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 160,
     borderRadius: radii.md,
-    backgroundColor: palette.cardSurface,
-    borderColor: palette.divider,
+    backgroundColor: palette.bgRaised,
+    borderColor: palette.border,
     borderWidth: 1,
     padding: space['4'],
     color: palette.textPrimary,
@@ -330,28 +683,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: space['2'],
   },
-  charCount: { ...text.caption, color: palette.textDisabled },
+  charCount: { ...text.caption, color: palette.textMuted },
 
   exampleBox: {
     marginTop: space['3'],
-    backgroundColor: palette.elevated,
+    backgroundColor: palette.bgRaised2,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: palette.divider,
+    borderColor: palette.border,
     padding: space['4'],
   },
-  exampleLabel: { ...text.label, color: palette.cyanGlow, marginBottom: space['2'] },
-  exampleText: { ...text.caption, color: palette.textPrimary },
+  exampleLabel: { ...text.label, color: palette.brandSoft, marginBottom: space['2'] },
+  exampleText: { ...text.bodySmall, color: palette.textPrimary },
 
   actions: { gap: space['3'] },
-  continueBtn: {},
-
   feedbackBlock: { gap: space['4'] },
+
+  // Feedback card
   feedbackCard: {
-    backgroundColor: palette.cardSurface,
+    backgroundColor: palette.bgRaised,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: palette.divider,
+    borderColor: palette.border,
     padding: space['5'],
     ...elevation.sm,
   },
@@ -362,34 +715,74 @@ const styles = StyleSheet.create({
     marginBottom: space['4'],
   },
   feedbackHeadText: { flex: 1, minWidth: 0 },
-  feedbackTitle: { ...text.headline, color: palette.textPrimary, marginBottom: 2 },
-  feedbackSubtitle: { ...text.caption, color: palette.textSecondary },
+  feedbackTitle: { ...text.title, color: palette.textPrimary, marginBottom: 2 },
+  feedbackSubtitle: { ...text.bodySmall, color: palette.textSecondary },
 
-  scoresGrid: { gap: space['3'], marginBottom: space['4'] },
-  scoreRow: {},
-  scoreLabelRow: {
+  judgesList: { gap: 4 },
+  judgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: space['3'],
+    minHeight: 48,
+  },
+  judgeLabelCol: { flex: 1, minWidth: 0 },
+  judgeLabel: { ...text.bodyEmphasis, color: palette.textPrimary, fontSize: 15 },
+  judgeStars: { flexDirection: 'row', alignItems: 'center', gap: 2, marginHorizontal: space['3'] },
+  star: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  starFilled: { color: palette.brandSoft },
+  starEmpty: { color: palette.border },
+  judgeCaret: { ...text.caption, color: palette.textMuted, width: 18, textAlign: 'right' },
+  judgeRationale: {
+    paddingHorizontal: space['3'],
+    paddingTop: space['1'],
+    paddingBottom: space['3'],
+  },
+  rationaleLabel: { ...text.label, color: palette.textMuted, marginBottom: space['1'] },
+  rationaleText: { ...text.bodySmall, color: palette.textPrimary },
+
+  // Follow-up chips
+  followUpBlock: { gap: space['3'] },
+  followUpHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 4,
   },
-  scoreLabel: { ...text.caption, color: palette.textPrimary },
-  scoreValue: { ...text.bodyBold, fontSize: 14 },
-  scoreTrack: {
-    height: 6,
+  followUpLabel: { ...text.label, color: palette.brandSoft },
+  followUpRemain: { ...text.caption, color: palette.textMuted },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space['2'],
+  },
+  chip: {
+    paddingHorizontal: space['3'],
+    paddingVertical: space['2'],
     borderRadius: radii.full,
-    backgroundColor: palette.elevated,
-    overflow: 'hidden',
+    backgroundColor: palette.bgRaised,
+    borderColor: palette.border,
+    borderWidth: 1,
+    minHeight: 36,
+    justifyContent: 'center',
   },
-  scoreFill: { height: '100%', borderRadius: radii.full },
+  chipActive: {
+    backgroundColor: palette.brandWash,
+    borderColor: palette.brand,
+  },
+  chipLocked: {
+    opacity: 0.6,
+  },
+  chipText: { ...text.bodySmall, color: palette.textSecondary, fontFamily: 'Inter_600SemiBold' },
+  chipTextActive: { color: palette.textPrimary },
+  chipTextLocked: { color: palette.textMuted },
 
-  tipsBlock: {
-    paddingTop: space['3'],
-    borderTopColor: palette.divider,
-    borderTopWidth: 1,
+  followUpAnswer: {
+    backgroundColor: palette.bgRaised2,
+    borderRadius: radii.md,
+    padding: space['4'],
+    borderLeftColor: palette.brand,
+    borderLeftWidth: 3,
   },
-  tipsLabel: { ...text.label, color: palette.textDisabled, marginBottom: space['2'] },
-  tipRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space['2'], gap: space['2'] },
-  tipBullet: { ...text.body, color: palette.cyan },
-  tipText: { ...text.caption, color: palette.textPrimary, flex: 1 },
+  followUpAnswerLabel: { ...text.label, color: palette.brandSoft, marginBottom: space['2'] },
+  followUpAnswerText: { ...text.bodySmall, color: palette.textPrimary, lineHeight: 22 },
 });

@@ -91,6 +91,9 @@ export function ProfileScreen() {
           )}
         </Animated.View>
 
+        {/* Sandbox history */}
+        <SandboxHistorySection />
+
         {/* Portfolio */}
         <Animated.View entering={FadeInDown.duration(250).delay(80)} style={styles.section}>
           <Text style={styles.sectionTitle}>Portfolio Projects</Text>
@@ -285,4 +288,153 @@ const styles = StyleSheet.create({
   modalBtnSave: { flex: 1, padding: 14, borderRadius: radius.md, backgroundColor: colors.cyan, alignItems: 'center' },
   modalBtnText: { ...typography.button, color: colors.textSecondary },
   modalBtnTextSave: { ...typography.button, color: colors.bg },
+
+  // Sandbox history
+  historyFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  historyChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.bgCard,
+    borderColor: colors.border,
+    borderWidth: 1,
+  },
+  historyChipActive: {
+    backgroundColor: colors.bgCardHover,
+    borderColor: colors.airaCore,
+  },
+  historyChipText: { ...typography.caption, color: colors.textSecondary },
+  historyChipTextActive: { color: colors.textPrimary, fontFamily: 'Inter_600SemiBold' },
+  historySearch: {
+    backgroundColor: colors.bgCard,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+  },
+  historyEntry: {
+    backgroundColor: colors.bgCard,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  historyEntryHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 6,
+  },
+  historyEntryDate: { ...typography.caption, color: colors.textMuted },
+  historyEntryStars: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    color: colors.airaGlow,
+  },
+  historyEntryPrompt: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textPrimary,
+  },
 });
+
+/* ─────────────────────── Sandbox History Section ─────────────────────── */
+
+type HistoryFilter = 'all' | '7d' | '30d';
+
+function SandboxHistorySection() {
+  const history = useUserStore((s) => s.sandboxHistory);
+  const [filter, setFilter] = useState<HistoryFilter>('all');
+  const [q, setQ] = useState('');
+
+  const filtered = React.useMemo(() => {
+    const now = Date.now();
+    const cutoff =
+      filter === '7d' ? now - 7 * 86400_000 :
+      filter === '30d' ? now - 30 * 86400_000 :
+      -Infinity;
+    return history
+      .filter((e) => new Date(e.timestamp).getTime() >= cutoff)
+      .filter((e) =>
+        q.trim().length === 0
+          ? true
+          : e.prompt.toLowerCase().includes(q.trim().toLowerCase()) ||
+            (e.lessonId || '').toLowerCase().includes(q.trim().toLowerCase())
+      )
+      .slice(0, 20);
+  }, [history, filter, q]);
+
+  return (
+    <Animated.View entering={FadeInDown.duration(250).delay(70)} style={styles.section}>
+      <Text style={styles.sectionTitle}>Sandbox History</Text>
+
+      {history.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>
+            Your sandbox submissions will appear here with their full multi-judge breakdown.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.historyFilters}>
+            {(['all', '7d', '30d'] as HistoryFilter[]).map((f) => {
+              const active = filter === f;
+              return (
+                <Pressable
+                  key={f}
+                  onPress={() => setFilter(f)}
+                  style={[styles.historyChip, active && styles.historyChipActive]}
+                >
+                  <Text style={[styles.historyChipText, active && styles.historyChipTextActive]}>
+                    {f === 'all' ? 'All' : f === '7d' ? 'Last 7 days' : 'Last 30 days'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="Search by prompt or lesson…"
+            placeholderTextColor={colors.textMuted}
+            style={styles.historySearch}
+          />
+          {filtered.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No submissions match this filter.</Text>
+            </View>
+          ) : (
+            filtered.map((entry) => (
+              <View key={entry.id} style={styles.historyEntry}>
+                <View style={styles.historyEntryHead}>
+                  <Text style={styles.historyEntryDate}>
+                    {new Date(entry.timestamp).toLocaleDateString()} ·{' '}
+                    {entry.lessonId || 'free practice'}
+                  </Text>
+                  <Text style={styles.historyEntryStars}>
+                    {entry.overallStars.toFixed(1)} ★
+                  </Text>
+                </View>
+                <Text style={styles.historyEntryPrompt} numberOfLines={3}>
+                  {entry.prompt}
+                </Text>
+              </View>
+            ))
+          )}
+        </>
+      )}
+    </Animated.View>
+  );
+}

@@ -33,6 +33,16 @@ export interface SeedLesson {
   questions: SeedQuestion[];
   airaOutro: string;
   takeaway: string;
+  /**
+   * Optional lesson-specific text shown in the sandbox's "Ask Why?"
+   * follow-up chips. When omitted, the sandbox generates a sensible
+   * fallback from the user's prompt + the lesson's title.
+   */
+  followUpExplanations?: {
+    whyScore?: string;
+    howToImprove?: string;
+    example?: string;
+  };
 }
 
 export const SEED_LESSONS: SeedLesson[] = [

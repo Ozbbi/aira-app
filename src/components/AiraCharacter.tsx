@@ -1,13 +1,6 @@
 import React from 'react';
-import { AiraMascot, MascotMood } from './AiraMascot';
+import { AiraMascot, MascotMood, AraState } from './AiraMascot';
 
-/**
- * Legacy `AiraCharacter` API — preserved so the rest of the app doesn't
- * need touching. Internally renders the new `AiraMascot` so every screen
- * gets the proper face character with no per-screen swap.
- *
- * The old `proud` mood maps to `celebrating`.
- */
 type LegacyMood = MascotMood | 'proud';
 
 interface Props {

@@ -2,40 +2,51 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export const MAX_LIVES = 5;
+export const XP_PER_LEVEL = 50;
+
+interface CompletedLesson {
+  id: string;
+  completedAt: string;
+}
+
 interface UserState {
-  // Data
   userId: string;
   name: string;
+  email: string;
   xp: number;
   level: number;
   streak: number;
+  bestStreak: number;
+  lives: number;
   tier: 'free' | 'pro';
   totalLessonsCompleted: number;
-  lastLessonTopic: string | null;
-  lastSyncedAt: string | null;
+  completedLessonIds: string[];
+  lastLessonDate: string | null;
   isOnline: boolean;
   notificationsEnabled: boolean;
   soundsEnabled: boolean;
+  hapticsEnabled: boolean;
+  showMascot: boolean;
   authToken: string | null;
-
-  /**
-   * Lives / hearts. Players start with 5. They lose one on a wrong
-   * lesson question. Hearts refill 1 every HEART_REFILL_MINUTES — we
-   * persist the timestamp of the last empty so refill works across
-   * cold starts without a server.
-   */
-  hearts: number;
-  heartsLastEmptiedAt: string | null;
-
-  /** Bookmarked Learn items (insight/pattern/mistake/quickwin ids). */
   bookmarks: string[];
+  skillScores: {
+    clarity: number;
+    specificity: number;
+    context: number;
+    formatting: number;
+    iteration: number;
+  };
+  sandboxSubmissions: number;
 
-  // Actions
   setUser: (data: Partial<UserState>) => void;
+  completeLesson: (lessonId: string, xpEarned: number) => void;
   addXp: (amount: number) => void;
-  incrementStreak: () => void;
-  upgradeTier: () => void;
-  completeLesson: (xpEarned: number, topic: string) => void;
+  loseLife: () => void;
+  earnLife: (count: number) => void;
+  updateSkillScore: (skill: keyof UserState['skillScores'], score: number) => void;
+  incrementSandbox: () => void;
+  toggleBookmark: (id: string) => void;
   syncFromBackend: (data: {
     xp: number;
     level: number;
@@ -43,153 +54,142 @@ interface UserState {
     tier: 'free' | 'pro';
     totalLessonsCompleted: number;
   }) => void;
-  setOnline: (online: boolean) => void;
-  setNotificationsEnabled: (enabled: boolean) => void;
-  setSoundsEnabled: (enabled: boolean) => void;
   setAuthToken: (token: string | null) => void;
-  loseHeart: () => void;
-  refillHearts: () => void;
-  toggleBookmark: (id: string) => void;
   resetStore: () => void;
 }
 
-export const MAX_HEARTS = 5;
-export const HEART_REFILL_MINUTES = 30;
+function calcLevel(xp: number): number {
+  return Math.floor(xp / XP_PER_LEVEL) + 1;
+}
 
 const initialState = {
   userId: '',
   name: '',
+  email: '',
   xp: 0,
   level: 1,
   streak: 0,
-  // AIRA shipped as a single product with everything unlocked. The 'tier'
-  // field is kept for backend compatibility but is always 'pro' on device.
-  tier: 'pro' as const,
+  bestStreak: 0,
+  lives: MAX_LIVES,
+  tier: 'free' as const,
   totalLessonsCompleted: 0,
-  lastLessonTopic: null,
-  lastSyncedAt: null,
+  completedLessonIds: [] as string[],
+  lastLessonDate: null as string | null,
   isOnline: true,
   notificationsEnabled: false,
   soundsEnabled: true,
-  authToken: null,
-  hearts: MAX_HEARTS,
-  heartsLastEmptiedAt: null,
+  hapticsEnabled: true,
+  showMascot: true,
+  authToken: null as string | null,
   bookmarks: [] as string[],
+  skillScores: {
+    clarity: 20,
+    specificity: 20,
+    context: 20,
+    formatting: 20,
+    iteration: 20,
+  },
+  sandboxSubmissions: 0,
 };
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
 
-      setUser: (data) => set((state) => ({ ...state, ...data })),
+      setUser: (data) => set((s) => ({ ...s, ...data })),
 
-      addXp: (amount) =>
-        set((state) => {
-          const newXp = state.xp + amount;
-          const newLevel = Math.floor(Math.sqrt(newXp / 50)) + 1;
-          return { xp: newXp, level: newLevel };
-        }),
+      completeLesson: (lessonId, xpEarned) =>
+        set((s) => {
+          const newXp = s.xp + xpEarned;
+          const newLevel = calcLevel(newXp);
+          const today = new Date().toDateString();
+          const isNewDay = s.lastLessonDate !== today;
+          const newStreak = isNewDay ? s.streak + 1 : s.streak;
+          const alreadyDone = s.completedLessonIds.includes(lessonId);
 
-      incrementStreak: () => set((state) => ({ streak: state.streak + 1 })),
-
-      upgradeTier: () => set({ tier: 'pro' }),
-
-      completeLesson: (xpEarned, topic) =>
-        set((state) => {
-          const newXp = state.xp + xpEarned;
-          const newLevel = Math.floor(Math.sqrt(newXp / 50)) + 1;
           return {
             xp: newXp,
             level: newLevel,
-            totalLessonsCompleted: state.totalLessonsCompleted + 1,
-            lastLessonTopic: topic,
+            streak: newStreak,
+            bestStreak: Math.max(s.bestStreak, newStreak),
+            totalLessonsCompleted: alreadyDone ? s.totalLessonsCompleted : s.totalLessonsCompleted + 1,
+            completedLessonIds: alreadyDone ? s.completedLessonIds : [...s.completedLessonIds, lessonId],
+            lastLessonDate: today,
           };
         }),
+
+      addXp: (amount) =>
+        set((s) => {
+          const newXp = s.xp + amount;
+          return { xp: newXp, level: calcLevel(newXp) };
+        }),
+
+      loseLife: () =>
+        set((s) => {
+          const next = Math.max(0, s.lives - 1);
+          if (next === 0) {
+            return { lives: 0, streak: 0 };
+          }
+          return { lives: next };
+        }),
+
+      earnLife: (count) =>
+        set((s) => ({ lives: Math.min(MAX_LIVES, s.lives + count) })),
+
+      updateSkillScore: (skill, score) =>
+        set((s) => ({
+          skillScores: { ...s.skillScores, [skill]: Math.min(100, Math.max(0, score)) },
+        })),
+
+      incrementSandbox: () =>
+        set((s) => ({ sandboxSubmissions: s.sandboxSubmissions + 1 })),
+
+      toggleBookmark: (id) =>
+        set((s) => ({
+          bookmarks: s.bookmarks.includes(id)
+            ? s.bookmarks.filter((b) => b !== id)
+            : [...s.bookmarks, id],
+        })),
 
       syncFromBackend: (data) =>
         set({
           xp: data.xp,
           level: data.level,
           streak: data.streak,
-          // Force 'pro' regardless of backend value — paywall is removed.
-          tier: 'pro',
+          tier: data.tier,
           totalLessonsCompleted: data.totalLessonsCompleted,
-          lastSyncedAt: new Date().toISOString(),
         }),
-
-      setOnline: (online) => set({ isOnline: online }),
-
-      setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
-
-      setSoundsEnabled: (enabled) => set({ soundsEnabled: enabled }),
 
       setAuthToken: (token) => set({ authToken: token }),
-
-      // -------------------- Hearts --------------------
-      loseHeart: () =>
-        set((state) => {
-          const next = Math.max(0, state.hearts - 1);
-          return {
-            hearts: next,
-            heartsLastEmptiedAt:
-              next === 0 && !state.heartsLastEmptiedAt
-                ? new Date().toISOString()
-                : state.heartsLastEmptiedAt,
-          };
-        }),
-
-      refillHearts: () =>
-        set((state) => {
-          if (state.hearts >= MAX_HEARTS) return {};
-          if (!state.heartsLastEmptiedAt) {
-            return { hearts: MAX_HEARTS, heartsLastEmptiedAt: null };
-          }
-          const elapsedMin =
-            (Date.now() - new Date(state.heartsLastEmptiedAt).getTime()) / 60000;
-          const refilled = Math.floor(elapsedMin / HEART_REFILL_MINUTES);
-          if (refilled <= 0) return {};
-          const next = Math.min(MAX_HEARTS, state.hearts + refilled);
-          return {
-            hearts: next,
-            heartsLastEmptiedAt:
-              next >= MAX_HEARTS ? null : state.heartsLastEmptiedAt,
-          };
-        }),
-
-      // -------------------- Bookmarks --------------------
-      toggleBookmark: (id) =>
-        set((state) => {
-          const has = state.bookmarks.includes(id);
-          return {
-            bookmarks: has
-              ? state.bookmarks.filter((b) => b !== id)
-              : [...state.bookmarks, id],
-          };
-        }),
 
       resetStore: () => set(initialState),
     }),
     {
       name: 'aira-user-store',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
-        userId: state.userId,
-        name: state.name,
-        xp: state.xp,
-        level: state.level,
-        streak: state.streak,
-        tier: state.tier,
-        totalLessonsCompleted: state.totalLessonsCompleted,
-        lastLessonTopic: state.lastLessonTopic,
-        lastSyncedAt: state.lastSyncedAt,
-        notificationsEnabled: state.notificationsEnabled,
-        soundsEnabled: state.soundsEnabled,
-        authToken: state.authToken,
-        hearts: state.hearts,
-        heartsLastEmptiedAt: state.heartsLastEmptiedAt,
-        bookmarks: state.bookmarks,
+      partialize: (s) => ({
+        userId: s.userId,
+        name: s.name,
+        email: s.email,
+        xp: s.xp,
+        level: s.level,
+        streak: s.streak,
+        bestStreak: s.bestStreak,
+        lives: s.lives,
+        tier: s.tier,
+        totalLessonsCompleted: s.totalLessonsCompleted,
+        completedLessonIds: s.completedLessonIds,
+        lastLessonDate: s.lastLessonDate,
+        notificationsEnabled: s.notificationsEnabled,
+        soundsEnabled: s.soundsEnabled,
+        hapticsEnabled: s.hapticsEnabled,
+        showMascot: s.showMascot,
+        authToken: s.authToken,
+        bookmarks: s.bookmarks,
+        skillScores: s.skillScores,
+        sandboxSubmissions: s.sandboxSubmissions,
       }),
-    }
-  )
+    },
+  ),
 );

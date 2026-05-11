@@ -141,17 +141,17 @@ export function Button({
           disabled={isDisabled}
           style={[
             containerBaseStyle,
-            { backgroundColor: palette.dangerSoft, borderColor: palette.danger, borderWidth: 1 },
+            { backgroundColor: palette.errorSoft, borderColor: palette.error, borderWidth: 1 },
           ]}
         >
           <ButtonContent
             label={label}
             loading={loading}
             labelStyle={[styles.labelDanger, { fontSize: sizing.fontSize }]}
-            spinnerColor={palette.danger}
+            spinnerColor={palette.error}
             trailingIcon={trailingIcon}
             leadingIcon={leadingIcon}
-            iconColor={palette.danger}
+            iconColor={palette.error}
           />
         </Pressable>
       </Animated.View>
@@ -170,7 +170,7 @@ export function Button({
           disabled={isDisabled}
           style={[
             containerBaseStyle,
-            { backgroundColor: 'transparent', borderColor: palette.border, borderWidth: 1 },
+            { backgroundColor: 'transparent', borderColor: palette.divider, borderWidth: 1 },
           ]}
         >
           <ButtonContent
@@ -211,10 +211,10 @@ export function Button({
           label={label}
           loading={loading}
           labelStyle={[styles.labelTertiary, { fontSize: sizing.fontSize }]}
-          spinnerColor={palette.brand}
+          spinnerColor={palette.cyan}
           trailingIcon={trailingIcon}
           leadingIcon={leadingIcon}
-          iconColor={palette.brand}
+          iconColor={palette.cyan}
         />
       </Pressable>
     </Animated.View>
@@ -282,10 +282,10 @@ const styles = StyleSheet.create({
   },
   labelTertiary: {
     ...text.button,
-    color: palette.brandSoft,
+    color: palette.cyanGlow,
   },
   labelDanger: {
     ...text.button,
-    color: palette.danger,
+    color: palette.error,
   },
 });

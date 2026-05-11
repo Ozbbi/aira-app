@@ -8,6 +8,7 @@ import { PaywallScreen } from '../screens/PaywallScreen';
 import { TrackDetailScreen } from '../screens/TrackDetailScreen';
 import { LearningMapScreen } from '../screens/LearningMapScreen';
 import { CodeTrackScreen } from '../screens/CodeTrackScreen';
+import { PromptOrNotScreen } from '../screens/PromptOrNotScreen';
 import { TabNavigator } from './TabNavigator';
 import { useUserStore } from '../store/userStore';
 import { colors } from '../theme';
@@ -70,6 +71,11 @@ export function RootNavigator() {
         name="CodeTrack"
         component={CodeTrackScreen}
         options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="PromptOrNot"
+        component={PromptOrNotScreen}
+        options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
       />
     </Stack.Navigator>
   );

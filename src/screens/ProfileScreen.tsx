@@ -1,552 +1,288 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, Switch, ScrollView, TextInput, Modal, Platform } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { PencilSimple, SpeakerHigh, Vibrate, Bell, Eye, SignOut, Trash } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { MotiView } from 'moti';
-import { AiraCharacter } from '../components/AiraCharacter';
-import { TabScreen } from '../components/TabScreen';
-import { colors, radius, spacing } from '../theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { AiraMascot } from '../components/AiraMascot';
+import { colors, typography, spacing, radius, elevation } from '../theme';
 import { useUserStore } from '../store/userStore';
-import { getCurriculum, getProgress } from '../api/client';
-import type { RootStackParamList, TabParamList } from '../types';
 
-type NavigationProp = CompositeNavigationProp<
-  BottomTabNavigationProp<TabParamList, 'Profile'>,
-  NativeStackNavigationProp<RootStackParamList>
->;
-
-interface Props {
-  navigation: NavigationProp;
-}
-
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-}
-
-export function ProfileScreen({ navigation }: Props) {
-  const { name, xp, level, streak, totalLessonsCompleted, tier, userId } = useUserStore();
+export function ProfileScreen() {
+  const {
+    name, email, xp, level, totalLessonsCompleted, bookmarks,
+    soundsEnabled, hapticsEnabled, showMascot, notificationsEnabled,
+  } = useUserStore();
+  const setUser = useUserStore((s) => s.setUser);
   const resetStore = useUserStore((s) => s.resetStore);
 
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(name);
-  const [avgAccuracy, setAvgAccuracy] = useState(0);
-  const [hapticsEnabled, setHapticsEnabled] = useState(true);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!userId) return;
-      getProgress(userId).then((prog) => {
-        setAvgAccuracy(0); // Temporarily hardcoded until API returns accuracy
-      }).catch(() => {});
-    }, [userId])
-  );
-
-  const getRankName = (lvl: number): string => {
-    if (lvl < 3) return 'Beginner';
-    if (lvl < 7) return 'Explorer';
-    if (lvl < 12) return 'Adept';
-    return 'Master';
-  };
-
-  // Read additional state for achievement unlocks
-  const bookmarks = useUserStore((s) => s.bookmarks);
-
-  const achievements: Achievement[] = [
-    // ── Lessons milestones ─────────────────────
-    {
-      id: 'first_lesson',
-      title: 'First Step',
-      description: 'Complete your first lesson',
-      icon: '🌟',
-      unlocked: totalLessonsCompleted >= 1,
-    },
-    {
-      id: 'lessons_5',
-      title: 'Getting Started',
-      description: 'Complete 5 lessons',
-      icon: '🌱',
-      unlocked: totalLessonsCompleted >= 5,
-    },
-    {
-      id: 'lessons_10',
-      title: 'Sharp Learner',
-      description: 'Complete 10 lessons',
-      icon: '📚',
-      unlocked: totalLessonsCompleted >= 10,
-    },
-    {
-      id: 'lessons_25',
-      title: 'Dedicated',
-      description: 'Complete 25 lessons',
-      icon: '🎓',
-      unlocked: totalLessonsCompleted >= 25,
-    },
-    // ── Streak milestones ─────────────────────
-    {
-      id: 'streak_3',
-      title: 'Warming Up',
-      description: 'Practice 3 days in a row',
-      icon: '🔥',
-      unlocked: streak >= 3,
-    },
-    {
-      id: 'streak_7',
-      title: 'Week Warrior',
-      description: 'Practice 7 days in a row',
-      icon: '⚡',
-      unlocked: streak >= 7,
-    },
-    {
-      id: 'streak_30',
-      title: 'Monthly Master',
-      description: 'Practice 30 days in a row',
-      icon: '👑',
-      unlocked: streak >= 30,
-    },
-    // ── Level milestones ─────────────────────
-    {
-      id: 'level_3',
-      title: 'Level 3',
-      description: 'Reach level 3',
-      icon: '⭐',
-      unlocked: level >= 3,
-    },
-    {
-      id: 'level_10',
-      title: 'AIRA Pro',
-      description: 'Reach level 10',
-      icon: '🏆',
-      unlocked: level >= 10,
-    },
-    // ── Accuracy / engagement ─────────────────
-    {
-      id: 'perfect_score',
-      title: 'Bullseye',
-      description: '100% accuracy in a lesson',
-      icon: '🎯',
-      unlocked: avgAccuracy === 100,
-    },
-    {
-      id: 'first_bookmark',
-      title: 'Library Card',
-      description: 'Save your first card to Library',
-      icon: '💛',
-      unlocked: bookmarks.length >= 1,
-    },
-    {
-      id: 'bookmarks_10',
-      title: 'Curator',
-      description: 'Save 10 cards to Library',
-      icon: '📖',
-      unlocked: bookmarks.length >= 10,
-    },
-  ];
-
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+  const [resetStep, setResetStep] = useState(0);
+  const [resetText, setResetText] = useState('');
 
   const handleSaveName = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    // setName(newName); // TODO: Add setName to userStore
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setUser({ name: newName.trim() });
     setEditingName(false);
   };
 
   const handleResetProgress = () => {
-    Alert.alert(
-      'Reset Progress',
-      'This will delete all your progress and reset you to level 1. This action cannot be undone.',
-      [
+    if (resetStep === 0) {
+      Alert.alert('Reset Progress', 'Are you sure? This action cannot be undone.', [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => {
-            if (Platform.OS !== 'web') {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            }
-            resetStore();
-          },
-        },
-      ]
-    );
+        { text: 'Continue', style: 'destructive', onPress: () => setResetStep(1) },
+      ]);
+    } else if (resetStep === 1) {
+      Alert.alert(
+        'Final Warning',
+        'This cannot be undone. All XP, streaks, and lessons will be lost.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => setResetStep(0) },
+          { text: 'I understand', style: 'destructive', onPress: () => setResetStep(2) },
+        ],
+      );
+    }
   };
 
+  const handleConfirmReset = () => {
+    if (resetText.toUpperCase() === 'RESET') {
+      resetStore();
+      setResetStep(0);
+      setResetText('');
+    }
+  };
+
+  const initial = (name || 'A').charAt(0).toUpperCase();
+
   return (
-    <TabScreen>
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-      {/* Header with AiraCharacter */}
-      <Animated.View entering={FadeInDown.duration(260)} style={styles.header}>
-        <AiraCharacter mood="calm" size={80} />
-        <Text style={styles.greeting}>
-          {totalLessonsCompleted === 0
-            ? `Welcome, ${name}. Your story starts with your first lesson.`
-            : `Hey, ${name}. Level ${level} — ${getRankName(level)}.`}
-        </Text>
-      </Animated.View>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Avatar + Name */}
+        <Animated.View entering={FadeInDown.duration(250)} style={styles.profileHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarLetter}>{initial}</Text>
+          </View>
+          <Pressable onPress={() => setEditingName(true)} style={styles.nameRow}>
+            <Text style={styles.profileName}>{name || 'Set your name'}</Text>
+            <PencilSimple size={16} color={colors.textDisabled} />
+          </Pressable>
+          {email ? <Text style={styles.profileEmail}>{email}</Text> : null}
+        </Animated.View>
 
-      {/* Stats Grid 2x2 */}
-      <Animated.View entering={FadeInDown.duration(260).delay(45)} style={styles.statsSection}>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>🏆</Text>
-            <Text style={styles.statValue}>{xp.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Total XP</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>🔥</Text>
-            <Text style={styles.statValue}>{streak}</Text>
-            <Text style={styles.statLabel}>Streak</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>📚</Text>
-            <Text style={styles.statValue}>{totalLessonsCompleted}</Text>
-            <Text style={styles.statLabel}>Lessons</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>🎯</Text>
-            <Text style={styles.statValue}>
-              {totalLessonsCompleted === 0 ? '—' : `${avgAccuracy}%`}
-            </Text>
-            <Text style={styles.statLabel}>Accuracy</Text>
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Achievements Row */}
-      <Animated.View entering={FadeInDown.duration(260).delay(90)} style={styles.achievementsSection}>
-        <Text style={styles.sectionTitle}>Achievements</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementsScroll}>
-          {achievements.map((a) => (
-            <View
-              key={a.id}
-              style={[styles.achievementCard, !a.unlocked && styles.achievementLocked]}
-            >
-              <Text style={[styles.achievementIcon, !a.unlocked && styles.achievementIconLocked]}>
-                {a.icon}
-              </Text>
-              <Text style={[styles.achievementTitle, !a.unlocked && styles.achievementTextLocked]}>
-                {a.title}
-              </Text>
-              <Text style={[styles.achievementDesc, !a.unlocked && styles.achievementTextLocked]}>
-                {a.description}
+        {/* Saved Insights */}
+        <Animated.View entering={FadeInDown.duration(250).delay(40)} style={styles.section}>
+          <Text style={styles.sectionTitle}>Saved Insights</Text>
+          {bookmarks.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <AiraMascot size={48} state="idle" />
+              <Text style={styles.emptyText}>
+                Save insights from your home feed to read them here.
               </Text>
             </View>
-          ))}
-        </ScrollView>
-      </Animated.View>
+          ) : (
+            <View style={styles.savedGrid}>
+              {bookmarks.slice(0, 6).map((id) => (
+                <View key={id} style={styles.savedCard}>
+                  <Text style={styles.savedText} numberOfLines={2}>Insight #{id}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </Animated.View>
 
-      {/* Settings Section */}
-      <Animated.View entering={FadeInDown.duration(260).delay(135)} style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-        
-        <Pressable style={styles.settingRow} onPress={() => {
-          if (Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-          setEditingName(true);
-        }}>
-          <View style={styles.settingTextWrap}>
-            <Text style={styles.settingLabel}>Edit Name</Text>
-            <Text style={styles.settingValue}>{name}</Text>
+        {/* Portfolio */}
+        <Animated.View entering={FadeInDown.duration(250).delay(80)} style={styles.section}>
+          <Text style={styles.sectionTitle}>Portfolio Projects</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>Your first capstone project will appear here.</Text>
           </View>
-          <Text style={styles.settingArrow}>›</Text>
-        </Pressable>
+        </Animated.View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingTextWrap}>
-            <Text style={styles.settingLabel}>Sound Effects</Text>
-          </View>
-          <Switch
-            value={hapticsEnabled}
-            onValueChange={(value) => {
-              if (Platform.OS !== 'web') {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }
-              setHapticsEnabled(value);
-            }}
-            trackColor={{ false: colors.border, true: colors.airaCore }}
-            thumbColor={colors.textPrimary}
+        {/* Settings */}
+        <Animated.View entering={FadeInDown.duration(250).delay(120)} style={styles.section}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+
+          <SettingToggle
+            icon={<SpeakerHigh size={20} color={colors.textSecondary} />}
+            label="Sound Effects"
+            value={soundsEnabled}
+            onToggle={(v) => setUser({ soundsEnabled: v })}
           />
-        </View>
-
-        <View style={styles.settingRow}>
-          <View style={styles.settingTextWrap}>
-            <Text style={styles.settingLabel}>Haptics</Text>
-          </View>
-          <Switch
+          <SettingToggle
+            icon={<Vibrate size={20} color={colors.textSecondary} />}
+            label="Haptics"
             value={hapticsEnabled}
-            onValueChange={(value) => {
-              if (Platform.OS !== 'web') {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }
-              setHapticsEnabled(value);
-            }}
-            trackColor={{ false: colors.border, true: colors.airaCore }}
-            thumbColor={colors.textPrimary}
+            onToggle={(v) => setUser({ hapticsEnabled: v })}
           />
-        </View>
+          <SettingToggle
+            icon={<Eye size={20} color={colors.textSecondary} />}
+            label="Show Mascot"
+            value={showMascot}
+            onToggle={(v) => setUser({ showMascot: v })}
+          />
+          <SettingToggle
+            icon={<Bell size={20} color={colors.textSecondary} />}
+            label="Notifications"
+            value={notificationsEnabled}
+            onToggle={(v) => setUser({ notificationsEnabled: v })}
+          />
 
-        <Pressable style={[styles.settingRow, styles.settingDestructive]} onPress={handleResetProgress}>
-          <Text style={styles.settingLabel}>Reset Progress</Text>
-        </Pressable>
-      </Animated.View>
+          <Pressable style={styles.settingRowDestructive} onPress={handleResetProgress}>
+            <Trash size={20} color={colors.error} />
+            <Text style={styles.settingLabelDestructive}>Reset Progress</Text>
+          </Pressable>
+        </Animated.View>
 
-      {/* Edit Name Modal */}
-      <Modal visible={editingName} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Name</Text>
+        {/* Reset Step 3 */}
+        {resetStep === 2 && (
+          <Animated.View entering={FadeInDown.duration(200)} style={styles.resetConfirmCard}>
+            <Text style={styles.resetConfirmText}>Type "RESET" to confirm:</Text>
             <TextInput
-              style={styles.modalInput}
-              value={newName}
-              onChangeText={setNewName}
-              placeholder="Enter your name"
-              placeholderTextColor={colors.textMuted}
-              autoFocus
+              style={styles.resetInput}
+              value={resetText}
+              onChangeText={setResetText}
+              placeholder="RESET"
+              placeholderTextColor={colors.textDisabled}
+              autoCapitalize="characters"
             />
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => {
-                  if (Platform.OS !== 'web') {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                  setEditingName(false);
-                  setNewName(name);
-                }}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonSave]}
-                onPress={handleSaveName}
-              >
-                <Text style={styles.modalButtonText}>Save</Text>
-              </Pressable>
+            <Pressable
+              style={[styles.resetBtn, resetText.toUpperCase() !== 'RESET' && styles.resetBtnDisabled]}
+              onPress={handleConfirmReset}
+              disabled={resetText.toUpperCase() !== 'RESET'}
+            >
+              <Text style={styles.resetBtnText}>Confirm Reset</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+
+        <View style={{ height: 100 }} />
+
+        {/* Edit Name Modal */}
+        <Modal visible={editingName} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Name</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="Your name"
+                placeholderTextColor={colors.textDisabled}
+                autoFocus
+              />
+              <View style={styles.modalButtons}>
+                <Pressable style={styles.modalBtnCancel} onPress={() => { setEditingName(false); setNewName(name); }}>
+                  <Text style={styles.modalBtnText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.modalBtnSave} onPress={handleSaveName}>
+                  <Text style={styles.modalBtnTextSave}>Save</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
 
-      <View style={styles.bottomSpacer} />
-    </ScrollView>
-    </TabScreen>
+function SettingToggle({ icon, label, value, onToggle }: { icon: React.ReactNode; label: string; value: boolean; onToggle: (v: boolean) => void }) {
+  return (
+    <View style={styles.settingRow}>
+      {icon}
+      <Text style={styles.settingLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        trackColor={{ false: colors.divider, true: colors.cyan }}
+        thumbColor={colors.textPrimary}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
+  safe: { flex: 1, backgroundColor: colors.bg },
+  container: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: spacing.lg },
+
+  // Profile header
+  profileHeader: { alignItems: 'center', marginBottom: spacing.xxl },
+  avatar: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: colors.cardSurface, justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: colors.cyan, marginBottom: spacing.md,
   },
-  header: {
-    alignItems: 'center',
-    padding: spacing.xl,
+  avatarLetter: { fontFamily: 'Inter_700Bold', fontSize: 32, color: colors.cyan },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  profileName: { ...typography.headline, color: colors.textPrimary },
+  profileEmail: { ...typography.caption, color: colors.textSecondary },
+
+  // Sections
+  section: { marginBottom: spacing.xxl },
+  sectionTitle: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.md },
+
+  // Empty states
+  emptyCard: {
+    backgroundColor: colors.cardSurface, borderRadius: radius.lg,
+    padding: 20, alignItems: 'center', gap: 12, ...elevation.sm,
   },
-  greeting: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginTop: spacing.lg,
+  emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+
+  // Saved
+  savedGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  savedCard: {
+    width: '47%', backgroundColor: colors.cardSurface, borderRadius: radius.md,
+    padding: 14, ...elevation.sm,
   },
-  statsSection: {
-    padding: spacing.lg,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  statCard: {
-    width: '47%',
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  statIcon: {
-    fontSize: 28,
-    marginBottom: spacing.sm,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  achievementsSection: {
-    padding: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
-  achievementsScroll: {
-    flexDirection: 'row',
-  },
-  achievementCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginRight: spacing.md,
-    width: 140,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  achievementLocked: {
-    opacity: 0.5,
-  },
-  achievementIcon: {
-    fontSize: 32,
-    marginBottom: spacing.sm,
-  },
-  achievementIconLocked: {
-    opacity: 0.6,
-  },
-  achievementTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  achievementDesc: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  achievementTextLocked: {
-    color: colors.textMuted,
-  },
-  settingsSection: {
-    padding: spacing.lg,
-  },
+  savedText: { ...typography.caption, color: colors.textPrimary },
+
+  // Settings
   settingRow: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.cardSurface, borderRadius: radius.md,
+    padding: 16, marginBottom: spacing.sm,
   },
-  settingTextWrap: {
-    flex: 1,
+  settingLabel: { ...typography.body, color: colors.textPrimary, flex: 1 },
+  settingRowDestructive: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.cardSurface, borderRadius: radius.md,
+    padding: 16, marginTop: spacing.md,
+    borderWidth: 1, borderColor: colors.error,
   },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
+  settingLabelDestructive: { ...typography.body, color: colors.error, flex: 1 },
+
+  // Reset confirmation
+  resetConfirmCard: {
+    backgroundColor: colors.cardSurface, borderRadius: radius.lg,
+    padding: 20, marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.error,
   },
-  settingValue: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  resetConfirmText: { ...typography.body, color: colors.error, marginBottom: spacing.md },
+  resetInput: {
+    backgroundColor: colors.bg, borderRadius: radius.md, padding: 14,
+    ...typography.body, color: colors.textPrimary, borderWidth: 1, borderColor: colors.divider,
+    marginBottom: spacing.md, textAlign: 'center',
   },
-  settingArrow: {
-    fontSize: 24,
-    color: colors.textMuted,
+  resetBtn: {
+    backgroundColor: colors.error, borderRadius: radius.md,
+    padding: 14, alignItems: 'center',
   },
-  settingDestructive: {
-    borderWidth: 1,
-    borderColor: colors.error,
-  },
-  upgradeSection: {
-    padding: spacing.lg,
-  },
-  upgradeCard: {
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-  },
-  upgradeGradient: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  upgradeTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  upgradeSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  upgradePrice: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  modalContent: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    width: '100%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
+  resetBtnDisabled: { opacity: 0.4 },
+  resetBtnText: { ...typography.button, color: '#FFFFFF' },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
+  modalContent: { backgroundColor: colors.cardSurface, borderRadius: radius.lg, padding: 24 },
+  modalTitle: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.lg },
   modalInput: {
-    backgroundColor: colors.bg,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    fontSize: 16,
-    color: colors.textPrimary,
-    borderWidth: 2,
-    borderColor: colors.border,
+    backgroundColor: colors.bg, borderRadius: radius.md, padding: 14,
+    ...typography.body, color: colors.textPrimary, borderWidth: 1, borderColor: colors.divider,
     marginBottom: spacing.lg,
   },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: colors.bg,
-  },
-  modalButtonSave: {
-    backgroundColor: colors.trackFoundations,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  bottomSpacer: {
-    height: spacing.xxl,
-  },
+  modalButtons: { flexDirection: 'row', gap: 12 },
+  modalBtnCancel: { flex: 1, padding: 14, borderRadius: radius.md, backgroundColor: colors.bg, alignItems: 'center' },
+  modalBtnSave: { flex: 1, padding: 14, borderRadius: radius.md, backgroundColor: colors.cyan, alignItems: 'center' },
+  modalBtnText: { ...typography.button, color: colors.textSecondary },
+  modalBtnTextSave: { ...typography.button, color: colors.bg },
 });

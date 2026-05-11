@@ -1,412 +1,289 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Fire, Trophy, BookOpen, Target } from 'phosphor-react-native';
+import Svg, { Polygon, Circle, Line, Text as SvgText } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { palette, gradients, radii, space, text, elevation, screen } from '../theme/system';
-import { TabScreen } from '../components/TabScreen';
-import { useUserStore } from '../store/userStore';
+import { colors, typography, spacing, radius, elevation } from '../theme';
+import { useUserStore, XP_PER_LEVEL } from '../store/userStore';
 
-/**
- * Progress tab — extracted from the old Profile screen because the brief
- * separates "stats / streak / achievements" from "settings / saved /
- * portfolio." This screen owns the motivating numbers; Profile owns
- * the personal admin.
- *
- * Sections (top → bottom):
- *   1. Level chip + XP progress to next level
- *   2. Streak hero (flame + day count + freeze count if any)
- *   3. Lifetime stats triplet (lessons / xp / accuracy)
- *   4. 28-day calendar heatmap (subtle squares; today highlighted)
- *   5. Achievements gallery (12 badges from v9, locked/unlocked)
- */
+const SCREEN_W = Dimensions.get('window').width;
 
 interface Achievement {
   id: string;
   name: string;
   description: string;
   unlocked: boolean;
-  progressLabel?: string;
+  progress?: string;
+}
+
+function SkillRadar({ scores }: { scores: Record<string, number> }) {
+  const size = SCREEN_W - 80;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 30;
+  const labels = ['Clarity', 'Specificity', 'Context', 'Formatting', 'Iteration'];
+  const values = [scores.clarity, scores.specificity, scores.context, scores.formatting, scores.iteration];
+
+  const getPoint = (i: number, radius: number) => {
+    const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+    return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  };
+
+  const gridPoints = (radius: number) =>
+    Array.from({ length: 5 }).map((_, i) => getPoint(i, radius)).map((p) => `${p.x},${p.y}`).join(' ');
+
+  const dataPoints = values
+    .map((v, i) => getPoint(i, (v / 100) * r))
+    .map((p) => `${p.x},${p.y}`)
+    .join(' ');
+
+  return (
+    <Svg width={size} height={size} style={{ alignSelf: 'center' }}>
+      {[0.2, 0.4, 0.6, 0.8, 1].map((s) => (
+        <Polygon key={s} points={gridPoints(r * s)} fill="none" stroke={colors.divider} strokeWidth="1" />
+      ))}
+      {Array.from({ length: 5 }).map((_, i) => {
+        const p = getPoint(i, r);
+        return <Line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={colors.divider} strokeWidth="0.5" />;
+      })}
+      <Polygon points={dataPoints} fill={colors.cyanWash} stroke={colors.cyan} strokeWidth="2" />
+      {values.map((_, i) => {
+        const p = getPoint(i, (values[i] / 100) * r);
+        return <Circle key={i} cx={p.x} cy={p.y} r="4" fill={colors.cyan} />;
+      })}
+      {labels.map((label, i) => {
+        const p = getPoint(i, r + 18);
+        return (
+          <SvgText
+            key={label}
+            x={p.x}
+            y={p.y}
+            textAnchor="middle"
+            alignmentBaseline="middle"
+            fill={colors.textSecondary}
+            fontSize="11"
+            fontFamily="Inter_500Medium"
+          >
+            {label}
+          </SvgText>
+        );
+      })}
+    </Svg>
+  );
 }
 
 export function ProgressScreen() {
-  const { xp, level, streak, totalLessonsCompleted, bookmarks } = useUserStore();
+  const { xp, level, streak, bestStreak, totalLessonsCompleted, bookmarks, skillScores, sandboxSubmissions, completedLessonIds } = useUserStore();
 
-  const xpForNextLevel = (level ** 2) * 50;
-  const xpProgress = Math.min(1, xp / xpForNextLevel);
-  const xpRemaining = Math.max(0, xpForNextLevel - xp);
+  const xpForNext = level * XP_PER_LEVEL;
+  const xpInLevel = xp - (level - 1) * XP_PER_LEVEL;
+  const xpProgress = Math.min(1, xpInLevel / XP_PER_LEVEL);
 
-  // 28-day calendar — synthesise activity from the persisted streak.
-  // Real per-day data needs backend; until then this approximates: the
-  // last `streak` days are filled.
-  const days = useMemo(() => buildLast28Days(streak), [streak]);
+  const days = useMemo(() => buildCalendar(streak), [streak]);
 
-  const achievements: Achievement[] = useMemo(
-    () => buildAchievements({ totalLessonsCompleted, streak, level, bookmarks: bookmarks.length }),
-    [totalLessonsCompleted, streak, level, bookmarks.length]
-  );
+  const achievements: Achievement[] = useMemo(() => [
+    { id: 'first', name: 'First Step', description: 'Complete your first lesson', unlocked: totalLessonsCompleted >= 1 },
+    { id: 'five', name: 'Getting Started', description: '5 lessons done', unlocked: totalLessonsCompleted >= 5, progress: totalLessonsCompleted < 5 ? `${totalLessonsCompleted}/5` : undefined },
+    { id: 'ten', name: 'Sharp Learner', description: '10 lessons done', unlocked: totalLessonsCompleted >= 10, progress: totalLessonsCompleted < 10 ? `${totalLessonsCompleted}/10` : undefined },
+    { id: 'twentyfive', name: 'Dedicated', description: '25 lessons done', unlocked: totalLessonsCompleted >= 25, progress: totalLessonsCompleted < 25 ? `${totalLessonsCompleted}/25` : undefined },
+    { id: 's3', name: 'Warming Up', description: '3-day streak', unlocked: streak >= 3, progress: streak < 3 ? `${streak}/3` : undefined },
+    { id: 's7', name: 'Week Warrior', description: '7-day streak', unlocked: streak >= 7, progress: streak < 7 ? `${streak}/7` : undefined },
+    { id: 's30', name: 'Monthly Master', description: '30-day streak', unlocked: streak >= 30, progress: streak < 30 ? `${streak}/30` : undefined },
+    { id: 'sandbox', name: 'Sandbox Pro', description: '10 sandbox submissions', unlocked: sandboxSubmissions >= 10, progress: sandboxSubmissions < 10 ? `${sandboxSubmissions}/10` : undefined },
+    { id: 'curator', name: 'Curator', description: 'Save 10 cards', unlocked: bookmarks.length >= 10, progress: bookmarks.length < 10 ? `${bookmarks.length}/10` : undefined },
+    { id: 'audience', name: 'Audience Master', description: 'Complete the audience lesson', unlocked: completedLessonIds.includes('foundations_2') },
+  ], [totalLessonsCompleted, streak, sandboxSubmissions, bookmarks.length, completedLessonIds]);
 
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
-  // We deliberately show "Accuracy: —" until there's data, never "0%".
-  const accuracyLabel = totalLessonsCompleted > 0 ? '92%' : '—';
-
   return (
-    <TabScreen>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Section: header */}
-        <Animated.View entering={FadeInDown.duration(260)} style={styles.header}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <Animated.View entering={FadeInDown.duration(250)}>
           <Text style={styles.eyebrow}>YOUR PROGRESS</Text>
-          <Text style={styles.title}>The receipts</Text>
+          <Text style={styles.title}>Keep going.</Text>
         </Animated.View>
 
-        {/* Section: Level + XP */}
-        <Animated.View entering={FadeInDown.duration(260).delay(60)}>
-          <LinearGradient
-            colors={gradients.hero}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.levelCard, elevation.md]}
-          >
-            <View style={styles.levelHead}>
-              <View>
-                <Text style={styles.levelEyebrow}>LEVEL</Text>
-                <Text style={styles.levelNumber}>{level}</Text>
-              </View>
-              <View style={styles.xpRight}>
-                <Text style={styles.xpToNext}>{xpRemaining} XP to lvl {level + 1}</Text>
-                <Text style={styles.xpTotal}>{xp.toLocaleString()} XP total</Text>
-              </View>
+        {/* Level + XP */}
+        <Animated.View entering={FadeInDown.duration(250).delay(40)}>
+          <View style={styles.levelCard}>
+            <View style={styles.levelCircle}>
+              <Text style={styles.levelNumber}>{level}</Text>
             </View>
-            <View style={styles.xpTrack}>
-              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` }]} />
+            <View style={styles.levelInfo}>
+              <Text style={styles.levelLabel}>Level {level}</Text>
+              <View style={styles.levelXpBar}>
+                <View style={[styles.levelXpFill, { width: `${xpProgress * 100}%` }]} />
+              </View>
+              <Text style={styles.levelXpText}>{xpInLevel}/{XP_PER_LEVEL} XP to next level</Text>
             </View>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
-        {/* Section: Streak hero */}
-        <Animated.View entering={FadeInDown.duration(260).delay(120)} style={[styles.streakCard, elevation.sm]}>
-          <View>
-            <Text style={styles.streakEyebrow}>CURRENT STREAK</Text>
-            <Text style={styles.streakNumber}>
-              {streak}
-              <Text style={styles.streakUnit}> days</Text>
-            </Text>
-            <Text style={styles.streakHint}>
-              {streak === 0
-                ? "Today is a great day to start."
-                : streak < 7
-                  ? "Keep it going. 7 days unlocks a freeze."
-                  : "Streak freezes earned: 1"}
+        {/* Stats row */}
+        <Animated.View entering={FadeInDown.duration(250).delay(80)} style={styles.statsRow}>
+          <StatCell icon={<Target size={18} color={colors.cyan} />} value={String(xp)} label="Total XP" />
+          <StatCell icon={<Fire size={18} color={colors.orange} />} value={String(streak)} label="Streak" />
+          <StatCell icon={<Trophy size={18} color={colors.success} />} value={String(bestStreak)} label="Best" />
+          <StatCell icon={<BookOpen size={18} color={colors.cyan} />} value={String(totalLessonsCompleted)} label="Lessons" />
+        </Animated.View>
+
+        {/* Skill Radar */}
+        <Animated.View entering={FadeInDown.duration(250).delay(120)} style={styles.section}>
+          <Text style={styles.sectionTitle}>Skill Radar</Text>
+          <View style={styles.radarCard}>
+            <SkillRadar scores={skillScores} />
+          </View>
+        </Animated.View>
+
+        {/* Streak Calendar */}
+        <Animated.View entering={FadeInDown.duration(250).delay(160)} style={styles.section}>
+          <Text style={styles.sectionTitle}>This Month</Text>
+          <View style={styles.calendarCard}>
+            <View style={styles.calendarGrid}>
+              {days.map((d, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.calendarCell,
+                    d.filled && styles.calendarFilled,
+                    d.isToday && styles.calendarToday,
+                  ]}
+                />
+              ))}
+            </View>
+            <Text style={styles.calendarCaption}>
+              {days.filter((d) => d.filled).length} active days this month
             </Text>
           </View>
-          <Text style={styles.streakFlame}>🔥</Text>
         </Animated.View>
 
-        {/* Section: lifetime stats */}
-        <Animated.View entering={FadeInDown.duration(260).delay(180)} style={styles.statsRow}>
-          <StatCell label="Lessons" value={String(totalLessonsCompleted)} />
-          <View style={styles.statDivider} />
-          <StatCell label="Saved" value={String(bookmarks.length)} />
-          <View style={styles.statDivider} />
-          <StatCell label="Accuracy" value={accuracyLabel} />
-        </Animated.View>
-
-        {/* Section: 28-day heatmap */}
-        <Animated.View entering={FadeInDown.duration(260).delay(240)} style={styles.section}>
-          <Text style={styles.sectionTitle}>This month</Text>
-          <View style={styles.heatmap}>
-            {days.map((d, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.heatCell,
-                  d.filled && styles.heatCellFilled,
-                  d.isToday && styles.heatCellToday,
-                ]}
-              />
-            ))}
-          </View>
-          <Text style={styles.heatmapCaption}>
-            {days.filter((d) => d.filled).length} active day
-            {days.filter((d) => d.filled).length === 1 ? '' : 's'} in the last 28
-          </Text>
-        </Animated.View>
-
-        {/* Section: achievements gallery */}
-        <Animated.View entering={FadeInDown.duration(260).delay(300)} style={styles.section}>
-          <View style={styles.sectionHead}>
+        {/* Achievements */}
+        <Animated.View entering={FadeInDown.duration(250).delay(200)} style={styles.section}>
+          <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Achievements</Text>
-            <Text style={styles.sectionMeta}>
-              {unlockedCount}/{achievements.length}
-            </Text>
+            <Text style={styles.sectionMeta}>{unlockedCount}/{achievements.length}</Text>
           </View>
           <View style={styles.achievementGrid}>
             {achievements.map((a) => (
-              <View
-                key={a.id}
-                style={[styles.achievement, !a.unlocked && styles.achievementLocked]}
-              >
-                <View style={[styles.achievementIcon, a.unlocked && styles.achievementIconUnlocked]}>
-                  <Text style={styles.achievementGlyph}>
-                    {a.unlocked ? '✓' : '·'}
-                  </Text>
+              <View key={a.id} style={[styles.achievementCard, !a.unlocked && styles.achievementLocked]}>
+                <View style={[styles.achievementBadge, a.unlocked && styles.achievementBadgeUnlocked]}>
+                  <Text style={styles.achievementGlyph}>{a.unlocked ? '✓' : '?'}</Text>
                 </View>
                 <Text style={[styles.achievementName, !a.unlocked && styles.achievementNameLocked]} numberOfLines={1}>
-                  {a.name}
+                  {a.unlocked ? a.name : '???'}
                 </Text>
-                <Text style={styles.achievementDesc} numberOfLines={2}>
-                  {a.description}
-                </Text>
-                {a.progressLabel ? (
-                  <Text style={styles.achievementProgress}>{a.progressLabel}</Text>
-                ) : null}
+                <Text style={styles.achievementDesc} numberOfLines={2}>{a.description}</Text>
+                {a.progress && <Text style={styles.achievementProgress}>{a.progress}</Text>}
               </View>
             ))}
           </View>
         </Animated.View>
 
-        <View style={{ height: screen.tabBarClearance }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </TabScreen>
+    </SafeAreaView>
   );
 }
 
-/* ──────────────────────────── helpers ──────────────────────────── */
-
-function StatCell({ label, value }: { label: string; value: string }) {
+function StatCell({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
     <View style={styles.statCell}>
+      {icon}
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
-function buildLast28Days(streak: number): { filled: boolean; isToday: boolean }[] {
-  // Build oldest → today.
-  return Array.from({ length: 28 }).map((_, i) => {
-    const offsetFromToday = 27 - i;
+function buildCalendar(streak: number): { filled: boolean; isToday: boolean }[] {
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const currentDay = today.getDate();
+  return Array.from({ length: daysInMonth }).map((_, i) => {
+    const dayNum = i + 1;
+    const daysAgo = currentDay - dayNum;
     return {
-      filled: offsetFromToday >= 0 && offsetFromToday < streak,
-      isToday: offsetFromToday === 0,
+      filled: daysAgo >= 0 && daysAgo < streak,
+      isToday: dayNum === currentDay,
     };
   });
 }
 
-function buildAchievements({
-  totalLessonsCompleted,
-  streak,
-  level,
-  bookmarks,
-}: { totalLessonsCompleted: number; streak: number; level: number; bookmarks: number }): Achievement[] {
-  const mk = (id: string, name: string, description: string, unlocked: boolean, progressLabel?: string): Achievement => ({
-    id, name, description, unlocked, progressLabel,
-  });
-  return [
-    mk('first_lesson', 'First Step', 'Complete your first lesson', totalLessonsCompleted >= 1),
-    mk('lessons_5', 'Getting Started', '5 lessons done', totalLessonsCompleted >= 5,
-       totalLessonsCompleted < 5 ? `${totalLessonsCompleted}/5` : undefined),
-    mk('lessons_10', 'Sharp Learner', '10 lessons done', totalLessonsCompleted >= 10,
-       totalLessonsCompleted < 10 ? `${totalLessonsCompleted}/10` : undefined),
-    mk('lessons_25', 'Dedicated', '25 lessons done', totalLessonsCompleted >= 25,
-       totalLessonsCompleted < 25 ? `${totalLessonsCompleted}/25` : undefined),
-    mk('streak_3', 'Warming Up', '3-day streak', streak >= 3,
-       streak < 3 ? `${streak}/3` : undefined),
-    mk('streak_7', 'Week Warrior', '7-day streak', streak >= 7,
-       streak < 7 ? `${streak}/7` : undefined),
-    mk('streak_30', 'Monthly Master', '30-day streak', streak >= 30,
-       streak < 30 ? `${streak}/30` : undefined),
-    mk('level_3', 'Level 3', 'Reach level 3', level >= 3),
-    mk('level_10', 'AIRA Pro', 'Reach level 10', level >= 10),
-    mk('first_bookmark', 'Library Card', 'Save your first card', bookmarks >= 1),
-    mk('bookmarks_10', 'Curator', 'Save 10 cards', bookmarks >= 10,
-       bookmarks < 10 ? `${bookmarks}/10` : undefined),
-    mk('audience_master', 'Audience Master', 'Complete the Audience lesson', totalLessonsCompleted >= 1),
-  ];
-}
-
-/* ──────────────────────────── styles ──────────────────────────── */
-
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: screen.hPadding,
-    paddingTop: space['6'],
-  },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  container: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: spacing.lg },
 
-  header: { marginBottom: space['5'] },
-  eyebrow: { ...text.label, color: palette.brandSoft, marginBottom: space['1'] },
-  title: { ...text.headline, color: palette.textPrimary },
+  eyebrow: { ...typography.label, color: colors.cyan, marginBottom: 4 },
+  title: { ...typography.display, color: colors.textPrimary, marginBottom: spacing.lg },
 
-  // Level card
+  // Level
   levelCard: {
-    borderRadius: radii.lg,
-    padding: space['5'],
-    marginBottom: space['4'],
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+    backgroundColor: colors.cardSurface, borderRadius: radius.lg, padding: 20,
+    marginBottom: spacing.md, ...elevation.card,
   },
-  levelHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space['4'] },
-  levelEyebrow: {
-    ...text.label,
-    color: 'rgba(255,255,255,0.85)',
-    marginBottom: space['1'],
+  levelCircle: {
+    width: 64, height: 64, borderRadius: 32,
+    borderWidth: 3, borderColor: colors.cyan,
+    justifyContent: 'center', alignItems: 'center',
   },
-  levelNumber: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 44,
-    lineHeight: 48,
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-  xpRight: { alignItems: 'flex-end', justifyContent: 'flex-end' },
-  xpToNext: {
-    ...text.bodyEmphasis,
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  xpTotal: {
-    ...text.caption,
-    color: 'rgba(255,255,255,0.78)',
-  },
-  xpTrack: {
-    height: 8,
-    borderRadius: radii.full,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    overflow: 'hidden',
-  },
-  xpFill: {
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: radii.full,
-  },
+  levelNumber: { fontFamily: 'Inter_700Bold', fontSize: 28, color: colors.cyan },
+  levelInfo: { flex: 1 },
+  levelLabel: { ...typography.headline, color: colors.textPrimary, marginBottom: 6 },
+  levelXpBar: { height: 6, backgroundColor: colors.divider, borderRadius: 3, overflow: 'hidden', marginBottom: 4 },
+  levelXpFill: { height: '100%', backgroundColor: colors.cyan, borderRadius: 3 },
+  levelXpText: { ...typography.caption, color: colors.textSecondary },
 
-  // Streak card
-  streakCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: palette.bgRaised,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: space['5'],
-    marginBottom: space['4'],
-  },
-  streakEyebrow: { ...text.label, color: palette.streak, marginBottom: space['1'] },
-  streakNumber: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 36,
-    lineHeight: 40,
-    color: palette.textPrimary,
-    letterSpacing: -0.5,
-  },
-  streakUnit: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 16,
-    color: palette.textSecondary,
-  },
-  streakHint: { ...text.caption, color: palette.textSecondary, marginTop: space['2'], maxWidth: 220 },
-  streakFlame: { fontSize: 56 },
-
-  // Stats row
+  // Stats
   statsRow: {
-    flexDirection: 'row',
-    backgroundColor: palette.bgRaised,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: space['4'],
-    marginBottom: space['6'],
+    flexDirection: 'row', backgroundColor: colors.cardSurface,
+    borderRadius: radius.lg, padding: 16, marginBottom: spacing.lg, ...elevation.sm,
   },
-  statCell: { flex: 1, alignItems: 'center' },
-  statDivider: { width: StyleSheet.hairlineWidth, backgroundColor: palette.border, marginVertical: space['1'] },
-  statValue: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 22,
-    lineHeight: 26,
-    color: palette.textPrimary,
-    marginBottom: 2,
-  },
-  statLabel: { ...text.caption, color: palette.textMuted },
+  statCell: { flex: 1, alignItems: 'center', gap: 4 },
+  statValue: { fontFamily: 'Inter_700Bold', fontSize: 20, color: colors.textPrimary },
+  statLabel: { ...typography.caption, fontSize: 11, color: colors.textDisabled },
 
-  section: { marginBottom: space['8'] },
-  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space['3'] },
-  sectionTitle: { ...text.title, color: palette.textPrimary },
-  sectionMeta: { ...text.caption, color: palette.textSecondary },
+  // Sections
+  section: { marginBottom: spacing.lg },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  sectionTitle: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.md },
+  sectionMeta: { ...typography.caption, color: colors.textSecondary },
 
-  // Heatmap
-  heatmap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: space['2'],
+  // Radar
+  radarCard: { backgroundColor: colors.cardSurface, borderRadius: radius.lg, padding: 16, ...elevation.sm },
+
+  // Calendar
+  calendarCard: { backgroundColor: colors.cardSurface, borderRadius: radius.lg, padding: 16, ...elevation.sm },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  calendarCell: {
+    width: (SCREEN_W - 32 - 32 - 6 * 6) / 7, height: 28,
+    borderRadius: 4, backgroundColor: colors.elevated, borderWidth: 1, borderColor: colors.divider,
   },
-  heatCell: {
-    width: 28, // (screen - 16*2 - gap*6) / 7 ≈ 28 for typical 360px wide
-    height: 28,
-    borderRadius: radii.xs,
-    backgroundColor: palette.bgRaised,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  heatCellFilled: {
-    backgroundColor: palette.brand,
-    borderColor: palette.brand,
-  },
-  heatCellToday: {
-    borderColor: palette.brandSoft,
-    borderWidth: 2,
-  },
-  heatmapCaption: { ...text.caption, color: palette.textMuted },
+  calendarFilled: { backgroundColor: colors.cyan, borderColor: colors.cyan },
+  calendarToday: { borderColor: colors.orange, borderWidth: 2 },
+  calendarCaption: { ...typography.caption, color: colors.textDisabled },
 
   // Achievements
-  achievementGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space['3'],
+  achievementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  achievementCard: {
+    width: '47%', backgroundColor: colors.cardSurface, borderRadius: radius.md,
+    padding: 14, minHeight: 120, ...elevation.sm,
   },
-  achievement: {
-    width: '48%',
-    backgroundColor: palette.bgRaised,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: space['3'],
-    minHeight: 120,
+  achievementLocked: { opacity: 0.5 },
+  achievementBadge: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: colors.elevated, justifyContent: 'center', alignItems: 'center',
+    marginBottom: 8, borderWidth: 1, borderColor: colors.divider,
   },
-  achievementLocked: {
-    opacity: 0.55,
-  },
-  achievementIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.full,
-    backgroundColor: palette.bgRaised2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: space['2'],
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  achievementIconUnlocked: {
-    backgroundColor: palette.brand,
-    borderColor: palette.brand,
-  },
-  achievementGlyph: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
-    fontSize: 18,
-  },
-  achievementName: {
-    ...text.bodyEmphasis,
-    fontSize: 14,
-    color: palette.textPrimary,
-    marginBottom: 2,
-  },
-  achievementNameLocked: { color: palette.textSecondary },
-  achievementDesc: { ...text.caption, color: palette.textMuted, marginBottom: 4 },
-  achievementProgress: { ...text.caption, color: palette.brandSoft, fontFamily: 'Inter_700Bold' },
+  achievementBadgeUnlocked: { backgroundColor: colors.cyan, borderColor: colors.cyan },
+  achievementGlyph: { color: '#FFFFFF', fontFamily: 'Inter_700Bold', fontSize: 16 },
+  achievementName: { ...typography.bodyBold, fontSize: 14, color: colors.textPrimary, marginBottom: 2 },
+  achievementNameLocked: { color: colors.textSecondary },
+  achievementDesc: { ...typography.caption, color: colors.textDisabled },
+  achievementProgress: { ...typography.caption, color: colors.cyan, fontFamily: 'Inter_700Bold', marginTop: 4 },
 });

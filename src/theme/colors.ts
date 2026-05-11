@@ -1,46 +1,52 @@
 export const colors = {
-  // Multi-stop gradients
-  gradientHero: ['#8B5CF6', '#EC4899', '#F59E0B'] as const,
-  gradientLesson: ['#6366F1', '#8B5CF6'] as const,
-  gradientSuccess: ['#10B981', '#34D399'] as const,
-  gradientStreak: ['#F59E0B', '#EF4444'] as const,
-  gradientPro: ['#F59E0B', '#EC4899', '#8B5CF6'] as const,
+  bg: '#0B0E14',
+  cardSurface: '#1A1F2E',
+  elevated: '#242B3D',
+  divider: '#2A3142',
 
-  // Surfaces (warmer purple-tinted dark)
-  bg: '#0C0A14',
-  bgElevated: '#161327',
-  bgCard: '#1E1B31',
-  bgCardHover: '#28253F',
-  bgGlass: 'rgba(139, 92, 246, 0.08)',
+  cyan: '#00E5E5',
+  cyanGlow: 'rgba(0, 229, 229, 0.25)',
+  cyanWash: 'rgba(0, 229, 229, 0.08)',
+  orange: '#FF6B35',
+  orangeGlow: 'rgba(255, 107, 53, 0.25)',
+  success: '#2ECC71',
+  successSoft: 'rgba(46, 204, 113, 0.14)',
+  error: '#E74C3C',
+  errorSoft: 'rgba(231, 76, 60, 0.14)',
 
-  // Text
-  textPrimary: '#FAFAFA',
-  textSecondary: '#A1A1B5',
-  textMuted: '#6B6B80',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#A0AEC0',
+  textDisabled: '#4A5568',
 
-  // Semantic (softer, less harsh)
-  success: '#34D399',
-  error: '#FB7185',
-  warning: '#FBBF24',
+  trackFoundations: '#00E5E5',
+  trackCritical: '#E74C3C',
+  trackPower: '#2ECC71',
+  trackTools: '#FF6B35',
+  trackCode: '#6366F1',
+  trackCreators: '#8B5CF6',
+  trackMaster: '#F59E0B',
 
-  // AIRA identity
-  airaCore: '#8B5CF6',
-  airaGlow: '#C4B5FD',
-  airaWhisper: 'rgba(196, 181, 253, 0.12)',
-  airaPro: '#FBBF24',
-
-  // Track colors (one per track)
-  trackFoundations: '#8B5CF6',
-  trackCritical: '#EC4899',
-  trackPower: '#6366F1',
-  trackTools: '#06B6D4',
-  trackCreators: '#F59E0B',
-  trackMaster: '#10B981',
-
-  confettiColors: ['#8B5CF6', '#EC4899', '#F59E0B', '#34D399', '#60A5FA'],
-  
-  border: '#2A2A38',
-};
-
-export const radius = { sm: 10, md: 14, lg: 20, xl: 28, full: 999 };
-export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48, huge: 64 };
+  // Legacy aliases — point to canonical tokens above
+  bgCard: '#1A1F2E',
+  bgCardHover: '#242B3D',
+  bgElevated: '#242B3D',
+  bgRaised: '#1A1F2E',
+  bgRaised2: '#242B3D',
+  border: '#2A3142',
+  airaGlow: '#00E5E5',
+  airaCore: '#00E5E5',
+  airaPro: '#8B5CF6',
+  brand: '#00E5E5',
+  brandSoft: 'rgba(0, 229, 229, 0.25)',
+  purple: '#6366F1',
+  warning: '#FF6B35',
+  danger: '#E74C3C',
+  dangerSoft: 'rgba(231, 76, 60, 0.14)',
+  textMuted: '#4A5568',
+  gradientPrimary: ['#00B4D8', '#00E5E5'] as readonly [string, string],
+  gradientAccent: ['#FF6B35', '#F59E0B'] as readonly [string, string],
+  gradientSuccess: ['#2ECC71', '#10B981'] as readonly [string, string],
+  gradientLesson: ['#00E5E5', '#0B0E14'] as readonly [string, string],
+  gradientXp: ['#00E5E5', '#00B4D8'] as readonly [string, string],
+  gradientPro: ['#8B5CF6', '#EC4899'] as readonly [string, string],
+} as const;

@@ -22,11 +22,11 @@ interface Props {
 
 const trackConfig: Record<string, { title: string; subtitle: string; icon: string; color: string; gradient: readonly string[] }> = {
   foundations: { title: 'Foundations', subtitle: 'Prompt basics', icon: '🌱', color: colors.trackFoundations, gradient: colors.gradientLesson },
-  critical: { title: 'Critical Thinking', subtitle: 'Verify AI output', icon: '🧠', color: colors.trackCritical, gradient: [colors.trackCritical, colors.airaCore] as const },
-  power: { title: 'Power User', subtitle: 'Advanced techniques', icon: '⚡', color: colors.trackPower, gradient: [colors.trackPower, colors.airaCore] as const },
-  tools: { title: 'Tools & Taste', subtitle: 'AI tools comparison', icon: '🛠️', color: colors.trackTools, gradient: [colors.trackTools, colors.airaCore] as const },
-  creators: { title: 'AI for Creators', subtitle: 'Build with AI', icon: '✨', color: colors.trackCreators, gradient: [colors.trackCreators, colors.airaCore] as const },
-  master: { title: 'The AI Master', subtitle: 'Meta-prompting & more', icon: '🏆', color: colors.trackMaster, gradient: [colors.trackMaster, colors.airaCore] as const },
+  critical: { title: 'Critical Thinking', subtitle: 'Verify AI output', icon: '🧠', color: colors.trackCritical, gradient: [colors.trackCritical, colors.cyan] as const },
+  power: { title: 'Power User', subtitle: 'Advanced techniques', icon: '⚡', color: colors.trackPower, gradient: [colors.trackPower, colors.cyan] as const },
+  tools: { title: 'Tools & Taste', subtitle: 'AI tools comparison', icon: '🛠️', color: colors.trackTools, gradient: [colors.trackTools, colors.cyan] as const },
+  creators: { title: 'AI for Creators', subtitle: 'Build with AI', icon: '✨', color: colors.trackCreators, gradient: [colors.trackCreators, colors.cyan] as const },
+  master: { title: 'The AI Master', subtitle: 'Meta-prompting & more', icon: '🏆', color: colors.trackMaster, gradient: [colors.trackMaster, colors.cyan] as const },
 };
 
 export function TrackDetailScreen({ navigation, route }: Props) {
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   lessonRowCurrent: {
-    borderColor: colors.airaCore,
+    borderColor: colors.cyan,
     backgroundColor: colors.bgCardHover,
   },
   lessonRowPressed: {
@@ -341,11 +341,11 @@ const styles = StyleSheet.create({
     borderColor: '#10B981',
   },
   lessonBadgeCurrent: {
-    backgroundColor: colors.airaCore,
-    borderColor: colors.airaCore,
+    backgroundColor: colors.cyan,
+    borderColor: colors.cyan,
   },
   lessonBadgeText: {
-    fontFamily: 'SpaceGrotesk_700Bold',
+    fontFamily: 'Inter_700Bold',
     fontSize: 16,
     color: '#FFFFFF',
   },
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   lessonTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
+    fontFamily: 'Inter_700Bold',
     fontSize: 16,
     color: colors.textPrimary,
     marginBottom: 4,
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   lessonCta: {
     fontFamily: 'Inter_700Bold',
     fontSize: 12,
-    color: colors.airaGlow,
+    color: colors.cyan,
     letterSpacing: 0.6,
   },
   lessonCtaDone: {
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   emptyTitle: {
-    fontFamily: 'SpaceGrotesk_700Bold',
+    fontFamily: 'Inter_700Bold',
     fontSize: 16,
     color: colors.textPrimary,
     marginBottom: 4,

@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   backIcon: { fontSize: 26, color: colors.textPrimary },
 
   heroWrap: { alignItems: 'center', marginBottom: spacing.lg, gap: spacing.sm },
-  eyebrow: { ...typography.label, color: colors.airaGlow, marginTop: spacing.sm },
+  eyebrow: { ...typography.label, color: colors.cyan, marginTop: spacing.sm },
   headline: { ...typography.headline, color: colors.textPrimary, textAlign: 'center' },
   sub: { ...typography.body, color: colors.textSecondary, textAlign: 'center', maxWidth: 320 },
 

@@ -19,13 +19,13 @@ const ALL_LOCAL_LESSONS: SeedLesson[] = [...SEED_LESSONS, ...CODE_LESSONS];
  */
 function trackToTopic(trackId: SeedLesson['trackId']): string {
   switch (trackId) {
-    case 'prompt':   return 'Prompt Craft';
+    case 'prompt':   return 'AI Foundations';
     case 'critical': return 'Critical Thinking';
-    case 'power':    return 'Power User Moves';
-    case 'tools':    return 'AI Tools Mastery';
-    case 'vibe':     return 'Vibe Code';
-    case 'create':   return 'Create with AI';
-    default:         return 'Foundations';
+    case 'power':    return 'Practical Power';
+    case 'tools':    return 'Tools & Taste';
+    case 'vibe':     return 'Tools & Taste';
+    case 'create':   return 'Practical Power';
+    default:         return 'AI Foundations';
   }
 }
 

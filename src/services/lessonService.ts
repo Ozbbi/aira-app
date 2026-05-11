@@ -4,14 +4,11 @@ import {
   getCurriculum,
   checkAnswer,
   saveProgress,
-  getUserLimits,
-  DailyLimitError,
   NetworkError,
 } from '../api/client';
 import type { Lesson, AnswerResult, ProgressResult, Curriculum } from '../types';
-import type { UserLimits } from '../api/client';
 
-export { DailyLimitError, NetworkError };
+export { NetworkError };
 
 export async function fetchLesson(
   userId: string,
@@ -44,6 +41,3 @@ export async function completeLessonProgress(
   return saveProgress(userId, lessonId, correctCount, totalCount);
 }
 
-export async function fetchUserLimits(userId: string): Promise<UserLimits> {
-  return getUserLimits(userId);
-}

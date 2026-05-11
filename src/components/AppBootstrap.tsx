@@ -11,7 +11,6 @@ import { colors } from '../theme';
 export function AppBootstrap() {
   const [ready, setReady] = useState(false);
   const setUser = useUserStore((s) => s.setUser);
-  const setOnline = useUserStore((s) => s.setOnline);
 
   useEffect(() => {
     bootstrap();
@@ -39,8 +38,6 @@ export function AppBootstrap() {
       checkHealth(),
       new Promise<boolean>((resolve) => setTimeout(() => resolve(false), HEALTH_TIMEOUT_MS)),
     ]);
-    setOnline(healthy);
-
     if (healthy) {
       try {
         const user = await fetchExistingUser();
@@ -51,9 +48,9 @@ export function AppBootstrap() {
             xp: user.xp,
             level: user.level,
             streak: user.streak,
-            tier: 'pro',
-            lessonsCompletedToday: user.lessonsCompletedToday,
+            tier: (user.tier as 'free' | 'pro') || 'free',
             totalLessonsCompleted: user.totalLessonsCompleted,
+            isOnline: true,
           });
         }
       } catch {

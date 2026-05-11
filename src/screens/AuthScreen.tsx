@@ -8,13 +8,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { AiraOrb } from '../components/AiraOrb';
-import { GradientButton } from '../components/GradientButton';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AiraMascot } from '../components/AiraMascot';
 import { authSignup, authLogin } from '../api/client';
 import { scheduleStreakReminder } from '../services/notifications';
 import { haptics } from '../utils/haptics';
@@ -34,7 +35,6 @@ export function AuthScreen({ navigation, route }: Props) {
 
   const setUser = useUserStore((s) => s.setUser);
   const setAuthToken = useUserStore((s) => s.setAuthToken);
-  const setNotificationsEnabled = useUserStore((s) => s.setNotificationsEnabled);
 
   const [tab, setTab] = useState<Tab>('signup');
   const [name, setName] = useState(prefillName);
@@ -64,23 +64,21 @@ export function AuthScreen({ navigation, route }: Props) {
       const u = res.user;
       const userId = u.id ?? (u as any).userId;
 
-      // Persist token + user data
       setAuthToken(res.token);
       setUser({
         userId,
         name: u.name,
+        email: email.trim(),
         xp: u.xp,
         level: u.level,
         streak: u.streak,
         tier: u.tier,
-        lessonsCompletedToday: u.lessonsCompletedToday ?? 0,
         totalLessonsCompleted: u.totalLessonsCompleted ?? 0,
       });
 
-      // Schedule streak reminder on first sign-up (fire-and-forget)
       if (isSignup) {
         scheduleStreakReminder()
-          .then((granted) => setNotificationsEnabled(granted))
+          .then((granted) => setUser({ notificationsEnabled: granted }))
           .catch(() => {});
       }
 
@@ -104,129 +102,135 @@ export function AuthScreen({ navigation, route }: Props) {
   };
 
   return (
-    <LinearGradient colors={[colors.bg, '#0D0A18', colors.bg]} style={styles.bg}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <LinearGradient
+      colors={['#0B0E14', '#0A2E3D', '#00B4D8']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.bg}
+    >
+      <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.flex}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <AiraOrb size={64} intensity="calm" />
-            <Text style={styles.title}>
-              {isSignup ? 'Create your account' : 'Welcome back'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {isSignup
-                ? 'Your progress is saved across all your devices.'
-                : 'Sign in to pick up where you left off.'}
-            </Text>
-          </View>
-
-          {/* Tab switch */}
-          <View style={styles.tabRow}>
-            <Pressable
-              style={[styles.tab, tab === 'signup' && styles.tabActive]}
-              onPress={() => switchTab('signup')}
-            >
-              <Text style={[styles.tabText, tab === 'signup' && styles.tabTextActive]}>
-                Sign up
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.header}>
+              <AiraMascot size={120} mood="calm" />
+              <Text style={styles.title}>
+                {isSignup ? 'Create your account' : 'Welcome back'}
               </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, tab === 'login' && styles.tabActive]}
-              onPress={() => switchTab('login')}
-            >
-              <Text style={[styles.tabText, tab === 'login' && styles.tabTextActive]}>
-                Log in
+              <Text style={styles.subtitle}>
+                {isSignup
+                  ? 'Save your progress across devices.'
+                  : 'Pick up where you left off.'}
               </Text>
-            </Pressable>
-          </View>
+            </View>
 
-          {/* Form */}
-          <Animated.View entering={FadeInDown.duration(300)} style={styles.form}>
-            {isSignup && (
+            <View style={styles.tabRow}>
+              <Pressable
+                style={[styles.tab, tab === 'signup' && styles.tabActive]}
+                onPress={() => switchTab('signup')}
+              >
+                <Text style={[styles.tabText, tab === 'signup' && styles.tabTextActive]}>
+                  Sign up
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.tab, tab === 'login' && styles.tabActive]}
+                onPress={() => switchTab('login')}
+              >
+                <Text style={[styles.tabText, tab === 'login' && styles.tabTextActive]}>
+                  Log in
+                </Text>
+              </Pressable>
+            </View>
+
+            <Animated.View entering={FadeInDown.duration(300)} style={styles.form}>
+              {isSignup && (
+                <View style={styles.fieldWrap}>
+                  <Text style={styles.label}>Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Your name"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                  />
+                </View>
+              )}
+
               <View style={styles.fieldWrap}>
-                <Text style={styles.label}>Name</Text>
+                <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Your name"
-                  placeholderTextColor={colors.textMuted}
-                  autoCapitalize="words"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
                   returnKeyType="next"
                 />
               </View>
-            )}
 
-            <View style={styles.fieldWrap}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                returnKeyType="next"
-              />
-            </View>
-
-            <View style={styles.fieldWrap}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder={isSignup ? 'At least 6 characters' : 'Your password'}
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={handleSubmit}
-              />
-            </View>
-
-            {error && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={styles.fieldWrap}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={isSignup ? 'At least 6 characters' : 'Your password'}
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
+                />
               </View>
-            )}
 
-            <GradientButton
-              title={
-                loading
-                  ? isSignup
-                    ? 'Creating account...'
-                    : 'Signing in...'
-                  : isSignup
-                  ? 'Create account'
-                  : 'Sign in'
-              }
-              onPress={handleSubmit}
-              disabled={!canSubmit || loading}
-              fullWidth
-            />
-          </Animated.View>
+              {error && (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
 
-          {/* Skip */}
-          <Pressable
-            onPress={() => {
-              haptics.tap();
-              navigation.replace('MainTabs');
-            }}
-            style={styles.skipBtn}
-          >
-            <Text style={styles.skipText}>Continue without account</Text>
-          </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              <Pressable
+                disabled={!canSubmit || loading}
+                onPress={handleSubmit}
+                style={({ pressed }) => [
+                  styles.cta,
+                  pressed && styles.ctaPressed,
+                  (!canSubmit || loading) && styles.ctaDisabled,
+                ]}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#0F0A1F" />
+                ) : (
+                  <Text style={styles.ctaText}>
+                    {isSignup ? 'Create account' : 'Sign in'}
+                  </Text>
+                )}
+              </Pressable>
+            </Animated.View>
+
+            <Pressable
+              onPress={() => {
+                haptics.tap();
+                navigation.replace('MainTabs');
+              }}
+              style={styles.skipBtn}
+            >
+              <Text style={styles.skipText}>Continue without account</Text>
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -243,26 +247,27 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: spacing.xl,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   title: {
-    ...typography.h2,
-    color: colors.textPrimary,
+    ...typography.display,
+    fontSize: 26,
+    color: '#FFFFFF',
     textAlign: 'center',
+    marginTop: spacing.md,
   },
   subtitle: {
     ...typography.body,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.78)',
     textAlign: 'center',
-    lineHeight: 24,
   },
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: colors.bgCard,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.xl,
+    borderColor: 'rgba(255,255,255,0.15)',
+    marginBottom: spacing.lg,
     padding: 4,
   },
   tab: {
@@ -272,14 +277,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   tabActive: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   tabText: {
     ...typography.bodyBold,
-    color: colors.textMuted,
+    color: 'rgba(255,255,255,0.6)',
   },
   tabTextActive: {
-    color: colors.textPrimary,
+    color: '#FFFFFF',
   },
   form: {
     gap: spacing.md,
@@ -289,30 +294,55 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   label: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
+    ...typography.label,
+    color: 'rgba(255,255,255,0.7)',
   },
   input: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: spacing.md,
     paddingVertical: 14,
     ...typography.body,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
   },
   errorBox: {
-    backgroundColor: colors.error + '20',
+    backgroundColor: 'rgba(231,76,60,0.18)',
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.error + '60',
+    borderColor: 'rgba(231,76,60,0.5)',
     padding: spacing.md,
   },
   errorText: {
     ...typography.caption,
-    color: colors.error,
+    color: '#FECACA',
+  },
+  cta: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.full,
+    paddingVertical: spacing.md + 2,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  ctaPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.94,
+  },
+  ctaDisabled: {
+    opacity: 0.45,
+  },
+  ctaText: {
+    ...typography.button,
+    fontSize: 17,
+    color: '#0F0A1F',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.2,
   },
   skipBtn: {
     alignItems: 'center',
@@ -321,6 +351,6 @@ const styles = StyleSheet.create({
   },
   skipText: {
     ...typography.body,
-    color: colors.textMuted,
+    color: 'rgba(255,255,255,0.7)',
   },
 });

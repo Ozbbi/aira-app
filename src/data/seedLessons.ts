@@ -2541,4 +2541,517 @@ export const SEED_LESSONS: SeedLesson[] = [
     airaOutro: "Use this on your next real research task. The first time it feels slower (you\'re learning the rhythm). The third time it feels like a superpower.",
     takeaway: 'AI on the bookends. Human in the middle.',
   },
+
+  // ---------- AI FOUNDATIONS (additional) ----------
+
+  {
+    id: 'prompt_role',
+    trackId: 'prompt',
+    title: 'Give the AI a job title',
+    character: 'Deniz',
+    airaIntro:
+      'The fastest way to change how an AI talks is to tell it WHO it is. One line at the top of your prompt rewires the whole answer.',
+    learnFirst:
+      'When you say "Act as a senior data scientist", the model adjusts vocabulary, depth, and assumptions. It is not role-playing for fun — it is narrowing the probability space to answers that match that perspective.',
+    realWorldScenario:
+      'Deniz wants to explain API rate limiting to her non-technical CEO before a board meeting. She asks: "Explain API rate limiting." The answer is buried in jargon.',
+    scenes: [
+      {
+        heading: 'Without a role',
+        vague: 'Explain API rate limiting.',
+        specific: 'You are a friendly CTO explaining to a non-technical CEO in a 2-minute elevator ride. Explain API rate limiting using one everyday analogy.',
+        note: 'The role tells the AI how deep to go and what vocabulary to use. Without it, the AI defaults to a Wikipedia-level dump.',
+      },
+      {
+        heading: 'Stacking roles',
+        vague: 'Review my business plan.',
+        specific: 'First, act as a skeptical VC partner and poke holes. Then, act as a supportive advisor and suggest fixes for each hole.',
+        note: 'You can chain multiple roles in one prompt. Each perspective surfaces different feedback.',
+      },
+      {
+        heading: 'Role + audience',
+        vague: 'Write me a nutrition guide.',
+        specific: 'You are a registered dietitian. Write a 1-week meal plan for a college student with a $40/week grocery budget. No supplements.',
+        note: 'Role sets the expertise. Audience sets the context. Together they eliminate 80% of generic filler.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Why does "Act as a senior data scientist" change the AI\'s output?',
+        options: [
+          'It makes the AI smarter.',
+          'It narrows vocabulary, depth, and assumptions to match that perspective.',
+          'It activates a hidden expert mode.',
+          'It makes the AI try harder.',
+        ],
+        correctAnswer: 1,
+        explanation: 'The role constrains the probability space. The AI picks words and depth that a senior data scientist would use.',
+        airaFeedback: {
+          correct: 'Yes. Role = lens. Different lens, different answer.',
+          incorrect: 'The AI doesn\'t get smarter — it gets more focused. The role narrows what kind of answer it generates.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'You can only assign one role per prompt.',
+        correctAnswer: false,
+        explanation: 'You can stack roles: "First act as X, then act as Y." Each perspective adds a layer of analysis.',
+        airaFeedback: {
+          correct: 'Right. Stack roles for multi-angle feedback.',
+          incorrect: 'You can chain roles. "First as a critic, then as an advisor" gives you both attack and fix.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'A role prompt narrows the AI\'s vocabulary, depth, and ____.',
+        correctAnswer: 'assumptions',
+        explanation: 'A senior scientist assumes different background knowledge than a high school teacher. The role sets what the AI takes for granted.',
+        airaFeedback: {
+          correct: 'Yes. Assumptions drive what the AI explains vs. skips.',
+          incorrect: 'Think about what differs between how a professor and a student explain the same concept. The underlying... ?',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Deniz wants jargon-free output. Which role prompt helps most?',
+        options: [
+          '"Act as an AI."',
+          '"Act as a friendly CTO explaining to a non-technical CEO."',
+          '"Be simple."',
+          '"Use easy words."',
+        ],
+        correctAnswer: 1,
+        explanation: 'The role + audience combo tells the AI exactly what level to target. "Be simple" is vague.',
+        airaFeedback: {
+          correct: 'Nailed it. Role + audience is the combo.',
+          incorrect: '"Be simple" and "use easy words" are vibes. "CTO explaining to a CEO" is a concrete lens.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'Write a role prompt that would help you get a good workout plan from an AI.',
+        correctAnswer: 'You are a certified personal trainer who specialises in home workouts for beginners with no equipment. Create a 3-day-per-week plan for someone who has 30 minutes each session.',
+        explanation: 'A strong role prompt names the expertise, the constraint, and the audience. Any answer that does this is on track.',
+        airaFeedback: {
+          correct: 'Great role assignment. The AI now knows the expertise level, the constraints, and the audience.',
+          incorrect: 'Try: "You are a [specific expert]. Help a [specific person] with [specific constraint]."',
+        },
+      },
+    ],
+    airaOutro: 'One line at the top. That is all it takes to go from generic dump to targeted advice.',
+    takeaway: 'Role = lens. Change the lens, change the answer.',
+  },
+
+  {
+    id: 'prompt_context',
+    trackId: 'prompt',
+    title: 'Give AI the backstory it needs',
+    character: 'Lin',
+    airaIntro:
+      'An AI with no context is like a doctor who skips the medical history. Today you learn to give just enough background to get answers that fit your real situation.',
+    learnFirst:
+      'Context is the background information that shapes the answer. Who are you? What have you tried? What are the constraints? Without context, the AI writes for a generic person in a generic situation.',
+    realWorldScenario:
+      'Lin runs a small Etsy shop selling handmade candles. She asks: "How can I grow my business?" The AI suggests raising venture capital, hiring a marketing team, and running TV ads. Useless advice for a solo candle maker.',
+    scenes: [
+      {
+        heading: 'Without context',
+        vague: 'How can I grow my business?',
+        specific: 'I run a one-person Etsy candle shop doing $2K/month. My best channel is Instagram (800 followers). Budget for growth: $200/month. What are 3 realistic next steps?',
+        note: 'The context eliminates "hire a team" and "buy TV ads" before the AI even starts thinking.',
+      },
+      {
+        heading: 'Situation + constraint',
+        vague: 'Help me learn Python.',
+        specific: 'I am a data analyst who uses Excel daily. I have 30 minutes per evening. I want to automate my weekly sales report within 2 weeks.',
+        note: 'Your existing skills, time budget, and goal give the AI a clear lane. Without them it recommends a 6-month CS degree.',
+      },
+      {
+        heading: 'What you\'ve tried',
+        vague: 'My code has a bug.',
+        specific: 'My React app crashes on the Profile screen. I\'ve checked: the API returns 200, the state updates, but the render throws "Cannot read property name of undefined." I suspect the user object is null on first mount.',
+        note: 'Telling the AI what you already tried prevents it from repeating useless suggestions.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Why did Lin get "raise venture capital" as advice?',
+        options: [
+          'The AI is bad at business advice.',
+          'She didn\'t provide context about her situation, so the AI defaulted to generic answers.',
+          'She should have used a different AI model.',
+          'Business prompts never work well.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Without her revenue, team size, or budget, the AI assumed a generic startup founder. Context changes everything.',
+        airaFeedback: {
+          correct: 'Exactly. No context = generic person = generic advice.',
+          incorrect: 'The AI isn\'t bad at business — it just didn\'t know Lin\'s situation. Context is the fix.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'You should include every detail about your situation in the prompt.',
+        correctAnswer: false,
+        explanation: 'Too much context buries the question. Include only what changes the answer: your role, constraints, what you\'ve tried, and your goal.',
+        airaFeedback: {
+          correct: 'Right. Relevant context, not a biography.',
+          incorrect: 'More isn\'t always better. Include what changes the answer. Skip what doesn\'t.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'The three key pieces of context are: who you are, what your constraints are, and what you\'ve already ____.',
+        correctAnswer: 'tried',
+        explanation: 'Telling the AI what you\'ve already attempted prevents it from suggesting things you already ruled out.',
+        airaFeedback: {
+          correct: 'Yes. "I already tried X" saves a whole round of back-and-forth.',
+          incorrect: 'Think about what prevents the AI from repeating useless suggestions.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'ordering',
+        question: 'Order these context elements from most to least impact:',
+        options: ['Your goal', 'Your constraints', 'What you\'ve already tried', 'Your favourite colour'],
+        correctAnswer: ['Your goal', 'Your constraints', 'What you\'ve already tried', 'Your favourite colour'],
+        explanation: 'Goal is the target, constraints narrow the options, past attempts avoid repeats. Favourite colour is irrelevant noise.',
+        airaFeedback: {
+          correct: 'Goal → constraints → past attempts. And leave the colour out entirely.',
+          incorrect: 'Goal tells the AI WHERE you\'re going. Constraints tell it what\'s OFF the table. Past attempts prevent reruns.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'Rewrite this vague prompt with proper context: "Help me with my resume."',
+        correctAnswer: 'I\'m a junior graphic designer with 2 years of freelance experience applying for my first agency job. My resume is one page but feels generic. Help me rewrite the summary section to highlight my client work and design tools.',
+        explanation: 'Any version that includes your role, experience level, target job, and specific ask is strong.',
+        airaFeedback: {
+          correct: 'Strong context. The AI now knows your level, your target, and what part of the resume to focus on.',
+          incorrect: 'Try adding: who you are, what job you want, and what specifically needs help.',
+        },
+      },
+    ],
+    airaOutro: 'Context is not extra typing. It is the difference between advice for you and advice for everyone.',
+    takeaway: 'Situation + constraints + past attempts. That is context.',
+  },
+
+  {
+    id: 'prompt_iteration',
+    trackId: 'prompt',
+    title: 'Your first prompt is a rough draft',
+    character: 'Jordan',
+    airaIntro:
+      'Nobody writes a perfect email on the first try. Prompts work the same way. The real skill is in the follow-up.',
+    learnFirst:
+      'Iteration means refining through conversation. Your first prompt gets you a starting point. Your follow-ups sculpt it into something great. Most people stop after round one — that is where they lose.',
+    realWorldScenario:
+      'Jordan asks an AI to write his conference talk abstract. The first draft is okay but too formal and too long. Instead of rewriting the whole prompt, he sends three quick follow-ups that transform it.',
+    scenes: [
+      {
+        heading: 'Round 1: the rough draft',
+        vague: 'Write an abstract for my conference talk about remote team culture.',
+        specific: 'Write a 150-word abstract for a tech conference talk about how we built remote culture at a 40-person startup. Tone: direct, practical, not academic.',
+        note: 'Even a good first prompt produces a rough draft. That is normal. The follow-ups are where the real work happens.',
+      },
+      {
+        heading: 'Round 2: sculpt',
+        vague: 'Make it better.',
+        specific: 'Too formal. Rewrite with shorter sentences. Open with a surprising stat. Cut the last paragraph — it\'s filler.',
+        note: '"Make it better" tells the AI nothing. Specific feedback — what\'s wrong, what to change — gives it a clear target.',
+      },
+      {
+        heading: 'Round 3: polish',
+        vague: 'Almost there, just fix it.',
+        specific: 'Good. Now swap "synergy" for a real word. Make the CTA in the last sentence punchier. Keep the stat opener.',
+        note: 'The third round is about small moves. You are directing, not starting over. That is iteration.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'What is the most effective follow-up after a mediocre first response?',
+        options: [
+          '"Try again."',
+          '"Make it better."',
+          '"Too formal. Shorten the sentences and open with a stat."',
+          '"I don\'t like it."',
+        ],
+        correctAnswer: 2,
+        explanation: 'Specific feedback tells the AI what to change. "Try again" just rolls the dice again.',
+        airaFeedback: {
+          correct: 'Yes. Name the problem, name the fix.',
+          incorrect: '"Try again" and "make it better" are vague. Point at the problem and describe the fix.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'If the first AI response is not great, you should rewrite the entire prompt from scratch.',
+        correctAnswer: false,
+        explanation: 'Usually a targeted follow-up is faster and better. Rewriting loses the context the AI already built.',
+        airaFeedback: {
+          correct: 'Right. Follow up, don\'t restart. The conversation has momentum.',
+          incorrect: 'Restarting throws away context. A follow-up like "too long, cut 30%" is faster and keeps what works.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Iteration means ____ through conversation.',
+        correctAnswer: 'refining',
+        explanation: 'Each round sculpts the output closer to what you need. The prompt is a draft, not a final product.',
+        airaFeedback: {
+          correct: 'Yes. Refine, sculpt, direct.',
+          incorrect: 'Think of it like editing a document — each pass gets closer to the goal.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Jordan\'s abstract is too formal. What is the best follow-up?',
+        options: [
+          '"Be less formal."',
+          '"Rewrite with shorter sentences. Open with a stat. Drop the last paragraph."',
+          '"Start over."',
+          '"Use casual language."',
+        ],
+        correctAnswer: 1,
+        explanation: 'Three specific instructions: sentence length, opener, cut. The AI knows exactly what to change.',
+        airaFeedback: {
+          correct: 'Precise. Three moves, all targeted.',
+          incorrect: '"Be less formal" is a direction but not a plan. Name the specific changes.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'The AI gave you a blog post that\'s too long, too salesy, and missing a personal story. Write your follow-up prompt.',
+        correctAnswer: 'Cut this to 500 words. Remove the salesy language (no "game-changing" or "revolutionary"). Add a 2-sentence personal anecdote in the opening paragraph about a time I struggled with this.',
+        explanation: 'Good iteration names what\'s wrong and what to do about each issue. Three problems, three fixes.',
+        airaFeedback: {
+          correct: 'Three problems, three fixes. That is how iteration works.',
+          incorrect: 'Name each problem and its fix: length → cut to 500 words, tone → remove salesy words, missing element → add anecdote.',
+        },
+      },
+    ],
+    airaOutro: 'Your first prompt is a draft. Your follow-ups are the edit. The best users never stop at round one.',
+    takeaway: 'Don\'t restart. Sculpt.',
+  },
+
+  {
+    id: 'prompt_decompose',
+    trackId: 'prompt',
+    title: 'Break big asks into small steps',
+    character: 'Sam',
+    airaIntro:
+      'The biggest mistake people make with AI: asking for everything in one shot. Today you learn to break complex tasks into steps the AI can actually nail.',
+    learnFirst:
+      'AI handles one clear task well. It handles "do everything at once" poorly. Decomposition means splitting a big request into a sequence of small, focused prompts. Each step uses the output of the last.',
+    realWorldScenario:
+      'Sam wants to create a complete marketing plan for his freelance photography business. He asks: "Create a full marketing plan for my photography business." He gets 2000 words of generic advice that helps no one.',
+    scenes: [
+      {
+        heading: 'The monolith prompt',
+        vague: 'Create a full marketing plan for my photography business.',
+        specific: 'Step 1: "Who are the top 3 client segments for a freelance wedding photographer in Austin, TX?" Then Step 2: "For the highest-value segment, list 5 channels to reach them." Then Step 3: "Draft a 30-day action plan for the top 2 channels."',
+        note: 'Three focused prompts beat one mega-prompt. Each step builds on real output, not assumptions.',
+      },
+      {
+        heading: 'Output as input',
+        vague: 'Now make it all work together.',
+        specific: 'Use the client segment from Step 1 and the channels from Step 2. Create a week-by-week plan with one action per day.',
+        note: 'Feed the AI\'s previous answers into the next prompt. This chains the reasoning without losing focus.',
+      },
+      {
+        heading: 'When to decompose',
+        vague: 'Always break everything into steps.',
+        specific: 'Decompose when the task has multiple parts that depend on each other: plans, analyses, multi-section documents. Skip it for simple one-shot tasks.',
+        note: 'A tweet doesn\'t need decomposition. A business plan does. Match the technique to the complexity.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Why does Sam get generic output from his marketing plan prompt?',
+        options: [
+          'AI is bad at marketing.',
+          'He asked for too many things at once, so the AI had to guess at every step.',
+          'He needs a paid AI model.',
+          'Marketing plans can\'t be made with AI.',
+        ],
+        correctAnswer: 1,
+        explanation: 'One mega-prompt forces the AI to guess at the client, the channel, and the plan simultaneously. Each guess weakens the next.',
+        airaFeedback: {
+          correct: 'Yes. Too many decisions in one prompt = too many guesses.',
+          incorrect: 'The issue isn\'t the AI — it\'s the prompt shape. One big ask = many guesses stacked on each other.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'You should always break every prompt into multiple steps.',
+        correctAnswer: false,
+        explanation: 'Simple tasks like "rewrite this sentence" don\'t need decomposition. Save it for complex, multi-part tasks.',
+        airaFeedback: {
+          correct: 'Right. Decompose complexity, not simplicity.',
+          incorrect: 'A tweet rewrite is one step. A business plan is many. Match the technique to the task.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Decomposition means splitting a big request into a ____ of small, focused prompts.',
+        correctAnswer: 'sequence',
+        explanation: 'A sequence, not a pile. Each step builds on the previous one\'s output.',
+        airaFeedback: {
+          correct: 'Yes. Order matters — each step feeds the next.',
+          incorrect: 'Think about how the steps relate: each one uses the output of the previous. It\'s a chain, a... ?',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'ordering',
+        question: 'Put Sam\'s marketing plan steps in the right order:',
+        options: ['Draft a 30-day action plan', 'Identify top client segments', 'List channels to reach best segment'],
+        correctAnswer: ['Identify top client segments', 'List channels to reach best segment', 'Draft a 30-day action plan'],
+        explanation: 'Segment first (who), then channels (where), then plan (how). Each step needs the previous answer.',
+        airaFeedback: {
+          correct: 'Who → where → how. Clean decomposition.',
+          incorrect: 'You need to know WHO before you can find WHERE to reach them, and WHERE before you can plan HOW.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'prompt_write',
+        question: 'Your friend asks: "Help me plan my wedding with AI." Break this into 3 focused first prompts they should send.',
+        correctAnswer: 'Step 1: "List the 10 most important wedding planning decisions in order of when they need to be made, for a 100-guest wedding in 8 months." Step 2: "For the top 3 decisions, give me a comparison of 3 options each with pros, cons, and typical cost." Step 3: "Create a month-by-month timeline for an 8-month engagement with one key task per week."',
+        explanation: 'Any answer that breaks the big task into 3 focused, sequential prompts where each builds on the last.',
+        airaFeedback: {
+          correct: 'Clean decomposition. Each step has one job and feeds the next.',
+          incorrect: 'Try three prompts where each one has a single clear job: discover → compare → plan.',
+        },
+      },
+    ],
+    airaOutro: 'Big tasks, small steps. Each prompt does one job well. Chain the outputs and you get something no single prompt could produce.',
+    takeaway: 'One job per prompt. Chain the outputs.',
+  },
+
+  {
+    id: 'prompt_ai_limits',
+    trackId: 'prompt',
+    title: 'What AI cannot do (and what to do instead)',
+    character: 'Maya',
+    airaIntro:
+      'Knowing what AI can\'t do is just as important as knowing what it can. Today you learn the five blind spots — and the workaround for each.',
+    learnFirst:
+      'AI does not access the internet in real-time, does not know what happened yesterday, cannot do precise math reliably, hallucinates sources, and has no memory between conversations. These are not bugs — they are the shape of the tool. Knowing the shape means you stop blaming the tool and start working around it.',
+    realWorldScenario:
+      'Maya asks: "What was the score of last night\'s Lakers game?" The AI confidently gives a score. She checks — the game hasn\'t happened yet. She wonders what else the AI has been confidently wrong about.',
+    scenes: [
+      {
+        heading: 'Blind spot: real-time data',
+        vague: 'What happened today in the stock market?',
+        specific: 'Explain how stock market circuit breakers work. I\'ll get today\'s numbers from my broker.',
+        note: 'Use AI for explanations and frameworks, not for live data. Pair it with a real-time source.',
+      },
+      {
+        heading: 'Blind spot: precise math',
+        vague: 'Calculate my compound interest over 30 years with monthly contributions.',
+        specific: 'Write me a Python function that calculates compound interest with monthly contributions. I\'ll run it myself.',
+        note: 'AI fumbles multi-step math. But it writes code that does math perfectly. Ask for code, not calculations.',
+      },
+      {
+        heading: 'Blind spot: memory',
+        vague: 'Remember what I told you last week.',
+        specific: 'Here\'s a summary of our previous discussion: [paste key points]. Continue from there.',
+        note: 'AI has no memory between sessions. You are the memory. Paste the relevant context at the start.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Maya asked for last night\'s game score. What went wrong?',
+        options: [
+          'The AI lied.',
+          'The AI doesn\'t have real-time data but generated a confident-sounding answer anyway.',
+          'She used the wrong model.',
+          'Sports questions don\'t work with AI.',
+        ],
+        correctAnswer: 1,
+        explanation: 'AI doesn\'t know it doesn\'t know. It generates plausible text even when it has no real data.',
+        airaFeedback: {
+          correct: 'Yes. Confident tone does not equal real data.',
+          incorrect: 'AI doesn\'t lie — it generates plausible text. It doesn\'t know it doesn\'t have last night\'s data.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'AI remembers what you told it in a previous conversation.',
+        correctAnswer: false,
+        explanation: 'Each conversation starts fresh. The AI has no memory of past sessions unless you paste the context in.',
+        airaFeedback: {
+          correct: 'Right. You are the memory. Paste the context.',
+          incorrect: 'Nope. Every conversation is a blank slate for the AI. You need to provide the history.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Instead of asking AI to calculate compound interest, ask it to write ____ that does the calculation.',
+        correctAnswer: 'code',
+        explanation: 'AI fumbles multi-step math but writes code that does math perfectly. Ask for the tool, not the answer.',
+        airaFeedback: {
+          correct: 'Yes. Code doesn\'t hallucinate math.',
+          incorrect: 'AI is unreliable at arithmetic but great at writing something that IS reliable at arithmetic.',
+        },
+      },
+      {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Which is the best way to handle AI\'s lack of real-time data?',
+        options: [
+          'Ask the AI to search the internet.',
+          'Use AI for frameworks and explanations, get live data from a real-time source.',
+          'Just trust the AI — it\'s usually close enough.',
+          'Only ask about things from before 2023.',
+        ],
+        correctAnswer: 1,
+        explanation: 'Pair AI\'s strengths (explanation, structure) with a real-time source for data.',
+        airaFeedback: {
+          correct: 'AI for the thinking, real sources for the data. Perfect pairing.',
+          incorrect: 'AI explains well but doesn\'t have today\'s data. Pair it with a live source.',
+        },
+      },
+      {
+        id: 'q5',
+        type: 'ordering',
+        question: 'Order AI\'s blind spots from most common to least common mistake:',
+        options: ['Hallucinating sources', 'No real-time data', 'No memory between chats', 'Imprecise math'],
+        correctAnswer: ['Hallucinating sources', 'No real-time data', 'No memory between chats', 'Imprecise math'],
+        explanation: 'Hallucination trips people up the most because the AI sounds so confident. The others are more obvious once you know.',
+        airaFeedback: {
+          correct: 'Hallucination is #1 because it hides behind confidence.',
+          incorrect: 'The sneakiest blind spot is the one where the AI sounds most sure. That\'s hallucination.',
+        },
+      },
+    ],
+    airaOutro: 'Every tool has limits. The people who get the most from AI are the ones who know where the edge is — and build around it.',
+    takeaway: 'Know the five blind spots. Work around them, not into them.',
+  },
 ];

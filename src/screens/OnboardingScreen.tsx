@@ -62,17 +62,17 @@ const STEPS: Step[] = [
   {
     id: 0,
     kind: 'message',
-    bg: ['#1A0B2E', '#3B0764', '#581C87'] as const,
+    bg: ['#0B0E14', '#0A2E3D', '#00B4D8'] as const,
     mood: 'calm',
     eyebrow: 'WELCOME',
-    headline: "Hey. I'm AIRA.",
+    headline: "Hey. I'm Ara.",
     body: 'Most apps teach you AI shortcuts. I teach you to think with AI.',
     ctaLabel: 'Continue',
   },
   {
     id: 1,
     kind: 'message',
-    bg: ['#0F172A', '#1E3A8A', '#4F46E5'] as const,
+    bg: ['#0B0E14', '#0A2E3D', '#00B4D8'] as const,
     mood: 'thinking',
     eyebrow: 'THE PROMISE',
     headline: 'Sharper, in 5 minutes a day.',
@@ -82,7 +82,7 @@ const STEPS: Step[] = [
   {
     id: 2,
     kind: 'choice',
-    bg: ['#0F172A', '#1E3A8A', '#3730A3'] as const,
+    bg: ['#0B0E14', '#1A1F2E', '#00B4D8'] as const,
     mood: 'thinking',
     eyebrow: 'YOUR LEVEL',
     headline: 'How much have you used AI?',
@@ -98,7 +98,7 @@ const STEPS: Step[] = [
   {
     id: 3,
     kind: 'choice',
-    bg: ['#831843', '#9D174D', '#C026D3'] as const,
+    bg: ['#0B0E14', '#3D1A0A', '#FF6B35'] as const,
     mood: 'encouraging',
     eyebrow: 'YOUR GOAL',
     headline: 'What pulls you here?',
@@ -115,7 +115,7 @@ const STEPS: Step[] = [
   {
     id: 4,
     kind: 'name',
-    bg: ['#831843', '#9D174D', '#C026D3'] as const,
+    bg: ['#0B0E14', '#3D1A0A', '#FF6B35'] as const,
     mood: 'encouraging',
     eyebrow: 'BEFORE WE START',
     headline: 'What should I call you?',
@@ -125,7 +125,7 @@ const STEPS: Step[] = [
   {
     id: 5,
     kind: 'message',
-    bg: ['#7C2D12', '#B45309', '#F59E0B'] as const,
+    bg: ['#3D1A0A', '#7C2D12', '#FF6B35'] as const,
     mood: 'celebrating',
     eyebrow: 'READY',
     headline: 'Nice to meet you.',
@@ -187,13 +187,13 @@ export function OnboardingScreen({ navigation }: Props) {
         xp: user.xp ?? 0,
         level: user.level ?? 1,
         streak: user.streak ?? 0,
-        tier: 'pro',
+        tier: 'free',
         totalLessonsCompleted: user.totalLessonsCompleted ?? 0,
       });
     } catch {
       userId = `offline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       await AsyncStorage.setItem('aira_user_id', userId);
-      setUser({ userId, name: trimmed, tier: 'pro' });
+      setUser({ userId, name: trimmed, tier: 'free' });
     }
 
     navigation.replace('MainTabs');

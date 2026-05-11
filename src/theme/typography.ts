@@ -1,29 +1,16 @@
-// Typography system aligned to AIRA design spec.
-// Keep line heights at ~1.2x for headings, ~1.5x for body so text breathes
-// without feeling too airy on small screens.
 export const typography = {
-  // Marketing/welcome screens
   display: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 32,
-    lineHeight: 38,
-    letterSpacing: -0.5,
-  },
-  // Section heads, hero card titles
-  headline: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 30,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 28,
+    lineHeight: 36,
     letterSpacing: -0.3,
   },
-  // Card titles, lesson titles
-  title: {
-    fontFamily: 'SpaceGrotesk_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
+  headline: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 20,
+    lineHeight: 28,
     letterSpacing: -0.2,
   },
-  // Default paragraph text
   body: {
     fontFamily: 'Inter_400Regular',
     fontSize: 16,
@@ -34,45 +21,66 @@ export const typography = {
     fontSize: 16,
     lineHeight: 24,
   },
-  // Helper / secondary
   caption: {
     fontFamily: 'Inter_500Medium',
     fontSize: 13,
-    lineHeight: 20,
+    lineHeight: 18,
   },
-  // Uppercase eyebrows on cards ("NEXT LESSON", "WELCOME BACK")
   label: {
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
     lineHeight: 14,
-    letterSpacing: 1.2,
+    letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
   button: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
     lineHeight: 20,
-    letterSpacing: 0.2,
+  },
+  code: {
+    fontFamily: 'JetBrainsMono_400Regular',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  codeBold: {
+    fontFamily: 'JetBrainsMono_700Bold',
+    fontSize: 14,
+    lineHeight: 20,
   },
 
-  // --- Aliases kept for backward-compat with components written against the
-  // older naming. Remove once those screens are migrated. ---
+  // Legacy aliases
   h1: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 32,
-    lineHeight: 38,
-    letterSpacing: -0.5,
-  },
-  h2: {
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 28,
+    lineHeight: 36,
     letterSpacing: -0.3,
   },
-  h3: {
-    fontFamily: 'SpaceGrotesk_600SemiBold',
+  h2: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 20,
     lineHeight: 28,
     letterSpacing: -0.2,
+  },
+  h3: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  title: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 20,
+    lineHeight: 28,
+    letterSpacing: -0.2,
+  },
+  bodySmall: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  bodyEmphasis: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    lineHeight: 24,
   },
 } as const;

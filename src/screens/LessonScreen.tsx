@@ -3,75 +3,71 @@ import { View, Text, Pressable, StyleSheet, ScrollView, TextInput, Alert, Platfo
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { X, ArrowRight, CheckCircle } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, SlideInDown, SlideInUp } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp, SlideInUp } from 'react-native-reanimated';
 import { MotiView } from 'moti';
-import { AiraCharacter } from '../components/AiraCharacter';
-import { colors, radius, spacing } from '../theme';
-import { getLessonById, checkAnswer, saveProgress, getProgress } from '../api/client';
+import { AiraMascot } from '../components/AiraMascot';
+import { Sandbox } from '../components/Sandbox';
+import { colors, typography, spacing, radius, elevation } from '../theme';
+import { getLessonById, checkAnswer, saveProgress } from '../api/client';
 import { useUserStore } from '../store/userStore';
 import { findSeedLesson, checkSeedAnswer, isSeedLessonId } from '../data';
 import type { RootStackParamList, Lesson, Question } from '../types';
+
+type Phase = 'loading' | 'hook' | 'concept' | 'guided' | 'sandbox' | 'quiz' | 'feedback' | 'complete' | 'error';
 
 interface Props {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Lesson'>;
   route: RouteProp<RootStackParamList, 'Lesson'>;
 }
 
-type Phase = 'loading' | 'intro' | 'question' | 'feedback' | 'complete' | 'error';
-
 export function LessonScreen({ navigation, route }: Props) {
-  const { userId, tier } = useUserStore((s) => s);
-  const syncFromBackend = useUserStore((s) => s.syncFromBackend);
-  const loseHeart = useUserStore((s) => s.loseHeart);
-  const completeLessonLocal = useUserStore((s) => s.completeLesson);
+  const { userId, tier } = useUserStore();
+  const completeLesson = useUserStore((s) => s.completeLesson);
+  const loseLife = useUserStore((s) => s.loseLife);
 
-  // True for any lesson that we resolved out of the local seed bundle,
-  // either because the backend doesn't know the id or because we're offline.
   const [isSeed, setIsSeed] = useState(false);
-
   const [phase, setPhase] = useState<Phase>('loading');
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [totalXpEarned, setTotalXpEarned] = useState(0);
-  const [startTime, setStartTime] = useState(Date.now());
+  const [startTime] = useState(Date.now());
   const [errorMsg, setErrorMsg] = useState('');
   const [leveledUp, setLeveledUp] = useState(false);
-  const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
-  const [streakMilestone, setStreakMilestone] = useState(false);
 
   // Answer state
   const [mcSelected, setMcSelected] = useState<number | null>(null);
   const [tfSelected, setTfSelected] = useState<boolean | null>(null);
   const [fillValue, setFillValue] = useState('');
-  const [promptValue, setPromptValue] = useState('');
-  const [orderingItems, setOrderingItems] = useState<string[]>([]);
-  const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
-  const [matchedPairs, setMatchedPairs] = useState<Array<{term: string; definition: string}>>([]);
-
-  // Feedback state
   const [feedbackData, setFeedbackData] = useState<any>(null);
   const [checking, setChecking] = useState(false);
 
-  useEffect(() => {
-    loadLesson();
-  }, []);
+  useEffect(() => { loadLesson(); }, []);
 
   const loadLesson = async () => {
     setPhase('loading');
-    setErrorMsg('');
+
+    // Out-of-lives gate. The brief's monetization rule: hitting zero
+    // lives blocks new lessons and routes to the Paywall (where the user
+    // either upgrades or watches a rewarded ad to refill).
+    // We read directly off the store so this guard isn't subject to React
+    // stale-closure issues.
+    const currentLives = useUserStore.getState().lives;
+    const currentTier = useUserStore.getState().tier;
+    if (currentLives <= 0 && currentTier !== 'pro') {
+      navigation.navigate('Paywall');
+      return;
+    }
+
     const lessonId = route.params?.lessonId || 'foundations_1';
 
-    // Local-first: if we have a hand-written seed lesson with this id,
-    // skip the network round-trip entirely. This is what makes Journey
-    // nodes + Practice + offline play work instantly.
     const seed = findSeedLesson(lessonId);
     if (seed) {
       setLesson(seed);
       setIsSeed(true);
-      setStartTime(Date.now());
-      setPhase('intro');
+      setPhase('hook');
       return;
     }
 
@@ -79,29 +75,19 @@ export function LessonScreen({ navigation, route }: Props) {
       const data = await getLessonById(lessonId, userId);
       setLesson(data);
       setIsSeed(false);
-      setStartTime(Date.now());
-      setPhase('intro');
+      setPhase('hook');
     } catch (err: any) {
-      // Even if the backend errors with something other than 402, see if
-      // we can still serve a seed lesson under the same id.
       const fallback = findSeedLesson(lessonId);
-      if (fallback) {
-        setLesson(fallback);
-        setIsSeed(true);
-        setStartTime(Date.now());
-        setPhase('intro');
-        return;
-      }
-      if (err.response?.status === 402) {
-        navigation.navigate('Paywall');
-      } else {
-        setErrorMsg("I can't reach the server right now. Check your connection and try again.");
-        setPhase('error');
-      }
+      if (fallback) { setLesson(fallback); setIsSeed(true); setPhase('hook'); return; }
+      if (err.response?.status === 402) { navigation.navigate('Paywall'); return; }
+      setErrorMsg("Can't reach the server. Check your connection.");
+      setPhase('error');
     }
   };
 
   const currentQuestion: Question | null = lesson?.questions[questionIndex] ?? null;
+  const totalQuestions = lesson?.questions.length ?? 0;
+  const progressPercent = totalQuestions > 0 ? ((questionIndex + 1) / totalQuestions) * 100 : 0;
 
   const hasAnswer = (): boolean => {
     if (!currentQuestion) return false;
@@ -109,22 +95,16 @@ export function LessonScreen({ navigation, route }: Props) {
       case 'multiple_choice': return mcSelected !== null;
       case 'true_false': return tfSelected !== null;
       case 'fill_blank': return fillValue.trim().length > 0;
-      case 'prompt_write': return promptValue.trim().length > 10;
-      case 'ordering': return orderingItems.length > 0;
-      case 'match_pairs': return matchedPairs.length > 0;
       default: return false;
     }
   };
 
-  const getUserAnswer = (): number | boolean | string | string[] | any => {
+  const getUserAnswer = (): any => {
     if (!currentQuestion) return '';
     switch (currentQuestion.type) {
       case 'multiple_choice': return mcSelected ?? 0;
       case 'true_false': return tfSelected ?? false;
       case 'fill_blank': return fillValue.trim();
-      case 'prompt_write': return promptValue.trim();
-      case 'ordering': return orderingItems;
-      case 'match_pairs': return matchedPairs;
       default: return '';
     }
   };
@@ -132,137 +112,72 @@ export function LessonScreen({ navigation, route }: Props) {
   const handleCheck = async () => {
     if (!lesson || !currentQuestion || checking) return;
     setChecking(true);
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const answer = getUserAnswer();
     let result: any;
 
     if (isSeed) {
-      // Local evaluation — no network. Mirrors backend shape closely.
-      result = checkSeedAnswer(lesson.id, currentQuestion.id, answer as any);
+      result = checkSeedAnswer(lesson.id, currentQuestion.id, answer);
     } else {
       try {
         result = await checkAnswer(userId, lesson.id, currentQuestion.id, answer);
-      } catch (err) {
-        // Backend dropped the call — fall back to a local check if we
-        // happen to have this lesson seeded. Otherwise mark wrong with
-        // a non-punishing message.
-        if (isSeedLessonId(lesson.id)) {
-          result = checkSeedAnswer(lesson.id, currentQuestion.id, answer as any);
-        } else {
-          result = { correct: false, explanation: 'Something went wrong checking your answer.', xpEarned: 0 };
-        }
+      } catch {
+        result = isSeedLessonId(lesson.id)
+          ? checkSeedAnswer(lesson.id, currentQuestion.id, answer)
+          : { correct: false, explanation: 'Connection error.', xpEarned: 0 };
       }
     }
 
     if (result.correct) {
       setCorrectCount((c) => c + 1);
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      setTotalXpEarned((x) => x + (result.xpEarned || 5));
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
-      // Lose a heart on a wrong answer — Duolingo-style. Hearts refill
-      // over time; we don't block lesson progress on hitting zero (we
-      // don't punish learning), but the visible hearts on Home are now
-      // a real signal of accuracy.
-      loseHeart();
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      loseLife();
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
 
-    setTotalXpEarned((x) => x + result.xpEarned);
     setFeedbackData(result);
     setPhase('feedback');
     setChecking(false);
   };
 
-  const handleContinueAfterFeedback = () => {
+  const handleContinue = () => {
     setFeedbackData(null);
     resetAnswerState();
     if (lesson && questionIndex < lesson.questions.length - 1) {
       setQuestionIndex((i) => i + 1);
-      setPhase('question');
+      setPhase('quiz');
     } else {
-      handleLessonComplete();
+      handleComplete();
     }
   };
 
-  const handleLessonComplete = async () => {
+  const handleComplete = () => {
     if (!lesson) return;
-
     const prevLevel = useUserStore.getState().level;
-    const prevStreak = useUserStore.getState().streak;
-
-    if (isSeed) {
-      // Seed lessons skip the backend entirely — update the store locally.
-      // XP awarded scales with correctness so partial completion still
-      // feels rewarding.
-      const earnedXp = totalXpEarned > 0 ? totalXpEarned : correctCount * 10;
-      completeLessonLocal(earnedXp, lesson.topic || 'foundations');
-      const after = useUserStore.getState();
-      if (after.level > prevLevel) {
-        setLeveledUp(true);
-        setNewLevel(after.level);
-        if (Platform.OS !== 'web') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        }
-      }
-      setPhase('complete');
-      return;
-    }
-
-    try {
-      const result = await saveProgress(userId, lesson.id, correctCount, lesson.questions.length);
-
-      if (result.newLevel > prevLevel) {
-        setLeveledUp(true);
-        setNewLevel(result.newLevel);
-        if (Platform.OS !== 'web') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        }
-      }
-
-      if (prevStreak === 2 || prevStreak === 6 || prevStreak === 29 || prevStreak === 99) {
-        setStreakMilestone(true);
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-      }
-
-      syncFromBackend({
-        xp: result.newTotalXp,
-        level: result.newLevel,
-        streak: result.streak,
-        tier: result.tier || tier,
-        totalLessonsCompleted: result.totalLessonsCompleted,
-      });
-    } catch (err) {
-      // Backend save failed — at least credit the user's XP locally so
-      // their progress isn't lost. Keep navigating to the complete screen.
-      const earnedXp = totalXpEarned > 0 ? totalXpEarned : correctCount * 10;
-      completeLessonLocal(earnedXp, lesson.topic || 'foundations');
-    }
+    const earnedXp = totalXpEarned > 0 ? totalXpEarned : 15;
+    completeLesson(lesson.id, earnedXp);
+    const newLevel = useUserStore.getState().level;
+    if (newLevel > prevLevel) setLeveledUp(true);
     setPhase('complete');
+  };
+
+  const handleSandboxComplete = (score: number) => {
+    setTotalXpEarned((x) => x + Math.round(score / 10));
+    setPhase('quiz');
   };
 
   const resetAnswerState = () => {
     setMcSelected(null);
     setTfSelected(null);
     setFillValue('');
-    setPromptValue('');
-    setOrderingItems([]);
-    setSelectedTerm(null);
-    setMatchedPairs([]);
   };
 
   const handleClose = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    if (phase === 'question' && questionIndex > 0) {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (phase === 'quiz' && questionIndex > 0) {
       Alert.alert('Leave lesson?', 'Your progress will be lost.', [
         { text: 'Stay', style: 'cancel' },
         { text: 'Leave', style: 'destructive', onPress: () => navigation.goBack() },
@@ -275,8 +190,8 @@ export function LessonScreen({ navigation, route }: Props) {
   // --- LOADING ---
   if (phase === 'loading') {
     return (
-      <View style={styles.container}>
-        <AiraCharacter mood="thinking" size={120} />
+      <View style={styles.center}>
+        <AiraMascot size={120} state="thinking" />
         <Text style={styles.loadingText}>Loading lesson...</Text>
       </View>
     );
@@ -285,621 +200,400 @@ export function LessonScreen({ navigation, route }: Props) {
   // --- ERROR ---
   if (phase === 'error') {
     return (
-      <ScrollView style={styles.container}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.closeBtn}>
-            <Text style={styles.closeText}>✕</Text>
+      <View style={styles.center}>
+        <CloseButton onPress={() => navigation.goBack()} />
+        <AiraMascot size={80} state="error" />
+        <Text style={styles.errorText}>{errorMsg}</Text>
+        <Pressable style={styles.primaryBtn} onPress={loadLesson}>
+          <Text style={styles.primaryBtnText}>Try Again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (!lesson) return null;
+
+  // --- PHASE 1: HOOK ---
+  if (phase === 'hook') {
+    return (
+      <ScrollView style={styles.screen}>
+        <CloseButton onPress={handleClose} />
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.phaseContent}>
+          <AiraMascot size={100} state="idle" />
+          <Text style={styles.phaseTitle}>{lesson.title}</Text>
+          {lesson.realWorldScenario && (
+            <View style={styles.scenarioBubble}>
+              <Text style={styles.scenarioLabel}>REAL SCENARIO</Text>
+              <Text style={styles.scenarioText}>{lesson.realWorldScenario}</Text>
+            </View>
+          )}
+          <Text style={styles.introText}>{lesson.airaIntro || "Let's dive in."}</Text>
+          <Pressable style={styles.primaryBtn} onPress={() => setPhase('concept')}>
+            <Text style={styles.primaryBtnText}>Continue →</Text>
           </Pressable>
-        </View>
-        <View style={styles.centerContent}>
-          <AiraCharacter mood="calm" size={80} />
-          <Text style={styles.errorText}>{errorMsg}</Text>
-          <Pressable style={styles.primaryButton} onPress={loadLesson}>
-            <Text style={styles.primaryButtonText}>Try Again</Text>
-          </Pressable>
-        </View>
+        </Animated.View>
       </ScrollView>
     );
   }
 
-  // --- INTRO ---
-  if (phase === 'intro' && lesson) {
+  // --- PHASE 2: CONCEPT ---
+  if (phase === 'concept') {
     return (
-      <ScrollView style={styles.container}>
-        <View style={styles.topBar}>
-          <Pressable onPress={handleClose} style={styles.closeBtn}>
-            <Text style={styles.closeText}>✕</Text>
-          </Pressable>
-        </View>
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.introContent}>
-          <AiraCharacter mood="calm" size={120} />
-          <Text style={styles.lessonTitle}>{lesson.title}</Text>
-          {lesson.realWorldScenario && (
-            <View style={styles.scenarioCard}>
-              <Text style={styles.scenarioLabel}>Real scenario</Text>
-              <Text style={styles.scenarioText}>{lesson.realWorldScenario}</Text>
+      <ScrollView style={styles.screen}>
+        <CloseButton onPress={handleClose} />
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.phaseContent}>
+          <Text style={styles.phaseLabel}>CORE CONCEPT</Text>
+          <Text style={styles.phaseTitle}>Why this matters</Text>
+
+          {/* Side-by-side comparison */}
+          <View style={styles.compareRow}>
+            <View style={[styles.compareCard, styles.compareBad]}>
+              <Text style={styles.compareLabel}>WEAK PROMPT</Text>
+              <Text style={styles.compareText}>"Write a report."</Text>
             </View>
-          )}
-          <View style={styles.introText}>
-            <Text style={styles.airaIntro}>{lesson.airaIntro || "Let's dive in."}</Text>
+            <View style={[styles.compareCard, styles.compareGood]}>
+              <Text style={styles.compareLabel}>STRONG PROMPT</Text>
+              <Text style={styles.compareText}>"Write a 500-word report on renewable energy for a college freshman."</Text>
+            </View>
           </View>
-          <Pressable style={styles.primaryButton} onPress={() => setPhase('question')}>
-            <Text style={styles.primaryButtonText}>Let's Start</Text>
+
+          <Text style={styles.conceptBody}>
+            {lesson.takeaway || 'The more specific your prompt, the better the AI output. Specificity turns generic answers into useful ones.'}
+          </Text>
+
+          <Pressable style={styles.primaryBtn} onPress={() => setPhase('guided')}>
+            <Text style={styles.primaryBtnText}>Practice This →</Text>
           </Pressable>
         </Animated.View>
+      </ScrollView>
+    );
+  }
+
+  // --- PHASE 3: GUIDED PRACTICE ---
+  if (phase === 'guided') {
+    return (
+      <ScrollView style={styles.screen}>
+        <CloseButton onPress={handleClose} />
+        <ProgressBar percent={25} xp={totalXpEarned} />
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.phaseContent}>
+          <Text style={styles.phaseLabel}>GUIDED PRACTICE</Text>
+          {currentQuestion && (
+            <>
+              <Text style={styles.questionText}>{currentQuestion.question}</Text>
+              {currentQuestion.type === 'fill_blank' && (
+                <TextInput
+                  style={styles.fillInput}
+                  placeholder="Type your answer..."
+                  placeholderTextColor={colors.textDisabled}
+                  value={fillValue}
+                  onChangeText={setFillValue}
+                />
+              )}
+              <Pressable
+                style={[styles.primaryBtn, fillValue.trim().length === 0 && styles.btnDisabled]}
+                onPress={() => { setPhase('sandbox'); }}
+                disabled={fillValue.trim().length === 0 && currentQuestion.type === 'fill_blank'}
+              >
+                <Text style={styles.primaryBtnText}>Next →</Text>
+              </Pressable>
+            </>
+          )}
+          {!currentQuestion && (
+            <Pressable style={styles.primaryBtn} onPress={() => setPhase('sandbox')}>
+              <Text style={styles.primaryBtnText}>Open Sandbox →</Text>
+            </Pressable>
+          )}
+        </Animated.View>
+      </ScrollView>
+    );
+  }
+
+  // --- PHASE 4: SANDBOX ---
+  if (phase === 'sandbox') {
+    return (
+      <View style={{ flex: 1 }}>
+        <CloseButton onPress={handleClose} />
+        <Sandbox
+          topic={lesson.topic || 'prompting'}
+          focusSkill="clarity"
+          scenario={lesson.realWorldScenario || 'Write the best prompt you can for this topic.'}
+          onComplete={handleSandboxComplete}
+        />
+      </View>
+    );
+  }
+
+  // --- PHASE 5: QUIZ ---
+  if (phase === 'quiz' || phase === 'feedback') {
+    return (
+      <ScrollView style={styles.screen}>
+        <CloseButton onPress={handleClose} />
+        <ProgressBar percent={progressPercent} xp={totalXpEarned} />
+
+        {phase === 'quiz' && currentQuestion && (
+          <Animated.View entering={FadeInUp.duration(300)} style={styles.phaseContent}>
+            <Text style={styles.questionText}>{currentQuestion.question}</Text>
+
+            {currentQuestion.type === 'multiple_choice' && (
+              <View style={styles.optionsContainer}>
+                {(currentQuestion.options || []).map((opt: string, i: number) => (
+                  <Pressable
+                    key={i}
+                    style={[styles.optionCard, mcSelected === i && styles.optionSelected]}
+                    onPress={() => {
+                      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setMcSelected(i);
+                    }}
+                  >
+                    <Text style={styles.optionText}>{opt}</Text>
+                    {mcSelected === i && <CheckCircle size={22} weight="fill" color={colors.cyan} />}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {currentQuestion.type === 'true_false' && (
+              <View style={styles.tfRow}>
+                {[true, false].map((val) => (
+                  <Pressable
+                    key={String(val)}
+                    style={[styles.tfBtn, tfSelected === val && styles.tfBtnSelected]}
+                    onPress={() => {
+                      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setTfSelected(val);
+                    }}
+                  >
+                    <Text style={styles.tfBtnText}>{val ? 'True' : 'False'}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {currentQuestion.type === 'fill_blank' && (
+              <TextInput
+                style={styles.fillInput}
+                placeholder="Type your answer..."
+                placeholderTextColor={colors.textDisabled}
+                value={fillValue}
+                onChangeText={setFillValue}
+                autoFocus
+              />
+            )}
+
+            <Pressable
+              style={[styles.checkBtn, !hasAnswer() && styles.btnDisabled]}
+              onPress={handleCheck}
+              disabled={!hasAnswer() || checking}
+            >
+              <Text style={styles.checkBtnText}>{checking ? 'Checking...' : 'CHECK'}</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {phase === 'feedback' && feedbackData && (
+          <Animated.View entering={SlideInUp.duration(300)} style={styles.feedbackCard}>
+            <LinearGradient
+              colors={feedbackData.correct ? ['#1A2E1A', '#0B0E14'] : ['#2E1A1A', '#0B0E14']}
+              style={styles.feedbackGradient}
+            >
+              <AiraMascot size={80} state={feedbackData.correct ? 'success' : 'error'} />
+              <Text style={[styles.feedbackTitle, feedbackData.correct ? styles.feedbackCorrect : styles.feedbackWrong]}>
+                {feedbackData.correct ? 'Correct!' : "Let's try again!"}
+              </Text>
+              <Text style={styles.feedbackExplanation}>{feedbackData.explanation}</Text>
+              {feedbackData.airaFeedback && (
+                <Text style={styles.feedbackTip}>{feedbackData.airaFeedback}</Text>
+              )}
+              <Pressable style={styles.primaryBtn} onPress={handleContinue}>
+                <Text style={styles.primaryBtnText}>Continue →</Text>
+              </Pressable>
+            </LinearGradient>
+          </Animated.View>
+        )}
       </ScrollView>
     );
   }
 
   // --- COMPLETE ---
-  if (phase === 'complete' && lesson) {
-    const accuracy = Math.round((correctCount / lesson.questions.length) * 100);
-    const timeTaken = Math.round((Date.now() - startTime) / 1000 / 60);
+  if (phase === 'complete') {
+    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+    const timeMins = Math.max(1, Math.round((Date.now() - startTime) / 60000));
 
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.screen}>
         <Animated.View entering={FadeIn.duration(500)} style={styles.completeContent}>
-          <AiraCharacter mood="celebrating" size={140} />
+          <AiraMascot size={140} state="success" />
           <Text style={styles.completeTitle}>Lesson Complete!</Text>
-          
+
           {leveledUp && (
-            <Animated.View entering={SlideInDown.duration(500)} style={styles.levelUpBanner}>
-              <Text style={styles.levelUpText}>LEVEL UP! 🎉</Text>
+            <Animated.View entering={FadeInDown.duration(400)} style={styles.levelUpBadge}>
+              <Text style={styles.levelUpText}>LEVEL UP!</Text>
             </Animated.View>
           )}
-          
-          <View style={styles.statsCard}>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>XP Earned</Text>
-              <Text style={styles.statValue}>+{totalXpEarned}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Accuracy</Text>
-              <Text style={styles.statValue}>{accuracy}%</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Time</Text>
-              <Text style={styles.statValue}>{timeTaken} min</Text>
-            </View>
+
+          <View style={styles.completeStats}>
+            <StatRow label="XP Earned" value={`+${totalXpEarned}`} />
+            <StatRow label="Accuracy" value={`${accuracy}%`} />
+            <StatRow label="Time" value={`${timeMins} min`} />
           </View>
 
-          {streakMilestone && (
-            <View style={styles.streakCard}>
-              <Text style={styles.streakText}>🔥 Streak Milestone!</Text>
+          {lesson.takeaway && (
+            <View style={styles.takeawayCard}>
+              <Text style={styles.takeawayLabel}>KEY TAKEAWAY</Text>
+              <Text style={styles.takeawayText}>{lesson.takeaway}</Text>
             </View>
           )}
 
-          <View style={styles.outroCard}>
-            <Text style={styles.outroText}>{lesson.airaOutro}</Text>
-            <Text style={styles.takeawayText}>{lesson.takeaway}</Text>
-          </View>
-
-          <Pressable style={styles.primaryButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.primaryButtonText}>Back to Dashboard</Text>
+          <Pressable style={styles.primaryBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.primaryBtnText}>Back to Home</Text>
           </Pressable>
         </Animated.View>
       </ScrollView>
     );
   }
 
-  // --- QUESTION / FEEDBACK ---
-  if (!lesson || !currentQuestion) return null;
+  return null;
+}
 
+function CloseButton({ onPress }: { onPress: () => void }) {
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable onPress={handleClose} style={styles.closeBtn}>
-          <Text style={styles.closeText}>✕</Text>
-        </Pressable>
-        <View style={styles.progressTrack}>
-          <MotiView
-            style={styles.progressFill}
-            animate={{
-              width: `${lesson ? ((questionIndex + 1) / lesson.questions.length) * 100 : 0}%`,
-            }}
-            transition={{ duration: 400 }}
-          />
-        </View>
-        <Text style={styles.progressLabel}>+{totalXpEarned} XP</Text>
+    <Pressable style={styles.closeBtn} onPress={onPress}>
+      <X size={20} color={colors.textSecondary} />
+    </Pressable>
+  );
+}
+
+function ProgressBar({ percent, xp }: { percent: number; xp: number }) {
+  return (
+    <View style={styles.progressBar}>
+      <View style={styles.progressTrack}>
+        <MotiView
+          style={styles.progressFill}
+          animate={{ width: `${percent}%` }}
+          transition={{ duration: 400 }}
+        />
       </View>
+      <Text style={styles.progressXp}>+{xp} XP</Text>
+    </View>
+  );
+}
 
-      <Animated.View entering={FadeInUp.duration(300)} style={styles.questionContent}>
-        <Text style={styles.questionText}>{currentQuestion.question}</Text>
-
-        {currentQuestion.type === 'multiple_choice' && (
-          <View style={styles.optionsContainer}>
-            {(currentQuestion.options || []).map((option: string, index: number) => (
-              <Pressable
-                key={index}
-                style={[
-                  styles.optionCard,
-                  mcSelected === index && styles.optionSelected,
-                ]}
-                onPress={() => {
-                  if (Platform.OS !== 'web') {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                  setMcSelected(index);
-                }}
-              >
-                <Text style={styles.optionText}>{option}</Text>
-                {mcSelected === index && <Text style={styles.checkmark}>✓</Text>}
-              </Pressable>
-            ))}
-          </View>
-        )}
-
-        {currentQuestion.type === 'true_false' && (
-          <View style={styles.tfContainer}>
-            <Pressable
-              style={[styles.tfButton, tfSelected === true && styles.tfSelected]}
-              onPress={() => {
-                if (Platform.OS !== 'web') {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
-                setTfSelected(true);
-              }}
-            >
-              <Text style={styles.tfText}>True</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tfButton, tfSelected === false && styles.tfSelected]}
-              onPress={() => {
-                if (Platform.OS !== 'web') {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
-                setTfSelected(false);
-              }}
-            >
-              <Text style={styles.tfText}>False</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {currentQuestion.type === 'fill_blank' && (
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Type your answer..."
-              placeholderTextColor={colors.textMuted}
-              value={fillValue}
-              onChangeText={setFillValue}
-              autoFocus
-            />
-          </View>
-        )}
-
-        {currentQuestion.type === 'prompt_write' && (
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.textInput, styles.textArea]}
-              placeholder="Write your response..."
-              placeholderTextColor={colors.textMuted}
-              value={promptValue}
-              onChangeText={setPromptValue}
-              multiline
-              numberOfLines={4}
-            />
-            <Text style={styles.hintText}>Try to include: {Array.isArray(currentQuestion.correctAnswer) ? currentQuestion.correctAnswer.join(', ') : 'key terms'}</Text>
-          </View>
-        )}
-
-        {currentQuestion.type === 'ordering' && (
-          <View style={styles.orderingContainer}>
-            {(currentQuestion.options || []).map((item: string, index: number) => (
-              <Pressable
-                key={index}
-                style={styles.orderingItem}
-                onPress={() => {
-                  if (Platform.OS !== 'web') {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                  // Simplified ordering - just select items
-                  if (!orderingItems.includes(item)) {
-                    setOrderingItems([...orderingItems, item]);
-                  }
-                }}
-              >
-                <Text style={styles.orderingText}>{orderingItems.includes(item) ? `${orderingItems.indexOf(item) + 1}. ${item}` : item}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-
-        {currentQuestion.type === 'match_pairs' && (
-          <View style={styles.matchContainer}>
-            <Text style={styles.matchHint}>Tap a term, then tap its match</Text>
-            {/* Simplified match pairs - would need full implementation */}
-            <Text style={styles.matchPlaceholder}>Match pairs question type</Text>
-          </View>
-        )}
-      </Animated.View>
-
-      {phase === 'question' && (
-        <Pressable
-          style={[styles.checkButton, !hasAnswer() && styles.checkButtonDisabled]}
-          onPress={handleCheck}
-          disabled={!hasAnswer() || checking}
-        >
-          <Text style={styles.checkButtonText}>{checking ? 'Checking...' : 'CHECK'}</Text>
-        </Pressable>
-      )}
-
-      {phase === 'feedback' && feedbackData && (
-        <Animated.View entering={SlideInUp.duration(300)} style={styles.feedbackOverlay}>
-          <LinearGradient
-            colors={feedbackData.correct ? colors.gradientSuccess : ['#FB7185', '#F472B6']}
-            style={styles.feedbackGradient}
-          >
-            <AiraCharacter mood={feedbackData.correct ? 'happy' : 'encouraging'} size={100} />
-            <Text style={styles.feedbackTitle}>{feedbackData.correct ? 'Correct!' : 'Not quite'}</Text>
-            <Text style={styles.feedbackText}>{feedbackData.airaFeedback || feedbackData.explanation}</Text>
-            <View style={styles.explanationCard}>
-              <Text style={styles.explanationText}>{feedbackData.explanation}</Text>
-            </View>
-            <Pressable style={styles.continueButton} onPress={handleContinueAfterFeedback}>
-              <Text style={styles.continueButtonText}>Continue</Text>
-            </Pressable>
-          </LinearGradient>
-        </Animated.View>
-      )}
-    </ScrollView>
+function StatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.statRow}>
+      <Text style={styles.statRowLabel}>{label}</Text>
+      <Text style={styles.statRowValue}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  loadingText: { ...typography.body, color: colors.textSecondary, marginTop: 16 },
+  errorText: { ...typography.body, color: colors.textPrimary, textAlign: 'center', marginVertical: 16 },
+
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.bgCard,
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'absolute', top: 56, left: 16, zIndex: 10,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: colors.cardSurface, justifyContent: 'center', alignItems: 'center',
   },
-  closeText: {
-    fontSize: 18,
-    color: colors.textSecondary,
+
+  progressBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 64, gap: 12 },
+  progressTrack: { flex: 1, height: 6, backgroundColor: colors.divider, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.cyan, borderRadius: 3 },
+  progressXp: { ...typography.caption, color: colors.textSecondary },
+
+  phaseContent: { padding: 24, paddingTop: 80 },
+  phaseLabel: { ...typography.label, color: colors.cyan, marginBottom: 8 },
+  phaseTitle: { ...typography.display, color: colors.textPrimary, marginBottom: 16 },
+  introText: { ...typography.body, color: colors.textSecondary, marginBottom: 24, lineHeight: 24 },
+
+  scenarioBubble: {
+    backgroundColor: colors.cardSurface, borderRadius: radius.lg, padding: 20,
+    marginBottom: 20, borderLeftWidth: 3, borderLeftColor: colors.cyan,
   },
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.trackFoundations,
-    borderRadius: radius.full,
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  loadingText: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    marginTop: spacing.lg,
-    textAlign: 'center',
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  errorText: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  introContent: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  lessonTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  scenarioCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    width: '100%',
-  },
-  scenarioLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
-  },
-  scenarioText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  introText: {
-    marginBottom: spacing.xl,
-  },
-  airaIntro: {
-    fontSize: 18,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  questionContent: {
-    padding: spacing.xl,
-  },
-  questionText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xl,
-  },
-  optionsContainer: {
-    gap: spacing.md,
-  },
+  scenarioLabel: { ...typography.label, color: colors.orange, marginBottom: 6 },
+  scenarioText: { ...typography.body, fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+
+  // Concept compare
+  compareRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  compareCard: { flex: 1, borderRadius: radius.md, padding: 14 },
+  compareBad: { backgroundColor: colors.errorSoft, borderWidth: 1, borderColor: colors.error },
+  compareGood: { backgroundColor: colors.successSoft, borderWidth: 1, borderColor: colors.success },
+  compareLabel: { ...typography.label, fontSize: 9, marginBottom: 6 },
+  compareText: { ...typography.body, fontSize: 13, color: colors.textPrimary, fontStyle: 'italic' },
+
+  conceptBody: { ...typography.body, color: colors.textSecondary, marginBottom: 24, lineHeight: 24 },
+
+  // Quiz
+  questionText: { ...typography.headline, color: colors.textPrimary, marginBottom: 24, fontSize: 22, lineHeight: 30 },
+  optionsContainer: { gap: 12, marginBottom: 24 },
   optionCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    backgroundColor: colors.cardSurface, borderRadius: radius.md, padding: 16,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderWidth: 2, borderColor: 'transparent',
   },
-  optionSelected: {
-    borderColor: colors.trackFoundations,
-    backgroundColor: colors.bgGlass,
+  optionSelected: { borderColor: colors.cyan, backgroundColor: colors.cyanWash },
+  optionText: { ...typography.body, color: colors.textPrimary, flex: 1, marginRight: 8 },
+
+  tfRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  tfBtn: {
+    flex: 1, backgroundColor: colors.cardSurface, borderRadius: radius.md,
+    padding: 20, alignItems: 'center', borderWidth: 2, borderColor: 'transparent',
   },
-  optionText: {
-    fontSize: 16,
-    color: colors.textPrimary,
+  tfBtnSelected: { borderColor: colors.cyan, backgroundColor: colors.cyanWash },
+  tfBtnText: { ...typography.bodyBold, color: colors.textPrimary },
+
+  fillInput: {
+    backgroundColor: colors.cardSurface, borderRadius: radius.md, padding: 16,
+    ...typography.body, color: colors.textPrimary, borderWidth: 1, borderColor: colors.divider,
+    marginBottom: 24,
   },
-  checkmark: {
-    fontSize: 20,
-    color: colors.trackFoundations,
-    fontWeight: '700',
+
+  checkBtn: {
+    backgroundColor: colors.cyan, borderRadius: radius.md,
+    padding: 16, alignItems: 'center', height: 52, justifyContent: 'center',
+    ...elevation.cyanGlow,
   },
-  tfContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
+  checkBtnText: { ...typography.button, color: colors.bg },
+  btnDisabled: { opacity: 0.4 },
+
+  primaryBtn: {
+    backgroundColor: colors.cyan, borderRadius: radius.md,
+    padding: 16, alignItems: 'center', height: 52, justifyContent: 'center',
+    ...elevation.cyanGlow,
   },
-  tfButton: {
-    flex: 1,
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+  primaryBtnText: { ...typography.button, color: colors.bg },
+
+  // Feedback
+  feedbackCard: { margin: 16, borderRadius: radius.lg, overflow: 'hidden' },
+  feedbackGradient: { padding: 24, alignItems: 'center' },
+  feedbackTitle: { ...typography.display, marginTop: 16, marginBottom: 12 },
+  feedbackCorrect: { color: colors.success },
+  feedbackWrong: { color: colors.error },
+  feedbackExplanation: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginBottom: 12, lineHeight: 22 },
+  feedbackTip: { ...typography.body, fontSize: 14, color: colors.cyan, textAlign: 'center', marginBottom: 24, fontStyle: 'italic' },
+
+  // Complete
+  completeContent: { padding: 24, paddingTop: 80, alignItems: 'center' },
+  completeTitle: { ...typography.display, color: colors.textPrimary, marginTop: 16, marginBottom: 24 },
+  levelUpBadge: {
+    backgroundColor: colors.orange, paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: radius.full, marginBottom: 24,
   },
-  tfSelected: {
-    borderColor: colors.trackFoundations,
-    backgroundColor: colors.bgGlass,
+  levelUpText: { ...typography.button, color: '#FFFFFF' },
+  completeStats: {
+    backgroundColor: colors.cardSurface, borderRadius: radius.lg,
+    padding: 20, width: '100%', marginBottom: 24,
   },
-  tfText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
+  statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  statRowLabel: { ...typography.body, color: colors.textSecondary },
+  statRowValue: { ...typography.bodyBold, fontSize: 20, color: colors.textPrimary },
+  takeawayCard: {
+    backgroundColor: colors.cardSurface, borderRadius: radius.lg, padding: 20,
+    width: '100%', marginBottom: 24, borderLeftWidth: 3, borderLeftColor: colors.cyan,
   },
-  inputContainer: {
-    marginBottom: spacing.xl,
-  },
-  textInput: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    fontSize: 16,
-    color: colors.textPrimary,
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  textArea: {
-    height: 120,
-    textAlignVertical: 'top',
-  },
-  hintText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-  },
-  orderingContainer: {
-    gap: spacing.md,
-  },
-  orderingItem: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-  },
-  orderingText: {
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  matchContainer: {
-    padding: spacing.lg,
-  },
-  matchHint: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  matchPlaceholder: {
-    fontSize: 16,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  checkButton: {
-    backgroundColor: colors.trackFoundations,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    margin: spacing.xl,
-  },
-  checkButtonDisabled: {
-    opacity: 0.5,
-  },
-  checkButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  feedbackOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    top: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  feedbackGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  feedbackTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  feedbackText: {
-    fontSize: 18,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  explanationCard: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    maxWidth: '90%',
-  },
-  explanationText: {
-    fontSize: 16,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  continueButton: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    paddingHorizontal: spacing.xxl,
-  },
-  continueButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  completeContent: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  completeTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
-  },
-  levelUpBanner: {
-    backgroundColor: colors.airaPro,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    marginBottom: spacing.xl,
-  },
-  levelUpText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  statsCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    width: '100%',
-    marginBottom: spacing.xl,
-  },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  statLabel: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  streakCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  streakText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.airaPro,
-    textAlign: 'center',
-  },
-  outroCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    width: '100%',
-  },
-  outroText: {
-    fontSize: 16,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-    fontStyle: 'italic',
-  },
-  takeawayText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  primaryButton: {
-    backgroundColor: colors.trackFoundations,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    paddingHorizontal: spacing.xxl,
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  primaryButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
+  takeawayLabel: { ...typography.label, color: colors.cyan, marginBottom: 8 },
+  takeawayText: { ...typography.body, color: colors.textSecondary, lineHeight: 22 },
 });

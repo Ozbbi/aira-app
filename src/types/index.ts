@@ -102,6 +102,7 @@ export type RootStackParamList = {
   TrackDetail: { trackId: string };
   LearningMap: undefined;
   CodeTrack: undefined;
+  PromptOrNot: undefined;
 };
 
 export type TabParamList = {

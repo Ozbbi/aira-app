@@ -92,7 +92,7 @@ export function OpenPracticeSandbox({ prompt, exampleAnswer, onContinue }: Props
             value={draft}
             onChangeText={setDraft}
             placeholder="Write your prompt here…"
-            placeholderTextColor={palette.textMuted}
+            placeholderTextColor={palette.textDisabled}
             multiline
             maxLength={600}
             editable={!submitted}
@@ -208,7 +208,7 @@ function FeedbackPanel({ evaluation }: { evaluation: PromptEvaluation }) {
 }
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
-  const colour = value >= 75 ? palette.success : value >= 50 ? palette.warning : palette.danger;
+  const colour = value >= 75 ? palette.success : value >= 50 ? palette.orange : palette.error;
   return (
     <View style={styles.scoreRow}>
       <View style={styles.scoreLabelRow}>
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { padding: space['4'], paddingBottom: space['12'] },
 
-  eyebrow: { ...text.label, color: palette.brandSoft, marginBottom: space['1'] },
+  eyebrow: { ...text.label, color: palette.cyanGlow, marginBottom: space['1'] },
   title: { ...text.headline, color: palette.textPrimary, marginBottom: space['2'] },
   body: { ...text.body, color: palette.textSecondary, marginBottom: space['5'] },
 
@@ -317,8 +317,8 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 160,
     borderRadius: radii.md,
-    backgroundColor: palette.bgRaised,
-    borderColor: palette.border,
+    backgroundColor: palette.cardSurface,
+    borderColor: palette.divider,
     borderWidth: 1,
     padding: space['4'],
     color: palette.textPrimary,
@@ -330,28 +330,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: space['2'],
   },
-  charCount: { ...text.caption, color: palette.textMuted },
+  charCount: { ...text.caption, color: palette.textDisabled },
 
   exampleBox: {
     marginTop: space['3'],
-    backgroundColor: palette.bgRaised2,
+    backgroundColor: palette.elevated,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: palette.divider,
     padding: space['4'],
   },
-  exampleLabel: { ...text.label, color: palette.brandSoft, marginBottom: space['2'] },
-  exampleText: { ...text.bodySmall, color: palette.textPrimary },
+  exampleLabel: { ...text.label, color: palette.cyanGlow, marginBottom: space['2'] },
+  exampleText: { ...text.caption, color: palette.textPrimary },
 
   actions: { gap: space['3'] },
   continueBtn: {},
 
   feedbackBlock: { gap: space['4'] },
   feedbackCard: {
-    backgroundColor: palette.bgRaised,
+    backgroundColor: palette.cardSurface,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: palette.divider,
     padding: space['5'],
     ...elevation.sm,
   },
@@ -362,8 +362,8 @@ const styles = StyleSheet.create({
     marginBottom: space['4'],
   },
   feedbackHeadText: { flex: 1, minWidth: 0 },
-  feedbackTitle: { ...text.title, color: palette.textPrimary, marginBottom: 2 },
-  feedbackSubtitle: { ...text.bodySmall, color: palette.textSecondary },
+  feedbackTitle: { ...text.headline, color: palette.textPrimary, marginBottom: 2 },
+  feedbackSubtitle: { ...text.caption, color: palette.textSecondary },
 
   scoresGrid: { gap: space['3'], marginBottom: space['4'] },
   scoreRow: {},
@@ -373,23 +373,23 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     marginBottom: 4,
   },
-  scoreLabel: { ...text.bodySmall, color: palette.textPrimary },
-  scoreValue: { ...text.bodyEmphasis, fontSize: 14 },
+  scoreLabel: { ...text.caption, color: palette.textPrimary },
+  scoreValue: { ...text.bodyBold, fontSize: 14 },
   scoreTrack: {
     height: 6,
     borderRadius: radii.full,
-    backgroundColor: palette.bgRaised2,
+    backgroundColor: palette.elevated,
     overflow: 'hidden',
   },
   scoreFill: { height: '100%', borderRadius: radii.full },
 
   tipsBlock: {
     paddingTop: space['3'],
-    borderTopColor: palette.border,
+    borderTopColor: palette.divider,
     borderTopWidth: 1,
   },
-  tipsLabel: { ...text.label, color: palette.textMuted, marginBottom: space['2'] },
+  tipsLabel: { ...text.label, color: palette.textDisabled, marginBottom: space['2'] },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space['2'], gap: space['2'] },
-  tipBullet: { ...text.body, color: palette.brand },
-  tipText: { ...text.bodySmall, color: palette.textPrimary, flex: 1 },
+  tipBullet: { ...text.body, color: palette.cyan },
+  tipText: { ...text.caption, color: palette.textPrimary, flex: 1 },
 });

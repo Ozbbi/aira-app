@@ -144,7 +144,8 @@ export function LearnScreen() {
             dueCardCount={dueCardCount}
             tier={tier}
             onFlashcards={() => navigation.navigate('Flashcards')}
-            onMockExam={() => tier === 'pro' ? null : navigation.navigate('Paywall')}
+            onMockExam={() => navigation.navigate('MockExam')}
+            onNotebook={() => navigation.navigate('Notebook')}
           />
 
           <Animated.View entering={FadeInDown.duration(220).delay(60)}>
@@ -165,12 +166,13 @@ export function LearnScreen() {
 /* ───────────────────────── Study Tools row ───────────────────────── */
 
 function StudyToolsRow({
-  dueCardCount, tier, onFlashcards, onMockExam,
+  dueCardCount, tier, onFlashcards, onMockExam, onNotebook,
 }: {
   dueCardCount: number;
   tier: 'free' | 'pro';
   onFlashcards: () => void;
   onMockExam: () => void;
+  onNotebook: () => void;
 }) {
   return (
     <View style={styles.studyToolsWrap}>
@@ -188,17 +190,15 @@ function StudyToolsRow({
         />
         <ToolCard
           title="Mock Exam"
-          sub={tier === 'pro' ? 'Pick a track' : 'Pro only'}
-          tint="#F59E0B"
-          locked={tier !== 'pro'}
+          sub="10 random questions"
+          tint="#F5A361"
           onPress={onMockExam}
         />
         <ToolCard
           title="Notebook"
-          sub="Lesson summaries"
-          tint="#06B6D4"
-          disabled
-          onPress={() => null}
+          sub="Lesson takeaways"
+          tint="#7BC89C"
+          onPress={onNotebook}
         />
         <ToolCard
           title="Smart Reader"

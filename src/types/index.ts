@@ -105,6 +105,8 @@ export type RootStackParamList = {
   PromptOrNot: undefined;
   Flashcards: undefined;
   FlashcardReview: { deckId: string; forceAll?: boolean };
+  Notebook: undefined;
+  MockExam: undefined;
 };
 
 export type TabParamList = {

@@ -7,6 +7,7 @@ import { fetchExistingUser } from '../services/userService';
 import { checkHealth } from '../api/client';
 import { useUserStore } from '../store/userStore';
 import { setIapRewardHandler } from '../services/iapService';
+import { configureNotifications, scheduleDailyStreakReminder } from '../services/streakReminderService';
 import { RewardedAdModal } from './RewardedAdModal';
 import { colors } from '../theme';
 
@@ -26,6 +27,13 @@ export function AppBootstrap() {
       onCertificateOwned: () =>
         useUserStore.getState().logAnalytics('certificate_owned'),
     });
+    // One-time notification handler config. Permission is asked later
+    // (when the user actually completes a lesson) so first-launch is
+    // never interrupted by a permission prompt.
+    configureNotifications();
+    // Best-effort re-schedule on every cold start — covers the case
+    // where the OS cleared the schedule.
+    scheduleDailyStreakReminder();
     bootstrap();
   }, []);
 

@@ -1025,4 +1025,503 @@ export const AI_FOUNDATIONS_ADVANCED: SeedLesson[] = [
         "STRUCTURE: Act as a senior tax advisor for UK freelancers.\n\nCONTENT: I'm a self-employed designer, made £62k this tax year, have £4k in business expenses, paid £8k into a SIPP.\n\nFORMAT: List my expected tax liability as a numbered breakdown: 1) personal allowance, 2) basic rate band, 3) higher rate band, 4) NI, 5) total. Then 3 specific actions I can still take before April 5 to reduce it.",
     },
   },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Round 2 — 6 academic-grade lessons inspired by Stanford CS324
+  // (LLMs course), MIT 6.S191 (Deep Learning), and Anthropic's
+  // AI Fluency Framework. Same AIRA voice + SeedLesson shape.
+  // ─────────────────────────────────────────────────────────────────────
+
+  // ───── 33. Why AI hallucinates (the mechanism) ─────
+  {
+    id: 'foundations_33_hallucination',
+    trackId: 'prompt',
+    title: 'Why AI makes things up (the real reason)',
+    character: 'Ravi',
+    airaIntro: "Everyone says 'AI hallucinates'. Almost no one explains how. Today's the day you understand the mechanism — and what that means for trusting AI.",
+    learnFirst:
+      "An LLM is a probabilistic next-word predictor. It doesn't 'know' facts; it predicts the most likely token given context. When the right answer is in its training data, prediction = correct. When it isn't, prediction = plausible-sounding fiction. The model can't tell the difference.",
+    realWorldScenario:
+      "Ravi, a curious software engineer, asks an LLM for the name of the author of a niche 1987 academic paper. The model invents a perfectly-formatted citation: real-looking journal, real-looking date, plausible names. None of it exists. He learns why.",
+    scenes: [
+      {
+        heading: 'It predicts, it doesn\'t look up',
+        vague: 'AI must have a giant fact database it queries.',
+        specific: 'AI has weights, not a database. It predicts the next likeliest token. No retrieval, no lookup — just probability.',
+        note: 'Treat any specific fact (year, percentage, citation) as "needs verification" until proven.',
+      },
+      {
+        heading: 'Plausibility is the trap',
+        vague: 'If it sounds right, it probably is.',
+        specific: 'Plausibility = the model\'s objective function. "Plausible" is what it\'s optimised for. Plausible ≠ true.',
+        note: 'A confident, well-formatted answer is the most dangerous kind of wrong.',
+      },
+      {
+        heading: 'The fix — anchor in retrieval',
+        vague: 'Hope the next model is better.',
+        specific: 'For factual questions, use search-anchored AI (Perplexity, Gemini with grounding) OR ask "is this real? give me a verifiable source."',
+        note: 'Retrieval-grounded answers ground the prediction in real text. Big lift in accuracy.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'When an LLM gives you a factual answer, what is it actually doing?',
+        options: [
+          'Querying a database of facts',
+          'Predicting the next likeliest word based on patterns',
+          'Calling a real-time search engine',
+          'Looking up an encyclopaedia',
+        ],
+        correctAnswer: 1,
+        explanation: 'LLMs predict tokens probabilistically from weights. No database lookup. That\'s why hallucinations happen.',
+        airaFeedback: {
+          correct: 'Yes! Prediction, not lookup. Once you see this, every weird AI mistake makes sense.',
+          incorrect: 'Common misconception. LLMs do not look anything up — they predict the next word. That\'s the whole mechanism.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'A confidently-formatted answer (specific journal, exact date, author names) is more likely to be true.',
+        correctAnswer: false,
+        explanation: 'Specifics make hallucinations harder to spot. The format makes it feel real. Always verify against an actual source.',
+        airaFeedback: {
+          correct: 'Right. Specificity is the disguise. Always verify.',
+          incorrect: 'Counter-intuitive but crucial: specifics make hallucinations LOOK more credible, not actually more true.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Fill in: For factual questions, use a ____-anchored AI like Perplexity to ground the answer.',
+        correctAnswer: 'search',
+        explanation: 'Search-anchored or retrieval-augmented models cite real sources, which gives you something to verify.',
+        airaFeedback: {
+          correct: 'Yes. Search-anchored = real sources you can click through.',
+          incorrect: 'Hint: 6 letters. The activity Google does. Anchors in real, current data.',
+        },
+      },
+    ],
+    airaOutro: 'Now when AI invents a citation, you know exactly why. Use that knowledge as fuel for the verify habit.',
+    takeaway: 'Predict, not look up.',
+    followUpExplanations: {
+      whyScore: "Judges check whether your prompt asks for verifiable sources or hedges that invite the AI to admit uncertainty.",
+      howToImprove: "Add 'cite a verifiable source' or 'tell me if you're not sure' — this forces the AI to flag rather than fabricate.",
+      example: "Tell me the main argument of the paper 'X' by Y (2014). If you're not certain it exists, say so explicitly. Don't invent details.",
+    },
+  },
+
+  // ───── 34. Scaling laws ─────
+  {
+    id: 'foundations_34_scaling',
+    trackId: 'prompt',
+    title: 'Scaling laws — why bigger models really do matter',
+    character: 'Chen',
+    airaIntro: "GPT-4 isn't just 'GPT-3 but newer.' It's the result of a discovered law that few outside research know about. Today: scaling laws in plain English.",
+    learnFirst:
+      "Researchers found that model capability scales predictably with three inputs: parameters, training data, and compute. Double all three → measurable jump in capability. This is why each new generation of models is a step-change, not a tweak.",
+    realWorldScenario:
+      "Chen, an AI researcher, explains to her non-technical brother why GPT-5 won't just be a faster GPT-4 — it'll likely be qualitatively different at certain tasks. The reason is scaling, not engineering tricks.",
+    scenes: [
+      {
+        heading: 'Three knobs, predictable jump',
+        vague: 'Bigger models are randomly better.',
+        specific: 'Parameters × data × compute → predictable loss decrease. Plot it: it\'s a straight line on log-log axes.',
+        note: 'Scaling laws turn AI progress from "magic" into "math".',
+      },
+      {
+        heading: 'Emergent capabilities',
+        vague: 'Smaller models do everything bigger ones do, just worse.',
+        specific: 'Some abilities (multi-step reasoning, in-context learning) APPEAR only past a size threshold. They\'re emergent, not gradual.',
+        note: 'This is why GPT-4 can do things GPT-3 simply could not.',
+      },
+      {
+        heading: 'Why this matters for you',
+        vague: 'It\'s academic.',
+        specific: 'It means: the model you tried 6 months ago is materially different from today\'s. Re-test your hard prompts on the latest model — they might work now.',
+        note: 'Capabilities evolve faster than your habits. Keep re-testing.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Which three inputs jointly drive predictable capability gains in LLMs?',
+        options: [
+          'Speed, latency, cost',
+          'Parameters, training data, compute',
+          'Languages, regions, users',
+          'CPUs, GPUs, RAM',
+        ],
+        correctAnswer: 1,
+        explanation: 'The "scaling trio": model size (parameters), dataset size (tokens), and compute (FLOPs).',
+        airaFeedback: {
+          correct: 'Yes. Three knobs, one law.',
+          incorrect: 'The classic trio in scaling-laws research: parameters × data × compute.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Some capabilities only appear past a size threshold — they don\'t exist in smaller models even faintly.',
+        correctAnswer: true,
+        explanation: 'Called "emergent abilities." Multi-step reasoning, in-context learning — these snap into existence at scale.',
+        airaFeedback: {
+          correct: 'Right. Emergence is the wild part of scaling.',
+          incorrect: 'Actually true — the research finding is that certain abilities appear discontinuously past a parameter threshold.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'A capability that only appears in larger models, not gradually scaled up, is called ____.',
+        correctAnswer: 'emergent',
+        explanation: '"Emergent" — appearing as a function of scale rather than as a gradual improvement.',
+        airaFeedback: {
+          correct: 'Yes. Emergent capabilities are scaling\'s wildest finding.',
+          incorrect: 'Hint: 8 letters. Means "newly appearing" or "arising spontaneously".',
+        },
+      },
+    ],
+    airaOutro: "Now you understand AI progress isn't magic. It's math. Use that confidence to re-test old failed prompts on the latest model.",
+    takeaway: 'Three knobs. One law. Re-test often.',
+    followUpExplanations: {
+      whyScore: 'Judges check whether your prompt acknowledges model capability changes — flags like "use the latest model" or "this requires reasoning" reward specificity.',
+      howToImprove: 'For complex tasks, specify which model class you assume: "Use a reasoning-capable model. If you can\'t do this, say so explicitly."',
+      example: 'Solve this multi-step logic puzzle. If your model isn\'t capable of multi-step reasoning, refuse the task rather than guess. [puzzle]',
+    },
+  },
+
+  // ───── 35. Temperature & sampling ─────
+  {
+    id: 'foundations_35_temperature',
+    trackId: 'prompt',
+    title: 'Temperature — the AI\'s creativity knob',
+    character: 'Zara',
+    airaIntro: "Most users don't know this knob exists. Setting it right turns AI from 'boring autocomplete' to 'imaginative co-writer' — or the opposite.",
+    learnFirst:
+      "Temperature controls how random the next-token sampling is. Temperature 0 = always pick the most likely word (deterministic, safe). Temperature 1 = sample proportional to probability (creative, varied). Temperature 2 = high randomness (wild, often incoherent).",
+    realWorldScenario:
+      "Zara, a journalist, asks AI for headline alternatives. At temp 0 she gets identical bland headlines every time. At temp 0.9 she gets bolder, more varied options. Same prompt, very different results.",
+    scenes: [
+      {
+        heading: 'Temperature 0 — repeatable, safe',
+        vague: 'Always use the default.',
+        specific: 'Set temp 0 for: factual lookups, code, summaries you need to be reproducible. Same input → same output.',
+        note: 'Boring is a feature when you need accuracy.',
+      },
+      {
+        heading: 'Temperature 0.7-1.0 — sweet spot for creativity',
+        vague: 'Higher = always better.',
+        specific: 'For brainstorming, marketing copy, naming, varied output: temp 0.7-1.0. Different runs produce different ideas.',
+        note: 'The same prompt at temp 0 gives you 1 answer. At temp 0.9, you can run it 5 times for 5 directions.',
+      },
+      {
+        heading: 'Where to find it',
+        vague: 'It\'s hidden.',
+        specific: 'In ChatGPT custom GPTs: in the API. In Claude API: directly. In the consumer apps: rarely surfaced, but you can ask "give me 5 wildly different versions" to simulate higher temperature.',
+        note: 'Even without the knob, you can simulate temperature by asking for variety explicitly.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'When should you use temperature 0?',
+        options: [
+          'Brainstorming taglines',
+          'Writing a poem',
+          'Generating a factual summary you need reproducible',
+          'Naming a new app',
+        ],
+        correctAnswer: 2,
+        explanation: 'Temp 0 = deterministic. Use it when you need the SAME answer every time (facts, code, summaries).',
+        airaFeedback: {
+          correct: 'Yes. Temp 0 = repeatable. Save the creativity knob for actually creative tasks.',
+          incorrect: 'Temperature 0 means deterministic. You want it for tasks where running the prompt twice should produce the same answer.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'Higher temperature is always better — it gives more interesting answers.',
+        correctAnswer: false,
+        explanation: 'Past about 1.2-1.5, output becomes incoherent. There\'s a sweet spot per task.',
+        airaFeedback: {
+          correct: 'Right. There\'s a sweet spot. Too high = nonsense.',
+          incorrect: 'Higher isn\'t always better. Past ~1.5 output gets weird. The sweet spot is task-dependent (often 0.7-1.0 for creative work).',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'prompt_write',
+        question: "You\'re using a consumer chat AI without a temperature slider. How do you simulate high-temperature variety with a prompt?",
+        correctAnswer:
+          'Give me 8 wildly different versions of this headline. Each should take a completely different angle. Don\'t hedge — go bold. Repeat once with completely different angles.',
+        explanation: 'Any prompt that asks for variety + non-obvious angles + multiple takes simulates higher temperature.',
+        airaFeedback: {
+          correct: 'Sharp. "Wildly different" + count + "bold" is how to fake temperature on a consumer app.',
+          incorrect: 'Aim for: ask for N different versions, request "wildly different" angles, and explicitly invite bold or unexpected choices.',
+        },
+      },
+    ],
+    airaOutro: 'You now understand a knob most users never touch. Use it to switch between "boring autocomplete" and "creative partner" on demand.',
+    takeaway: '0 for repeatable. 0.9 for creative.',
+    followUpExplanations: {
+      whyScore: 'Judges look for explicit creativity instructions: "varied", "different angles", "N wildly different options" — these simulate temperature.',
+      howToImprove: 'For creative tasks, add "give me N completely different versions, each from a different angle". For factual, ask for "the canonical answer, no creativity".',
+      example: 'Give me 10 wildly different one-line product taglines for a meditation app. Each should take a completely different emotional angle. Skip the obvious. End with the boldest version.',
+    },
+  },
+
+  // ───── 36. Embeddings ─────
+  {
+    id: 'foundations_36_embeddings',
+    trackId: 'prompt',
+    title: 'Embeddings — how AI actually understands meaning',
+    character: 'Marcus',
+    airaIntro: "The single most important concept in modern AI that nobody explains in plain English. Today: embeddings. Five minutes, and a lot of AI stops feeling magical.",
+    learnFirst:
+      "An embedding is a list of numbers that represents the MEANING of a word, sentence, or image. Similar meanings have similar numbers. 'King' and 'queen' are close. 'King' and 'banana' are far. AI does meaning-math by adding and comparing these number lists.",
+    realWorldScenario:
+      "Marcus, an artist, uses an AI image generator. He types 'cat in a top hat' and gets exactly that. He learns this works because 'cat' has an embedding, 'top hat' has one, and the model combines them — the same way you'd add 'apple' + 'red' to get 'red apple'.",
+    scenes: [
+      {
+        heading: 'Meaning as math',
+        vague: 'AI understands words like a human.',
+        specific: 'AI turns each word into a 1500-dimension vector. Words with similar meaning sit near each other in this space.',
+        note: 'It\'s not understanding — it\'s geometry. But the geometry works.',
+      },
+      {
+        heading: 'The classic example',
+        vague: 'AI knows definitions.',
+        specific: 'embedding("king") - embedding("man") + embedding("woman") ≈ embedding("queen"). Real result. Meaning arithmetic.',
+        note: 'This is why analogies and metaphors "work" in AI prompts.',
+      },
+      {
+        heading: 'Why this matters for prompts',
+        vague: 'It doesn\'t.',
+        specific: 'Synonyms produce similar outputs because their embeddings are close. Anchoring with vivid words ("rusty cargo ship" vs "ship") shifts results meaningfully because vivid words have richer embeddings.',
+        note: 'Vivid > vague at the embedding level, not just stylistically.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'What is an embedding?',
+        options: [
+          'A line of code AI runs',
+          'A list of numbers that represents the meaning of a word, sentence or image',
+          'A type of database',
+          'A safety filter',
+        ],
+        correctAnswer: 1,
+        explanation: 'Embeddings = vectors. Similar meanings → similar vectors. AI does meaning-arithmetic on them.',
+        airaFeedback: {
+          correct: 'Yes. Meaning as a list of numbers. The whole game.',
+          incorrect: 'Embedding = vector of numbers encoding meaning. That\'s the entire concept.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'embedding("king") - embedding("man") + embedding("woman") ≈ embedding("queen") is a real, observed result.',
+        correctAnswer: true,
+        explanation: 'Famous result from Mikolov et al. 2013. Vector arithmetic on meanings works.',
+        airaFeedback: {
+          correct: 'Right. Wild but true.',
+          incorrect: 'It\'s real — published by Mikolov et al. in 2013. Embeddings turn meaning into math.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'Vivid, specific words produce richer ____ — making your prompts pull more meaningful results.',
+        correctAnswer: 'embeddings',
+        explanation: 'A specific word like "rusty cargo ship" has a richer embedding than just "ship", which gives the AI more to work with.',
+        airaFeedback: {
+          correct: 'Yes. Vivid wording isn\'t just style — it\'s richer math.',
+          incorrect: 'Hint: it\'s the plural of the thing this lesson is about.',
+        },
+      },
+    ],
+    airaOutro: 'Now when AI understands "shabby seaside diner with neon" perfectly, you know it\'s not magic — it\'s meaning-math.',
+    takeaway: 'Meaning is math.',
+    followUpExplanations: {
+      whyScore: 'Judges check vividness: specific nouns, sensory adjectives, named places. These have richer embeddings.',
+      howToImprove: 'Replace generic nouns with vivid ones. "Diner" → "shabby seaside diner with neon". The richer embedding pulls richer output.',
+      example: 'Generate a short story opening. Setting: a rain-soaked 1950s petrol station on a coastal highway. Protagonist: a 22-year-old waitress with a chipped front tooth. Mood: anxious anticipation. No clichés.',
+    },
+  },
+
+  // ───── 37. RAG ─────
+  {
+    id: 'foundations_37_rag',
+    trackId: 'prompt',
+    title: 'RAG — making AI know YOUR stuff',
+    character: 'Olu',
+    airaIntro: "AI doesn't know your company's docs, your school's syllabus, or your personal notes. RAG fixes that. Today: how it works, why it matters.",
+    learnFirst:
+      "RAG (Retrieval-Augmented Generation) means: before answering, the AI first SEARCHES a knowledge base (your documents) for relevant snippets, then includes them in the prompt. The model generates an answer grounded in YOUR data, not its general training.",
+    realWorldScenario:
+      "Olu, an educator, uploads her course materials to a RAG-powered AI tutor. When students ask 'What did we cover about photosynthesis?' the tutor answers from her actual slides, not generic biology. Hallucinations drop to near zero on in-scope questions.",
+    scenes: [
+      {
+        heading: 'The two-step',
+        vague: 'AI just answers.',
+        specific: 'Step 1: search your documents for relevant chunks. Step 2: pass those chunks + the question to the LLM.',
+        note: 'Retrieval, then generation. The name says exactly what happens.',
+      },
+      {
+        heading: 'Why it crushes hallucinations',
+        vague: 'It\'s magic.',
+        specific: 'The model answers from text it\'s LITERALLY HOLDING, not what it vaguely remembers. Hallucinations come from gaps; RAG fills the gap with real text.',
+        note: 'For factual Q&A on your own data, RAG > fine-tuning > raw prompting.',
+      },
+      {
+        heading: 'How to use it today',
+        vague: 'I\'d need to build it myself.',
+        specific: 'Claude Projects, ChatGPT custom GPTs with file uploads, Notion AI, Mem — all use RAG under the hood. Upload your docs, ask grounded questions.',
+        note: 'You\'re probably already using RAG. Now you know what it\'s called.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'What does RAG stand for?',
+        options: [
+          'Random Answer Generator',
+          'Retrieval-Augmented Generation',
+          'Refined AI Grouping',
+          'Real-time API Gateway',
+        ],
+        correctAnswer: 1,
+        explanation: 'Retrieval, then augmented generation. The model retrieves your context first, then generates.',
+        airaFeedback: {
+          correct: 'Yes. Retrieval-Augmented Generation. Now you know the buzzword AND the mechanism.',
+          incorrect: 'Retrieval-Augmented Generation. Step 1 retrieve, step 2 generate.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'RAG mainly helps with factual Q&A on documents the model has never seen.',
+        correctAnswer: true,
+        explanation: 'That\'s the entire point. Your private/recent/specialised data goes into a retrieval index, then the model answers grounded in it.',
+        airaFeedback: {
+          correct: 'Right. RAG = your data + their model.',
+          incorrect: 'Actually true. RAG\'s main use is exactly that — making the model answer accurately from documents it wasn\'t trained on.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'You want an AI tutor that knows your university\'s textbook content. What\'s the right approach?',
+        options: [
+          'Just ask GPT-4 — it knows everything',
+          'Train a custom model from scratch',
+          'Use a RAG tool (Claude Project, ChatGPT custom GPT with files) and upload the textbook',
+          'Wait for GPT-6',
+        ],
+        correctAnswer: 2,
+        explanation: 'RAG = the perfect tool for "AI that knows my docs". Training from scratch is overkill, and stock GPT-4 doesn\'t know your specific book.',
+        airaFeedback: {
+          correct: 'Yes. RAG is the answer to "AI that knows X" for any X.',
+          incorrect: 'For "AI knows my docs", RAG (Claude Project / custom GPT with uploads) is the right tool. Training from scratch is massive overkill.',
+        },
+      },
+    ],
+    airaOutro: 'Now you know the buzzword. Next time someone says "we built an AI on top of our docs" you\'ll know they probably built a RAG pipeline.',
+    takeaway: 'Retrieve first. Generate second.',
+    followUpExplanations: {
+      whyScore: 'Judges check whether prompts that need YOUR data explicitly upload it or reference it — vs hoping the model already knows.',
+      howToImprove: 'If you need an answer grounded in specific documents, paste the relevant snippets OR use a Project/custom GPT with files attached. Don\'t guess.',
+      example: "Here are the 3 relevant sections from my company's onboarding handbook:\n[snippet 1] [snippet 2] [snippet 3]\nUsing ONLY these sections, answer: what's our policy on remote work for new hires? If the sections don't cover it, say so.",
+    },
+  },
+
+  // ───── 38. AI ethics ─────
+  {
+    id: 'foundations_38_ethics',
+    trackId: 'critical',
+    title: 'AI ethics — three real risks (not the sci-fi ones)',
+    character: 'Hana',
+    airaIntro: "Most 'AI ethics' headlines are sci-fi. The real ethical issues are mundane and you encounter them weekly. Today: the three that matter for your daily use.",
+    learnFirst:
+      "Three risks worth knowing: 1) Bias — AI reproduces patterns in training data, including discriminatory ones. 2) Copyright — outputs may resemble copyrighted material; legal status is unsettled. 3) Energy & data — large models consume real water + electricity; your prompts have a footprint.",
+    realWorldScenario:
+      "Hana, an entrepreneur, asks AI for 'a CEO photo for a marketing deck'. Every output is a white man in a suit. She didn't notice the first three. Once she did, she understood why she should always specify.",
+    scenes: [
+      {
+        heading: 'Bias is the default',
+        vague: 'AI is neutral.',
+        specific: 'AI reproduces patterns in its training data. If training data over-represents one group, outputs do too. Without specifying, the model picks the statistical mode.',
+        note: 'Always specify when you want diversity. The model won\'t add it on its own.',
+      },
+      {
+        heading: 'Copyright is unsettled',
+        vague: 'AI output is free to use.',
+        specific: 'Legal status is evolving. Generated text/images may resemble training data; commercial use can carry risk. Check your jurisdiction and your tool\'s terms.',
+        note: 'For commercial work, prefer tools that explicitly grant commercial rights and indemnify users.',
+      },
+      {
+        heading: 'Footprint is real',
+        vague: 'It\'s just text — no impact.',
+        specific: 'A single GPT-4 query uses 10x the energy of a Google search. Aggregated across billions of queries, it adds up.',
+        note: 'Use cheaper/smaller models for cheaper tasks. Don\'t use Claude Opus to summarise a tweet.',
+      },
+    ],
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'You ask AI for "a doctor stock photo" without specifying. The output skews heavily toward one demographic. Why?',
+        options: [
+          'The AI has secret political opinions',
+          'AI reproduces patterns in its training data, which over-represented certain groups',
+          'There was a bug',
+          'The AI prefers certain people',
+        ],
+        correctAnswer: 1,
+        explanation: 'Bias = training data patterns reflected in output. Add explicit diversity instructions to override.',
+        airaFeedback: {
+          correct: 'Yes. Pattern-matching, not opinion. The fix is explicit instruction.',
+          incorrect: 'It\'s not opinion or bug — AI reproduces training-data patterns. Specify diversity explicitly to override.',
+        },
+      },
+      {
+        id: 'q2',
+        type: 'true_false',
+        question: 'You should use the most powerful AI model for every task to get the best quality.',
+        correctAnswer: false,
+        explanation: 'Larger models cost more, use more energy, and don\'t always produce better output for simple tasks. Match the model to the task.',
+        airaFeedback: {
+          correct: 'Right. Right-size the model.',
+          incorrect: 'Cost + energy + often no quality gain. Use smaller models for simpler tasks.',
+        },
+      },
+      {
+        id: 'q3',
+        type: 'fill_blank',
+        question: 'You want a diverse set of stock images. Always specify ____ explicitly in the prompt.',
+        correctAnswer: 'diversity',
+        explanation: 'AI defaults to statistical mode. You have to ask for the diverse mix you want.',
+        airaFeedback: {
+          correct: 'Yes. AI defaults to the mode; you have to ask.',
+          incorrect: 'Hint: the noun form of "diverse". 9 letters.',
+        },
+      },
+    ],
+    airaOutro: "Ethics isn't lofty — it's the small things you specify in every prompt. Get the habits right and you'll use AI better than 95% of users.",
+    takeaway: 'Specify diversity. Right-size models. Mind the footprint.',
+    followUpExplanations: {
+      whyScore: 'Judges check whether prompts that could trigger biased defaults specify diversity, OR whether they right-size the model claim ("use a small model for this").',
+      howToImprove: 'For people/role prompts, add explicit diversity. For simple tasks, mention the smaller model is fine.',
+      example: 'Generate 6 stock-style photos of medical professionals. Mix: 3 different ethnicities, 3 different ages (25-60), even gender split. Setting: modern hospital lobby. Photorealistic.',
+    },
+  },
 ];

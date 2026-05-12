@@ -11,6 +11,8 @@ import { CodeTrackScreen } from '../screens/CodeTrackScreen';
 import { PromptOrNotScreen } from '../screens/PromptOrNotScreen';
 import { FlashcardsScreen } from '../screens/FlashcardsScreen';
 import { FlashcardReviewScreen } from '../screens/FlashcardReviewScreen';
+import { NotebookScreen } from '../screens/NotebookScreen';
+import { MockExamScreen } from '../screens/MockExamScreen';
 import { TabNavigator } from './TabNavigator';
 import { useUserStore } from '../store/userStore';
 import { colors } from '../theme';
@@ -87,6 +89,16 @@ export function RootNavigator() {
       <Stack.Screen
         name="FlashcardReview"
         component={FlashcardReviewScreen}
+        options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
+      />
+      <Stack.Screen
+        name="Notebook"
+        component={NotebookScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="MockExam"
+        component={MockExamScreen}
         options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
       />
     </Stack.Navigator>

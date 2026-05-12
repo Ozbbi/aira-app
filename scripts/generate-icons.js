@@ -1,152 +1,181 @@
 /* eslint-disable no-console */
 /**
- * Brand assets — composite the user-supplied mascot.png onto AIRA's
- * warm-black canvas at every size the app needs.
+ * Brand-asset generator — renders Ara 2.0 (the chubby fox mascot)
+ * to PNG at every size the app needs.
  *
- * Replaces the previous procedural-SVG renderer because the user's
- * mascot is now an artist-drawn PNG that SVG can't approximate.
- *
- * Inputs:
- *   assets/mascot.png   the character (transparent background ideal)
+ * No external assets required. Pure SVG → PNG via sharp.
  *
  * Outputs:
- *   icon.png            1024x1024  Android/iOS app icon (75% scale)
- *   adaptive-icon.png   1024x1024  Android adaptive — tighter (60%)
- *   splash-icon.png     1024x1024  expo-splash-screen icon (66%)
- *   splash.png          1284x2778  full splash + AIRA wordmark
- *   favicon.png         48x48      web tab
+ *   mascot.png          1024×1024  source-of-truth character (used in-app)
+ *   icon.png            1024×1024  app icon (peach-gradient bg + fox)
+ *   adaptive-icon.png   1024×1024  Android adaptive (tighter, safe-zone)
+ *   splash-icon.png     1024×1024  splash logo
+ *   splash.png          1284×2778  full splash with AIRA wordmark
+ *   favicon.png         48×48      web
  */
 const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
 const OUT = path.resolve(__dirname, '..', 'assets');
-const MASCOT_SRC = path.resolve(OUT, 'mascot.png');
-const BG = '#0A0A0F'; // warm-black brand background
-// Splash text colour at the bottom of the splash hero.
-const WORDMARK_HEX = '#FFFFFF';
 
-if (!fs.existsSync(MASCOT_SRC)) {
-  console.error(`[generate-icons] missing input: ${MASCOT_SRC}`);
-  console.error('Drop your mascot art at mobile/assets/mascot.png and re-run.');
-  process.exit(1);
-}
-
-/**
- * Composite the mascot onto a square brand-coloured canvas.
- *  - canvasSize: edge of the square output (px)
- *  - mascotScale: fraction of canvas the mascot occupies (0..1)
- *  - withWordmark: also stamps an "AIRA" wordmark below the mascot
- */
-async function buildSquare({ canvasSize, mascotScale, outFile, withWordmark = false }) {
-  const mascotPx = Math.round(canvasSize * mascotScale);
-  // Mascot is centred horizontally; vertically shifted up a bit when
-  // there's a wordmark beneath it.
-  const verticalOffset = withWordmark ? -Math.round(canvasSize * 0.06) : 0;
-
-  // Resize the mascot keeping aspect ratio + transparent background.
-  const mascot = await sharp(MASCOT_SRC)
-    .resize(mascotPx, mascotPx, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .toBuffer();
-
-  // Build the layers we'll composite onto the base canvas
-  const composites = [
-    {
-      input: mascot,
-      gravity: 'center',
-      top: Math.round((canvasSize - mascotPx) / 2 + verticalOffset),
-      left: Math.round((canvasSize - mascotPx) / 2),
-    },
-  ];
-
-  if (withWordmark) {
-    // Render an SVG wordmark at the right size, then composite.
-    const wordSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${canvasSize}" height="${Math.round(canvasSize * 0.16)}">
-        <text
-          x="${canvasSize / 2}"
-          y="${Math.round(canvasSize * 0.12)}"
-          text-anchor="middle"
-          font-family="Space Grotesk, Inter, system-ui, sans-serif"
-          font-weight="700"
-          font-size="${Math.round(canvasSize * 0.105)}"
-          letter-spacing="${(canvasSize * 0.014).toFixed(2)}"
-          fill="${WORDMARK_HEX}">AIRA</text>
-      </svg>`;
-    const wordPng = await sharp(Buffer.from(wordSvg)).png().toBuffer();
-    composites.push({
-      input: wordPng,
-      top: Math.round(canvasSize * 0.74),
-      left: 0,
-    });
-  }
-
-  await sharp({
-    create: {
-      width: canvasSize,
-      height: canvasSize,
-      channels: 4,
-      background: BG,
-    },
-  })
-    .composite(composites)
-    .png()
-    .toFile(outFile);
-
-  const { size } = fs.statSync(outFile);
-  console.log(`  ${path.basename(outFile)}  ${canvasSize}x${canvasSize}  (${(size / 1024).toFixed(1)} kB)`);
-}
+// Soft & Sweet palette — kept in sync with src/theme/colors.ts
+const BG_WARM_WHITE = '#FFF9F5';
+const PEACH = '#FFB997';
+const PEACH_DARK = '#F2A07B';
+const PEACH_LIGHT = '#FEE2D4';
+const PINK = '#FF6B8A';
+const PINK_SOFT = '#FFB8C9';
+const WHITE_CREAM = '#FFF3EA';
+const EYE_DOT = '#2D2D2D';
+const NOSE = '#FF7A8A';
+const ORANGE = '#FF8C42';
 
 /**
- * Splash for tall mobile canvases (1284x2778). Mascot centred, wordmark
- * underneath. Same warm-black background.
+ * Build the Ara fox as an SVG string. The viewBox is 120x120 (same as
+ * the React component) and we scale it to whatever canvas size we
+ * need. `withBackground` adds a brand-gradient background + soft halo
+ * suitable for icon/splash use; without it the SVG is transparent
+ * (for use as the in-app mascot.png).
  */
-async function buildSplash({ width, height, mascotScale, outFile }) {
-  const mascotPx = Math.round(width * mascotScale);
-  const mascot = await sharp(MASCOT_SRC)
-    .resize(mascotPx, mascotPx, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .toBuffer();
+function foxSvg({ size, withBackground = false, withWordmark = false }) {
+  const wordmark = withWordmark
+    ? `<text
+         x="${size / 2}"
+         y="${size * 0.78}"
+         text-anchor="middle"
+         font-family="Nunito, Inter, system-ui, sans-serif"
+         font-weight="800"
+         font-size="${Math.round(size * 0.13)}"
+         letter-spacing="${(size * 0.012).toFixed(2)}"
+         fill="${ORANGE}">AIRA</text>`
+    : '';
 
-  const wordSvg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${Math.round(width * 0.18)}">
-      <text
-        x="${width / 2}"
-        y="${Math.round(width * 0.13)}"
-        text-anchor="middle"
-        font-family="Space Grotesk, Inter, system-ui, sans-serif"
-        font-weight="700"
-        font-size="${Math.round(width * 0.115)}"
-        letter-spacing="${(width * 0.015).toFixed(2)}"
-        fill="${WORDMARK_HEX}">AIRA</text>
-    </svg>`;
-  const wordPng = await sharp(Buffer.from(wordSvg)).png().toBuffer();
+  const background = withBackground
+    ? `
+    <rect width="${size}" height="${size}" fill="url(#bgGradient)" />
+    <ellipse cx="${size / 2}" cy="${size / 2}" rx="${size * 0.36}" ry="${size * 0.34}" fill="${PEACH_LIGHT}" opacity="0.65" />`
+    : `<rect width="${size}" height="${size}" fill="transparent" />`;
 
-  // Vertically centre the mascot at ~42% of height, wordmark below.
-  const mascotTop = Math.round(height * 0.42 - mascotPx / 2);
-  const wordTop = Math.round(height * 0.42 + mascotPx / 2 + height * 0.01);
+  // Fox is drawn within a 120-unit virtual viewBox, scaled to fit
+  // the visible area. We use the SVG's own viewBox to handle scaling.
+  const verticalShift = withWordmark ? -size * 0.10 : 0;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <defs>
+    <radialGradient id="bgGradient" cx="50%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="${BG_WARM_WHITE}" />
+      <stop offset="100%" stop-color="${PEACH_LIGHT}" />
+    </radialGradient>
+    <radialGradient id="bodyG" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="${PEACH}" />
+      <stop offset="80%" stop-color="${PEACH}" />
+      <stop offset="100%" stop-color="${PEACH_DARK}" />
+    </radialGradient>
+    <radialGradient id="dropShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(0,0,0,0.18)" />
+      <stop offset="1" stop-color="rgba(0,0,0,0)" />
+    </radialGradient>
+  </defs>
 
-  await sharp({
-    create: { width, height, channels: 4, background: BG },
-  })
-    .composite([
-      { input: mascot, top: mascotTop, left: Math.round((width - mascotPx) / 2) },
-      { input: wordPng, top: wordTop, left: 0 },
-    ])
+  ${background}
+
+  <g transform="translate(${size * 0.5 - size * 0.4}, ${size * 0.5 - size * 0.4 + verticalShift}) scale(${size * 0.8 / 120})">
+    ${foxBody()}
+  </g>
+
+  ${wordmark}
+</svg>`;
+}
+
+function foxBody() {
+  // Returns the fox as SVG, anchored to a 120x120 box.
+  return `
+    <!-- Ground shadow -->
+    <ellipse cx="60" cy="108" rx="28" ry="3.5" fill="url(#dropShadow)" />
+
+    <!-- Tail (drawn before body so it sits behind) -->
+    <g>
+      <path d="M 88 78 C 102 60 118 64 112 80 C 108 92 96 94 88 86 Z"
+            fill="${PEACH}" stroke="${PEACH_DARK}" stroke-width="1.5" />
+      <path d="M 110 70 C 116 70 118 76 112 80 C 108 80 106 76 110 70 Z" fill="${WHITE_CREAM}" />
+    </g>
+
+    <!-- Body -->
+    <ellipse cx="60" cy="80" rx="30" ry="22" fill="url(#bodyG)" />
+    <ellipse cx="60" cy="88" rx="16" ry="10" fill="${WHITE_CREAM}" />
+
+    <!-- Left ear -->
+    <g>
+      <path d="M 36 22 L 30 46 L 50 42 Z" fill="${PEACH}" stroke="${PEACH_DARK}" stroke-width="1.5" stroke-linejoin="round" />
+      <path d="M 38 28 L 36 42 L 46 41 Z" fill="${PINK_SOFT}" />
+    </g>
+
+    <!-- Right ear -->
+    <g>
+      <path d="M 84 22 L 90 46 L 70 42 Z" fill="${PEACH}" stroke="${PEACH_DARK}" stroke-width="1.5" stroke-linejoin="round" />
+      <path d="M 82 28 L 84 42 L 74 41 Z" fill="${PINK_SOFT}" />
+    </g>
+
+    <!-- Head -->
+    <ellipse cx="60" cy="52" rx="28" ry="26" fill="url(#bodyG)" stroke="${PEACH_DARK}" stroke-width="1.5" />
+    <ellipse cx="48" cy="42" rx="9" ry="5" fill="#FFFFFF" fill-opacity="0.35" />
+
+    <!-- Muzzle -->
+    <ellipse cx="60" cy="63" rx="15" ry="10" fill="${WHITE_CREAM}" />
+
+    <!-- Cheek blush -->
+    <circle cx="42" cy="60" r="4" fill="${PINK_SOFT}" fill-opacity="0.7" />
+    <circle cx="78" cy="60" r="4" fill="${PINK_SOFT}" fill-opacity="0.7" />
+
+    <!-- Eyes (calm/happy) -->
+    <circle cx="49" cy="50" r="4.6" fill="#FFFFFF" />
+    <circle cx="71" cy="50" r="4.6" fill="#FFFFFF" />
+    <circle cx="49" cy="51" r="2" fill="${EYE_DOT}" />
+    <circle cx="71" cy="51" r="2" fill="${EYE_DOT}" />
+    <circle cx="50.4" cy="49.6" r="0.9" fill="#FFFFFF" />
+    <circle cx="72.4" cy="49.6" r="0.9" fill="#FFFFFF" />
+
+    <!-- Nose -->
+    <path d="M 56 60 L 64 60 L 60 65 Z" fill="${NOSE}" />
+
+    <!-- Smile -->
+    <path d="M 55 68 Q 60 73 65 68" stroke="${EYE_DOT}" stroke-width="2.2" fill="none" stroke-linecap="round" />
+  `;
+}
+
+async function render(svg, outFile, w, h) {
+  await sharp(Buffer.from(svg), { density: 384 })
+    .resize(w, h, { fit: 'cover' })
     .png()
     .toFile(outFile);
-
   const { size } = fs.statSync(outFile);
-  console.log(`  ${path.basename(outFile)}  ${width}x${height}  (${(size / 1024).toFixed(1)} kB)`);
+  console.log(`  ${path.basename(outFile)}  ${w}×${h}  (${(size / 1024).toFixed(1)} kB)`);
 }
 
 (async () => {
-  console.log('Compositing AIRA brand assets from assets/mascot.png:');
+  console.log('Rendering Ara 2.0 brand assets:');
 
-  await buildSquare({ canvasSize: 1024, mascotScale: 0.78, outFile: path.join(OUT, 'icon.png') });
-  await buildSquare({ canvasSize: 1024, mascotScale: 0.62, outFile: path.join(OUT, 'adaptive-icon.png') });
-  await buildSquare({ canvasSize: 1024, mascotScale: 0.70, outFile: path.join(OUT, 'splash-icon.png') });
-  await buildSplash({ width: 1284, height: 2778, mascotScale: 0.46, outFile: path.join(OUT, 'splash.png') });
-  await buildSquare({ canvasSize: 256, mascotScale: 0.86, outFile: path.join(OUT, 'favicon.png') });
+  // Transparent mascot.png — used by the in-app <AiraMascot /> only
+  // if someone forces an Image fallback. Our component is now full-SVG
+  // so this is mostly a brand artefact, but keeping it makes the
+  // mascot show up in the legacy AiraOrb / AiraCharacter shims that
+  // might still call require('mascot.png').
+  await render(foxSvg({ size: 1024, withBackground: false }),
+    path.join(OUT, 'mascot.png'), 1024, 1024);
+
+  // App icons + splash — peach-gradient background
+  await render(foxSvg({ size: 1024, withBackground: true }),
+    path.join(OUT, 'icon.png'), 1024, 1024);
+  await render(foxSvg({ size: 1024, withBackground: true }),
+    path.join(OUT, 'adaptive-icon.png'), 1024, 1024);
+  await render(foxSvg({ size: 1024, withBackground: true }),
+    path.join(OUT, 'splash-icon.png'), 1024, 1024);
+  await render(foxSvg({ size: 1284, withBackground: true, withWordmark: true }),
+    path.join(OUT, 'splash.png'), 1284, 2778);
+  await render(foxSvg({ size: 256, withBackground: true }),
+    path.join(OUT, 'favicon.png'), 48, 48);
 
   console.log('Done.');
 })().catch((err) => {

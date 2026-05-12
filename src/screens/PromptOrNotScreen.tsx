@@ -470,7 +470,7 @@ export function PromptOrNotScreen({ navigation }: Props) {
                 { color: lastFeedback.correct ? palette.success : palette.danger },
               ]}
             >
-              {lastFeedback.correct ? 'Nice.' : 'Not quite.'}
+              {lastFeedback.correct ? 'Nice.' : 'Almost there!'}
             </Text>
             <Text style={styles.feedbackReason}>{lastFeedback.reason}</Text>
           </Animated.View>

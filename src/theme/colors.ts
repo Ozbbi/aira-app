@@ -1,52 +1,73 @@
+/**
+ * AIRA — Soft & Sweet theme (light mode).
+ *
+ * Every key in this file is referenced by some screen somewhere in the
+ * app. The previous theme was a warm-black dark mode; this is a warm-
+ * white light mode with peach accents.
+ *
+ * To switch back to dark mode, this is the only file that needs to
+ * change — every screen reads from these tokens.
+ */
 export const colors = {
-  bg: '#0B0E14',
-  cardSurface: '#1A1F2E',
-  elevated: '#242B3D',
-  divider: '#2A3142',
+  // ── Surfaces ──
+  bg: '#FFF9F5',          // warm white background
+  cardSurface: '#FFFFFF', // primary card surface
+  elevated: '#FFFFFF',    // elevated/modal surface
+  divider: '#F0E0D6',     // very light peach divider
 
-  cyan: '#00E5E5',
-  cyanGlow: 'rgba(0, 229, 229, 0.25)',
-  cyanWash: 'rgba(0, 229, 229, 0.08)',
-  orange: '#FF6B35',
-  orangeGlow: 'rgba(255, 107, 53, 0.25)',
-  success: '#2ECC71',
-  successSoft: 'rgba(46, 204, 113, 0.14)',
-  error: '#E74C3C',
-  errorSoft: 'rgba(231, 76, 60, 0.14)',
+  // ── Brand accents ──
+  /** Sweet Orange — primary CTA, active states, progress bars. */
+  cyan: '#FF8C42',                            // renamed semantically but key kept
+  cyanGlow: 'rgba(255, 140, 66, 0.18)',
+  cyanWash: 'rgba(255, 140, 66, 0.08)',
+  /** Blush Pink — hearts, streak flame, secondary highlights. */
+  orange: '#FF6B8A',
+  orangeGlow: 'rgba(255, 107, 138, 0.18)',
 
-  textPrimary: '#FFFFFF',
-  textSecondary: '#A0AEC0',
-  textDisabled: '#4A5568',
+  // ── Semantic ──
+  success: '#7BC89C',
+  successSoft: 'rgba(123, 200, 156, 0.14)',
+  error: '#F27E7E',
+  errorSoft: 'rgba(242, 126, 126, 0.14)',
 
-  trackFoundations: '#00E5E5',
-  trackCritical: '#E74C3C',
-  trackPower: '#2ECC71',
-  trackTools: '#FF6B35',
-  trackCode: '#6366F1',
-  trackCreators: '#8B5CF6',
-  trackMaster: '#F59E0B',
+  // ── Text ──
+  textPrimary: '#2D2D2D',
+  textSecondary: '#8A8A8A',
+  textDisabled: '#B8B8B8',
 
-  // Legacy aliases — point to canonical tokens above
-  bgCard: '#1A1F2E',
-  bgCardHover: '#242B3D',
-  bgElevated: '#242B3D',
-  bgRaised: '#1A1F2E',
-  bgRaised2: '#242B3D',
-  border: '#2A3142',
-  airaGlow: '#00E5E5',
-  airaCore: '#00E5E5',
-  airaPro: '#8B5CF6',
-  brand: '#00E5E5',
-  brandSoft: 'rgba(0, 229, 229, 0.25)',
-  purple: '#6366F1',
-  warning: '#FF6B35',
-  danger: '#E74C3C',
-  dangerSoft: 'rgba(231, 76, 60, 0.14)',
-  textMuted: '#4A5568',
-  gradientPrimary: ['#00B4D8', '#00E5E5'] as readonly [string, string],
-  gradientAccent: ['#FF6B35', '#F59E0B'] as readonly [string, string],
-  gradientSuccess: ['#2ECC71', '#10B981'] as readonly [string, string],
-  gradientLesson: ['#00E5E5', '#0B0E14'] as readonly [string, string],
-  gradientXp: ['#00E5E5', '#00B4D8'] as readonly [string, string],
-  gradientPro: ['#8B5CF6', '#EC4899'] as readonly [string, string],
+  // ── Track colours (kept warm and pastel) ──
+  trackFoundations: '#FF8C42', // sweet orange
+  trackCritical:    '#FF6B8A', // blush pink
+  trackPower:       '#7BC89C', // soft mint
+  trackTools:       '#F5C26B', // warm honey
+  trackCode:        '#A78BFA', // soft violet
+  trackCreators:    '#FFB997', // peach
+  trackMaster:      '#F5A361', // tangerine
+
+  // ── Legacy aliases — every screen that used dark tokens stays working ──
+  bgCard:        '#FFFFFF',
+  bgCardHover:   '#FFF3EA',
+  bgElevated:    '#FFFFFF',
+  bgRaised:      '#FFFFFF',
+  bgRaised2:     '#FFF3EA',
+  border:        '#FEE2D4', // soft peach border
+  airaGlow:      '#FF8C42',
+  airaCore:      '#FF8C42',
+  airaPro:       '#A78BFA',
+  brand:         '#FF8C42',
+  brandSoft:     'rgba(255, 140, 66, 0.18)',
+  purple:        '#A78BFA',
+  warning:       '#F5A361',
+  danger:        '#F27E7E',
+  dangerSoft:    'rgba(242, 126, 126, 0.14)',
+  textMuted:     '#B8B8B8',
+
+  // ── Gradients ──
+  // hero gradient — peach to blush. Used on Home hero, primary CTAs.
+  gradientPrimary: ['#FF8C42', '#FFB997'] as readonly [string, string],
+  gradientAccent:  ['#FF8C42', '#FF6B8A'] as readonly [string, string],
+  gradientSuccess: ['#7BC89C', '#A8DCBE'] as readonly [string, string],
+  gradientLesson:  ['#FFB997', '#FF8C42'] as readonly [string, string],
+  gradientXp:      ['#FF8C42', '#F5A361'] as readonly [string, string],
+  gradientPro:     ['#A78BFA', '#FF6B8A'] as readonly [string, string],
 } as const;

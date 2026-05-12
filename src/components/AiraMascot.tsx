@@ -1,6 +1,15 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
-import Svg, { G, Path, Circle, Ellipse, Polygon, Defs, RadialGradient, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { View, StyleSheet } from 'react-native';
+import Svg, {
+  Defs,
+  LinearGradient,
+  RadialGradient,
+  Stop,
+  Circle,
+  Ellipse,
+  Path,
+  G,
+} from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,203 +17,346 @@ import Animated, {
   withSequence,
   withTiming,
   withSpring,
-  withDelay,
   Easing,
 } from 'react-native-reanimated';
-import { colors } from '../theme';
 
-export type AraState =
-  | 'idle'
-  | 'listening'
-  | 'thinking'
-  | 'success'
-  | 'error'
-  | 'levelUp'
-  | 'sleep';
+/**
+ * Ara 2.0 — the chubby fox mascot.
+ *
+ * Procedural SVG (no PNG asset), so every screen renders the same
+ * character without anyone needing to drop a file. 5 mood variants:
+ *
+ *   calm          gentle bounce, ears wiggle slightly
+ *   happy         bigger bounce, sparkly eyes
+ *   thinking      head tilt, one ear droops, "…" bubble
+ *   celebrating   jumps + tail spin + stars overhead
+ *   encouraging   leans forward, tiny paw raised
+ *
+ * Anatomy: oversized head, huge round eyes (white with tiny pupil),
+ * pink nose, pink inner ears, peach body (#FFB997), pink cheek
+ * circles, fluffy curly tail.
+ *
+ * All animation is transform-only (translate/rotate/scale). The SVG
+ * path tree never re-renders — perf stays clean even with multiple
+ * mascots on a screen.
+ */
 
-export type MascotMood = 'calm' | 'thinking' | 'happy' | 'celebrating' | 'encouraging';
+export type MascotMood = 'calm' | 'happy' | 'thinking' | 'celebrating' | 'encouraging';
 
 interface Props {
   size?: number;
-  state?: AraState;
   mood?: MascotMood;
+  /** Disable bob/breathe loop — useful when many mascots share a screen. */
   static?: boolean;
 }
 
-const moodToState: Record<MascotMood, AraState> = {
-  calm: 'idle',
-  thinking: 'thinking',
-  happy: 'success',
-  celebrating: 'success',
-  encouraging: 'error',
-};
+// Brand colours for Ara (separate from the global palette so the fox
+// stays cute even if the global theme changes).
+const PEACH = '#FFB997';
+const PEACH_DARK = '#F2A07B';
+const PINK = '#FF6B8A';
+const PINK_SOFT = '#FFB8C9';
+const WHITE = '#FFFFFF';
+const NOSE = '#FF7A8A';
+const EYE_DOT = '#2D2D2D';
 
-export function AiraMascot({ size = 48, state, mood, static: isStatic }: Props) {
-  const resolvedState = state ?? (mood ? moodToState[mood] : 'idle');
-
-  const bobY = useSharedValue(0);
-  const bodyScale = useSharedValue(1);
+export function AiraMascot({ size = 120, mood = 'calm', static: isStatic }: Props) {
+  // Body bob — vertical translate, intensity by mood
+  const bob = useSharedValue(0);
+  // Left/right ear wiggle (rotation degrees, small)
+  const earL = useSharedValue(0);
+  const earR = useSharedValue(0);
+  // Tail wobble — rotation around its origin
+  const tail = useSharedValue(0);
 
   useEffect(() => {
-    if (isStatic) return;
-    bobY.value = withRepeat(
+    if (isStatic) {
+      bob.value = 0;
+      earL.value = 0;
+      earR.value = 0;
+      tail.value = 0;
+      return;
+    }
+
+    // Mood-tuned cadence
+    const bobAmp = mood === 'happy' || mood === 'celebrating' ? -6 : -3;
+    const bobDur = mood === 'celebrating' ? 380 : mood === 'happy' ? 600 : 1200;
+
+    bob.value = withRepeat(
       withSequence(
-        withTiming(-4, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(4, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(bobAmp, { duration: bobDur, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: bobDur, easing: Easing.inOut(Easing.quad) }),
       ),
       -1,
-      true,
+      false,
     );
-  }, [isStatic]);
 
-  useEffect(() => {
-    if (resolvedState === 'success' || resolvedState === 'levelUp') {
-      bodyScale.value = withSequence(
-        withSpring(1.15, { damping: 8, stiffness: 300 }),
-        withSpring(1, { damping: 10, stiffness: 200 }),
-      );
-    } else {
-      bodyScale.value = withSpring(1, { damping: 14, stiffness: 180 });
-    }
-  }, [resolvedState]);
+    earL.value = withRepeat(
+      withSequence(
+        withTiming(-6, { duration: 1100, easing: Easing.inOut(Easing.sin) }),
+        withTiming(2, { duration: 1100, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      false,
+    );
+    earR.value = withRepeat(
+      withSequence(
+        withTiming(5, { duration: 1300, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-3, { duration: 1300, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      false,
+    );
 
-  const containerStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: bobY.value },
-      { scale: bodyScale.value },
-    ],
+    // Tail wobbles faster on cheerful moods
+    const tailAmp = mood === 'celebrating' ? 30 : mood === 'happy' ? 18 : 10;
+    const tailDur = mood === 'celebrating' ? 320 : 900;
+    tail.value = withRepeat(
+      withSequence(
+        withTiming(tailAmp, { duration: tailDur, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-tailAmp * 0.6, { duration: tailDur, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      false,
+    );
+  }, [mood, isStatic, bob, earL, earR, tail]);
+
+  const bobStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: bob.value }],
+  }));
+  const earLStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${earL.value}deg` }],
+  }));
+  const earRStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${earR.value}deg` }],
+  }));
+  const tailStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${tail.value}deg` }],
   }));
 
-  const showSmile = resolvedState !== 'error' && resolvedState !== 'sleep';
-  const showFrown = resolvedState === 'error';
-  const showSleep = resolvedState === 'sleep';
-  const showSparkles = resolvedState === 'success' || resolvedState === 'levelUp';
-  const showThinkingDots = resolvedState === 'thinking';
+  // For "thinking" mood, the head tilts slightly and one ear droops.
+  // We apply a static body rotation by mood as a final layer.
+  const moodTilt =
+    mood === 'thinking' ? '-6deg' :
+    mood === 'encouraging' ? '4deg' :
+    '0deg';
 
   return (
-    <Animated.View style={[{ width: size, height: size }, containerStyle]} pointerEvents="none">
-      <Svg width={size} height={size} viewBox="0 0 120 120">
-        <Defs>
-          <RadialGradient id="bodyGlow" cx="60" cy="60" rx="50" ry="50">
-            <Stop offset="0" stopColor={colors.cyan} stopOpacity="0.15" />
-            <Stop offset="1" stopColor={colors.cyan} stopOpacity="0" />
-          </RadialGradient>
-          <LinearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={colors.cyan} stopOpacity="0.9" />
-            <Stop offset="1" stopColor="#00B4D8" stopOpacity="0.6" />
-          </LinearGradient>
-          <LinearGradient id="earGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={colors.cyan} stopOpacity="0.8" />
-            <Stop offset="1" stopColor={colors.cyan} stopOpacity="0.4" />
-          </LinearGradient>
-          <RadialGradient id="eyeGlow" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
-            <Stop offset="0" stopColor={colors.orange} stopOpacity="1" />
-            <Stop offset="0.7" stopColor={colors.orange} stopOpacity="0.6" />
-            <Stop offset="1" stopColor={colors.orange} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
+    <Animated.View style={[{ width: size, height: size }, bobStyle]} pointerEvents="none">
+      <View style={{ width: size, height: size, transform: [{ rotate: moodTilt }] }}>
+        <Svg width={size} height={size} viewBox="0 0 120 120">
+          <Defs>
+            {/* Body gradient — peach with a tiny inner shadow at bottom */}
+            <RadialGradient id="bodyG" cx="50%" cy="40%" r="70%">
+              <Stop offset="0%" stopColor={PEACH} />
+              <Stop offset="80%" stopColor={PEACH} />
+              <Stop offset="100%" stopColor={PEACH_DARK} />
+            </RadialGradient>
+            {/* Sparkle gradient — radial white for happy/celebrating eye dots */}
+            <RadialGradient id="eyeSparkle" cx="30%" cy="30%" r="70%">
+              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+              <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+            </RadialGradient>
+            {/* Soft shadow under the fox */}
+            <RadialGradient id="shadow" cx="50%" cy="50%" r="50%" fy="50%">
+              <Stop offset="0%" stopColor="rgba(0,0,0,0.18)" />
+              <Stop offset="1" stopColor="rgba(0,0,0,0)" />
+            </RadialGradient>
+          </Defs>
 
-        {/* Ambient glow */}
-        <Circle cx="60" cy="65" r="48" fill="url(#bodyGlow)" />
+          {/* Ground shadow */}
+          <Ellipse cx="60" cy="108" rx="28" ry="3.5" fill="url(#shadow)" />
 
-        {/* Tail */}
-        <Path
-          d="M75 80 Q95 75 100 60 Q105 45 95 35 Q90 30 88 35 Q92 45 88 55 Q84 65 70 75"
-          fill="none"
-          stroke={colors.cyan}
-          strokeWidth="3"
-          strokeOpacity={0.5}
-          strokeLinecap="round"
-        />
-        <Circle cx="100" cy="58" r="2" fill={colors.cyan} opacity={0.6} />
-        <Circle cx="96" cy="42" r="1.5" fill={colors.cyan} opacity={0.4} />
-        <Circle cx="92" cy="34" r="1" fill={colors.cyan} opacity={0.3} />
+          {/* Tail — drawn first so it sits behind the body. Rotates around
+              its base (approx (90, 76)). We translate the rotation origin
+              by wrapping in <G transform>. */}
+          <AnimatedG style={tailStyle} originX={88} originY={78}>
+            <Path
+              d="M 88 78
+                 C 102 60 118 64 112 80
+                 C 108 92 96 94 88 86 Z"
+              fill={PEACH}
+              stroke={PEACH_DARK}
+              strokeWidth="1.5"
+            />
+            {/* Tail tip — cream white */}
+            <Path
+              d="M 110 70
+                 C 116 70 118 76 112 80
+                 C 108 80 106 76 110 70 Z"
+              fill="#FFF3EA"
+            />
+          </AnimatedG>
 
-        {/* Body shards */}
-        <Path
-          d="M60 38 L44 55 L38 78 L50 90 L70 90 L82 78 L76 55 Z"
-          fill="url(#bodyGrad)"
-          strokeWidth="0.5"
-          stroke={colors.cyan}
-          strokeOpacity={0.3}
-        />
-        <Path d="M60 38 L52 52 L60 50 L68 52 Z" fill={colors.cyan} opacity={0.7} />
-        <Path d="M44 55 L52 52 L50 68 L38 78 Z" fill={colors.cyan} opacity={0.5} />
-        <Path d="M76 55 L68 52 L70 68 L82 78 Z" fill={colors.cyan} opacity={0.5} />
-        <Path d="M50 68 L60 50 L70 68 L70 90 L50 90 Z" fill={colors.cyan} opacity={0.35} />
+          {/* Body — soft chubby oval, head-heavy */}
+          <Ellipse cx="60" cy="80" rx="30" ry="22" fill="url(#bodyG)" />
+          {/* Body cream chest patch */}
+          <Ellipse cx="60" cy="88" rx="16" ry="10" fill="#FFF3EA" />
 
-        {/* Left ear */}
-        <Path d="M42 52 L32 28 L50 45 Z" fill="url(#earGrad)" stroke={colors.cyan} strokeWidth="0.5" strokeOpacity={0.5} />
-        <Path d="M38 38 L35 30 L44 42 Z" fill={colors.cyan} opacity={0.3} />
+          {/* Ear LEFT — wraps in animated G so it can wiggle */}
+          <AnimatedG style={earLStyle} originX={40} originY={42}>
+            <Path
+              d="M 36 22 L 30 46 L 50 42 Z"
+              fill={mood === 'thinking' ? PEACH_DARK : PEACH}
+              stroke={PEACH_DARK}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            {/* Inner ear — pink */}
+            <Path
+              d="M 38 28 L 36 42 L 46 41 Z"
+              fill={PINK_SOFT}
+            />
+          </AnimatedG>
 
-        {/* Right ear */}
-        <Path d="M78 52 L88 28 L70 45 Z" fill="url(#earGrad)" stroke={colors.cyan} strokeWidth="0.5" strokeOpacity={0.5} />
-        <Path d="M82 38 L85 30 L76 42 Z" fill={colors.cyan} opacity={0.3} />
+          {/* Ear RIGHT */}
+          <AnimatedG style={earRStyle} originX={80} originY={42}>
+            <Path
+              d="M 84 22 L 90 46 L 70 42 Z"
+              fill={PEACH}
+              stroke={PEACH_DARK}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <Path
+              d="M 82 28 L 84 42 L 74 41 Z"
+              fill={PINK_SOFT}
+            />
+          </AnimatedG>
 
-        {/* Face plate */}
-        <Path d="M48 58 L60 52 L72 58 L68 72 L60 76 L52 72 Z" fill={colors.bg} opacity={0.85} />
+          {/* Head — oversized */}
+          <Ellipse cx="60" cy="52" rx="28" ry="26" fill="url(#bodyG)" stroke={PEACH_DARK} strokeWidth="1.5" />
+          {/* Head highlight */}
+          <Ellipse cx="48" cy="42" rx="9" ry="5" fill="#FFFFFF" opacity="0.35" />
 
-        {/* Eyes */}
-        {showSleep ? (
-          <>
-            <Rect x="48" y="61" width="8" height="3" rx="1.5" fill={colors.cyan} opacity={0.5} />
-            <Rect x="64" y="61" width="8" height="3" rx="1.5" fill={colors.cyan} opacity={0.5} />
-            <Path d="M78 38 L82 38 L78 43 L82 43" fill="none" stroke={colors.cyan} strokeWidth="1.5" opacity={0.5} />
-            <Path d="M85 30 L88 30 L85 34 L88 34" fill="none" stroke={colors.cyan} strokeWidth="1" opacity={0.3} />
-          </>
-        ) : (
-          <>
-            <Circle cx="52" cy="63" r="4" fill="url(#eyeGlow)" />
-            <Circle cx="52" cy="63" r="2.5" fill={colors.orange} />
-            <Circle cx="51" cy="62" r="1" fill="#FFF" opacity={0.8} />
-            <Circle cx="68" cy="63" r="4" fill="url(#eyeGlow)" />
-            <Circle cx="68" cy="63" r="2.5" fill={colors.orange} />
-            <Circle cx="67" cy="62" r="1" fill="#FFF" opacity={0.8} />
-          </>
-        )}
+          {/* White muzzle */}
+          <Ellipse cx="60" cy="63" rx="15" ry="10" fill="#FFF3EA" />
 
-        {/* Nose */}
-        <Polygon points="60,68 58,71 62,71" fill={colors.cyan} opacity={0.7} />
+          {/* Cheek blush */}
+          <Circle cx="42" cy="60" r="4" fill={PINK_SOFT} opacity="0.7" />
+          <Circle cx="78" cy="60" r="4" fill={PINK_SOFT} opacity="0.7" />
 
-        {/* Mouth */}
-        {showSmile && (
-          <Path d="M56 73 Q60 76 64 73" fill="none" stroke={colors.cyan} strokeWidth="1" strokeOpacity={0.5} strokeLinecap="round" />
-        )}
-        {showFrown && (
-          <Path d="M56 75 Q60 73 64 75" fill="none" stroke={colors.cyan} strokeWidth="1" strokeOpacity={0.5} strokeLinecap="round" />
-        )}
+          {/* Eyes — wrapped so we can swap them by mood */}
+          <Eyes mood={mood} />
 
-        {/* Thinking dots */}
-        {showThinkingDots && (
-          <>
-            <Circle cx="94" cy="30" r="3" fill={colors.cyan} opacity={0.6} />
-            <Circle cx="98" cy="22" r="2" fill={colors.cyan} opacity={0.4} />
-            <Circle cx="96" cy="16" r="1.5" fill={colors.cyan} opacity={0.3} />
-          </>
-        )}
+          {/* Nose — small triangle */}
+          <Path d="M 56 60 L 64 60 L 60 65 Z" fill={NOSE} />
 
-        {/* Success sparkles */}
-        {showSparkles && (
-          <>
-            <Path d="M30 40 L32 36 L34 40 L32 44 Z" fill={colors.cyan} opacity={0.6} />
-            <Path d="M88 48 L90 44 L92 48 L90 52 Z" fill={colors.orange} opacity={0.6} />
-            <Path d="M45 30 L46 28 L47 30 L46 32 Z" fill="#2ECC71" opacity={0.5} />
-            <Path d="M22 60 L24 56 L26 60 L24 64 Z" fill={colors.cyan} opacity={0.4} />
-            <Path d="M95 68 L96 66 L97 68 L96 70 Z" fill={colors.orange} opacity={0.4} />
-          </>
-        )}
+          {/* Mouth — varies by mood */}
+          <Mouth mood={mood} />
 
-        {/* Floating particles */}
-        <Circle cx="30" cy="70" r="1.5" fill={colors.cyan} opacity={0.3} />
-        <Circle cx="90" cy="75" r="1" fill={colors.cyan} opacity={0.25} />
-        <Circle cx="25" cy="55" r="1" fill={colors.cyan} opacity={0.2} />
-        <Circle cx="95" cy="50" r="1.5" fill={colors.cyan} opacity={0.2} />
-
-        {/* Paws */}
-        <Circle cx="50" cy="92" r="3" fill={colors.cyan} opacity={0.3} />
-        <Circle cx="60" cy="93" r="3" fill={colors.cyan} opacity={0.25} />
-        <Circle cx="70" cy="92" r="3" fill={colors.cyan} opacity={0.3} />
-      </Svg>
+          {/* Mood extras */}
+          {mood === 'thinking' ? <ThinkingBubble /> : null}
+          {mood === 'celebrating' ? <Stars /> : null}
+          {mood === 'happy' ? <Sparkles /> : null}
+          {mood === 'encouraging' ? <Paw /> : null}
+        </Svg>
+      </View>
     </Animated.View>
   );
 }
+
+/* ──────────────────────── helpers ──────────────────────── */
+
+/** Animated <G> wrapper — react-native-svg's G doesn't accept style props
+ *  directly with Reanimated, so we use createAnimatedComponent. */
+const AnimatedG = Animated.createAnimatedComponent(G);
+
+function Eyes({ mood }: { mood: MascotMood }) {
+  if (mood === 'happy' || mood === 'celebrating') {
+    // Sparkly happy eyes — closed-arc smile shape
+    return (
+      <G>
+        <Path d="M 44 48 Q 49 42 54 48" stroke={EYE_DOT} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+        <Path d="M 66 48 Q 71 42 76 48" stroke={EYE_DOT} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      </G>
+    );
+  }
+  if (mood === 'thinking') {
+    return (
+      <G>
+        {/* Eyes look up-left in thought */}
+        <Circle cx="49" cy="50" r="4.2" fill={WHITE} />
+        <Circle cx="71" cy="50" r="4.2" fill={WHITE} />
+        <Circle cx="47.5" cy="48.5" r="1.6" fill={EYE_DOT} />
+        <Circle cx="69.5" cy="48.5" r="1.6" fill={EYE_DOT} />
+      </G>
+    );
+  }
+  // calm / encouraging — big round eyes with sparkle highlight
+  return (
+    <G>
+      <Circle cx="49" cy="50" r="4.6" fill={WHITE} />
+      <Circle cx="71" cy="50" r="4.6" fill={WHITE} />
+      <Circle cx="49" cy="51" r="2" fill={EYE_DOT} />
+      <Circle cx="71" cy="51" r="2" fill={EYE_DOT} />
+      <Circle cx="50.4" cy="49.6" r="0.9" fill={WHITE} />
+      <Circle cx="72.4" cy="49.6" r="0.9" fill={WHITE} />
+    </G>
+  );
+}
+
+function Mouth({ mood }: { mood: MascotMood }) {
+  if (mood === 'thinking') {
+    return <Path d="M 55 72 L 65 72" stroke={EYE_DOT} strokeWidth="2" strokeLinecap="round" />;
+  }
+  if (mood === 'celebrating') {
+    return (
+      <G>
+        <Path d="M 53 68 Q 60 78 67 68 Q 60 73 53 68 Z" fill={EYE_DOT} />
+        <Path d="M 56 72 Q 60 75 64 72" stroke={NOSE} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      </G>
+    );
+  }
+  if (mood === 'happy') {
+    return <Path d="M 53 68 Q 60 76 67 68" stroke={EYE_DOT} strokeWidth="2.4" fill="none" strokeLinecap="round" />;
+  }
+  // calm / encouraging — gentle smile
+  return <Path d="M 55 68 Q 60 73 65 68" stroke={EYE_DOT} strokeWidth="2.2" fill="none" strokeLinecap="round" />;
+}
+
+function ThinkingBubble() {
+  return (
+    <G>
+      <Circle cx="92" cy="38" r="6" fill={WHITE} stroke={PEACH_DARK} strokeWidth="1.2" />
+      <Circle cx="88" cy="45" r="3" fill={WHITE} stroke={PEACH_DARK} strokeWidth="1" />
+      <Circle cx="84" cy="50" r="1.6" fill={WHITE} stroke={PEACH_DARK} strokeWidth="0.8" />
+      <Circle cx="90" cy="38" r="0.7" fill={EYE_DOT} />
+      <Circle cx="92.4" cy="38" r="0.7" fill={EYE_DOT} />
+      <Circle cx="94.6" cy="38" r="0.7" fill={EYE_DOT} />
+    </G>
+  );
+}
+
+function Stars() {
+  return (
+    <G>
+      <Path d="M 28 22 l 1.6 -4 l 1.6 4 l 4 1.6 l -4 1.6 l -1.6 4 l -1.6 -4 l -4 -1.6 z" fill="#F5C26B" />
+      <Path d="M 96 18 l 1.4 -3.6 l 1.4 3.6 l 3.6 1.4 l -3.6 1.4 l -1.4 3.6 l -1.4 -3.6 l -3.6 -1.4 z" fill={PINK} />
+      <Path d="M 18 60 l 1.2 -3 l 1.2 3 l 3 1.2 l -3 1.2 l -1.2 3 l -1.2 -3 l -3 -1.2 z" fill="#F5C26B" />
+    </G>
+  );
+}
+
+function Sparkles() {
+  return (
+    <G>
+      <Path d="M 26 36 l 1.2 -3 l 1.2 3 l 3 1.2 l -3 1.2 l -1.2 3 l -1.2 -3 l -3 -1.2 z" fill="#F5C26B" />
+      <Path d="M 98 50 l 1.2 -3 l 1.2 3 l 3 1.2 l -3 1.2 l -1.2 3 l -1.2 -3 l -3 -1.2 z" fill={PINK} />
+    </G>
+  );
+}
+
+function Paw() {
+  // Tiny paw raised on the right side — gesture of encouragement
+  return (
+    <G>
+      <Ellipse cx="92" cy="74" rx="5" ry="6" fill={PEACH} stroke={PEACH_DARK} strokeWidth="1.2" />
+      <Circle cx="89" cy="71" r="1.2" fill={PEACH_DARK} />
+      <Circle cx="92" cy="69.5" r="1.2" fill={PEACH_DARK} />
+      <Circle cx="95" cy="71" r="1.2" fill={PEACH_DARK} />
+    </G>
+  );
+}
+
+const styles = StyleSheet.create({});

@@ -4,6 +4,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { palette, radii, space, text, elevation } from '../theme/system';
 import { Button } from './Button';
 import { AiraMascot } from './AiraMascot';
+import type { MascotMood } from './AiraMascot';
 import { useUserStore } from '../store/userStore';
 import { haptics } from '../utils/haptics';
 
@@ -235,10 +236,11 @@ export function OpenPracticeSandbox({
           </Animated.View>
         ) : (
           <Animated.View entering={FadeInDown.duration(220)} style={styles.feedbackBlock}>
-            <JudgePanel
+            {/* Ara's Friendly Score — a big animated smiley + one warm line. */}
+            <SmileyScore
               evaluation={evaluation}
-              expanded={expandedJudges}
-              onToggle={toggleJudge}
+              expandedJudges={expandedJudges}
+              onToggleJudge={toggleJudge}
             />
 
             <FollowUpRow
@@ -253,7 +255,7 @@ export function OpenPracticeSandbox({
 
             <View style={styles.actions}>
               <Button
-                label="Try a stronger version"
+                label="Give it another go"
                 onPress={onTryAgain}
                 variant="secondary"
                 size="md"
@@ -278,7 +280,162 @@ export function OpenPracticeSandbox({
   );
 }
 
-/* ─────────────────────────── Judge panel ─────────────────────────── */
+/* ─────────────────────────── SmileyScore ─────────────────────────── */
+
+/**
+ * Ara's Friendly Score — the user-facing feedback panel.
+ *
+ *   - Big smiley face that morphs from neutral → happy as overall score rises.
+ *   - One short, warm, positive message that targets the weakest judge.
+ *   - Ara mascot reacts (encouraging / happy / celebrating).
+ *   - "Show details" button reveals the original JudgePanel breakdown
+ *     inside a collapsible block (kept for users who want the numbers).
+ *
+ * Replaces the previous 5-star multi-judge headline. Tone is warm and
+ * never punishing — even at low scores the message is encouraging
+ * ("You're close! Adding an audience will make it shine.").
+ */
+function SmileyScore({
+  evaluation,
+  expandedJudges,
+  onToggleJudge,
+}: {
+  evaluation: PromptEvaluation;
+  expandedJudges: Set<Judge>;
+  onToggleJudge: (j: Judge) => void;
+}) {
+  const [showDetails, setShowDetails] = useState(false);
+  const { overallStars, band } = evaluation;
+
+  // Mood + smile vary by band.
+  const mascotMood: MascotMood =
+    band === 'great' ? 'celebrating' :
+    band === 'good'  ? 'happy' :
+                       'encouraging';
+
+  // Message addresses the weakest judge specifically.
+  const weakest = pickLowestJudgeKey(evaluation);
+  const headline =
+    band === 'great' ? 'Beautiful prompt.' :
+    band === 'good'  ? 'Really nice start.' :
+                       'You\'re close — keep going!';
+  const supportMsg: string = (() => {
+    if (band === 'great') return 'You hit every move. Save this one as a template!';
+    if (weakest === 'audience') return 'Tiny tweak: tell Ara WHO this is for (e.g. "for a 10th grader"). That makes a huge difference!';
+    if (weakest === 'specificity') return 'Add a number or a constraint — like "in 5 bullets" — and Ara can see exactly what you want.';
+    if (weakest === 'format') return 'End with "Reply as a list / table" so the answer comes back in the shape you need.';
+    return 'Try stretching to a full sentence so Ara has more to work with.';
+  })();
+
+  return (
+    <View style={styles.feedbackCard}>
+      {/* Score row: smiley face + headline + score chip */}
+      <View style={styles.smileyRow}>
+        <View style={styles.smileyWrap}>
+          <AiraMascot size={88} mood={mascotMood} />
+        </View>
+        <View style={styles.smileyTextCol}>
+          <Text style={styles.feedbackTitle}>{headline}</Text>
+          <Text style={styles.feedbackSubtitle}>{supportMsg}</Text>
+          <View style={styles.scoreChip}>
+            <Text style={styles.scoreChipText}>
+              {overallStars.toFixed(1)} / 5
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Show details — collapsible breakdown */}
+      <Pressable
+        onPress={() => setShowDetails((v) => !v)}
+        hitSlop={8}
+        style={styles.detailsToggle}
+      >
+        <Text style={styles.detailsToggleText}>
+          {showDetails ? 'Hide details' : 'Show details'}
+        </Text>
+      </Pressable>
+
+      {showDetails ? (
+        <Animated.View entering={FadeIn.duration(160)} style={styles.judgesList}>
+          {(['clarity', 'specificity', 'audience', 'format'] as Judge[]).map((j) => (
+            <JudgeBarRow
+              key={j}
+              label={JUDGE_LABELS[j]}
+              score={evaluation.scores[j]}
+              expanded={expandedJudges.has(j)}
+              rationale={evaluation.rationale[j]}
+              onPress={() => onToggleJudge(j)}
+            />
+          ))}
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * One judge row in the collapsible "Show details" section. Renders a
+ * soft bar (not stars) per the brief.
+ */
+function JudgeBarRow({
+  label,
+  score,
+  expanded,
+  rationale,
+  onPress,
+}: {
+  label: string;
+  score: number;
+  expanded: boolean;
+  rationale: JudgeRationale;
+  onPress: () => void;
+}) {
+  return (
+    <View>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.judgeRow, pressed && { opacity: 0.85 }]}
+        accessibilityRole="button"
+      >
+        <View style={styles.judgeLabelCol}>
+          <Text style={styles.judgeLabel}>{label}</Text>
+          <View style={styles.judgeBarTrack}>
+            <View
+              style={[
+                styles.judgeBarFill,
+                {
+                  width: `${score}%`,
+                  backgroundColor:
+                    score >= 70 ? palette.success :
+                    score >= 40 ? palette.brand :
+                                  palette.danger,
+                },
+              ]}
+            />
+          </View>
+        </View>
+        <Text style={styles.judgeCaret}>{expanded ? '▴' : '▾'}</Text>
+      </Pressable>
+      {expanded ? (
+        <Animated.View entering={FadeIn.duration(160)} style={styles.judgeRationale}>
+          <Text style={styles.rationaleLabel}>WHY</Text>
+          <Text style={styles.rationaleText}>{rationale.why}</Text>
+          <Text style={[styles.rationaleLabel, { marginTop: space['2'] }]}>NEXT MOVE</Text>
+          <Text style={styles.rationaleText}>{rationale.tip}</Text>
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+}
+
+function pickLowestJudgeKey(ev: PromptEvaluation): Judge {
+  const entries = Object.entries(ev.scores) as [Judge, number][];
+  entries.sort((a, b) => a[1] - b[1]);
+  return entries[0][0];
+}
+
+/* ─────────────────────────── Judge panel (legacy, unused) ─────────────────────────── */
 
 function JudgePanel({
   evaluation, expanded, onToggle,
@@ -388,17 +545,17 @@ function FollowUpRow({
   const chips: { key: FollowUpKey; label: string; render: () => string }[] = [
     {
       key: 'why',
-      label: 'Why this score?',
+      label: 'Tell me more',
       render: () => followUpExplanations?.whyScore || fallbackWhy(evaluation),
     },
     {
       key: 'improve',
-      label: 'How to improve?',
+      label: 'How can I improve?',
       render: () => followUpExplanations?.howToImprove || fallbackHowToImprove(evaluation),
     },
     {
       key: 'example',
-      label: 'Show me an example',
+      label: 'Show an example',
       render: () => followUpExplanations?.example || fallbackExample(draft),
     },
   ];
@@ -717,6 +874,43 @@ const styles = StyleSheet.create({
   feedbackHeadText: { flex: 1, minWidth: 0 },
   feedbackTitle: { ...text.title, color: palette.textPrimary, marginBottom: 2 },
   feedbackSubtitle: { ...text.bodySmall, color: palette.textSecondary },
+
+  // SmileyScore styles
+  smileyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space['3'], marginBottom: space['2'] },
+  smileyWrap: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center' },
+  smileyTextCol: { flex: 1, minWidth: 0 },
+  scoreChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: palette.brandSoft,
+    paddingHorizontal: space['3'],
+    paddingVertical: 4,
+    borderRadius: radii.full,
+    marginTop: space['2'],
+  },
+  scoreChipText: {
+    ...text.bodyEmphasis,
+    color: palette.brand,
+    fontSize: 13,
+    letterSpacing: 0.3,
+  },
+  detailsToggle: {
+    alignSelf: 'flex-end',
+    paddingVertical: space['1'],
+    paddingHorizontal: space['2'],
+  },
+  detailsToggleText: {
+    ...text.caption,
+    color: palette.brand,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  judgeBarTrack: {
+    height: 6,
+    borderRadius: radii.full,
+    backgroundColor: palette.divider,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  judgeBarFill: { height: '100%', borderRadius: radii.full },
 
   judgesList: { gap: 4 },
   judgeRow: {

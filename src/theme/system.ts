@@ -6,48 +6,58 @@ export { colors, typography, spacing, radius };
 
 export const palette = colors;
 
+/**
+ * Soft & Sweet gradients.
+ * Hero (Sweet Orange → Peach) used for primary CTAs and Home hero.
+ */
 export const gradients = {
-  hero: ['#00B4D8', '#00E5E5'] as const,
-  heroDark: ['#0B0E14', '#1A1F2E'] as const,
-  lesson: ['#00E5E5', '#0B0E14'] as const,
-  celebrate: ['#00E5E5', '#2ECC71', '#FF6B35'] as const,
-  surface: ['#1A1F2E', '#242B3D'] as const,
-  streak: ['#FF6B35', '#E74C3C'] as const,
+  hero: ['#FF8C42', '#FFB997'] as const,
+  heroDark: ['#FFF9F5', '#FEE2D4'] as const, // warm white fade (no actual dark anymore)
+  lesson: ['#FFB997', '#FF8C42'] as const,
+  celebrate: ['#FF8C42', '#FF6B8A', '#7BC89C'] as const, // orange → pink → mint
+  surface: ['#FFFFFF', '#FFF3EA'] as const,
+  streak: ['#FF8C42', '#FF6B8A'] as const,
 } as const;
 
+/**
+ * Light-mode shadows — soft and subtle. Pure black at high opacity looks
+ * harsh on a warm-white background, so we cut shadow strength ~5x from
+ * the dark theme.
+ */
 export const elevation = {
   none: {},
   sm: {
     shadowColor: '#000',
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   md: {
     shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   lg: {
     shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
-  },
-  card: {
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.12,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
+  card: {
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  /** Branded glow — kept name for backwards compat; now peach-tinted. */
   cyanGlow: {
-    shadowColor: '#00E5E5',
-    shadowOpacity: 0.25,
+    shadowColor: '#FF8C42',
+    shadowOpacity: 0.22,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,

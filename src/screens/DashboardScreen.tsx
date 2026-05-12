@@ -119,7 +119,8 @@ export function DashboardScreen({ navigation }: { navigation: Nav }) {
             style={({ pressed }) => [styles.heroCard, pressed && styles.heroPressed]}
           >
             <LinearGradient
-              colors={['#00B4D8', '#00E5E5', '#0B0E14']}
+              // Peach hero — Soft & Sweet hero gradient
+              colors={['#FF8C42', '#FFB997', '#FEE2D4']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.heroGradient}

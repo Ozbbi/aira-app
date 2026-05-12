@@ -6,6 +6,8 @@ import { AiraOrb } from './AiraOrb';
 import { fetchExistingUser } from '../services/userService';
 import { checkHealth } from '../api/client';
 import { useUserStore } from '../store/userStore';
+import { setIapRewardHandler } from '../services/iapService';
+import { RewardedAdModal } from './RewardedAdModal';
 import { colors } from '../theme';
 
 export function AppBootstrap() {
@@ -13,6 +15,17 @@ export function AppBootstrap() {
   const setUser = useUserStore((s) => s.setUser);
 
   useEffect(() => {
+    // Register IAP reward callbacks once. The handler reaches into the
+    // store directly via getState() so React stale-closure doesn't bite.
+    setIapRewardHandler({
+      onProGranted: (expiresAt) => useUserStore.getState().grantPro(expiresAt),
+      onProRevoked: () => useUserStore.getState().revokePro(),
+      onHeartRefill: () => useUserStore.getState().fillLives(),
+      onStreakFreeze: (n) => useUserStore.getState().addStreakFreezes(n),
+      onSkinOwned: (id) => useUserStore.getState().addOwnedSkin(id),
+      onCertificateOwned: () =>
+        useUserStore.getState().logAnalytics('certificate_owned'),
+    });
     bootstrap();
   }, []);
 
@@ -72,6 +85,8 @@ export function AppBootstrap() {
   return (
     <NavigationContainer>
       <RootNavigator />
+      {/* Global rewarded-ad overlay. Subscribes to ad-service event bus. */}
+      <RewardedAdModal />
     </NavigationContainer>
   );
 }

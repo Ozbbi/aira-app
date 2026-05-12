@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { DashboardScreen } from '../screens/DashboardScreen';
-import { LearningMapScreen } from '../screens/LearningMapScreen';
+import { LearnScreen } from '../screens/LearnScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { haptics } from '../utils/haptics';
@@ -123,7 +123,7 @@ export function TabNavigator() {
       }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Lessons" component={LearningMapScreen} />
+      <Tab.Screen name="Lessons" component={LearnScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

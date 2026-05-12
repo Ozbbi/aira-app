@@ -8,10 +8,11 @@
 
 import { SEED_LESSONS, SeedLesson } from './seedLessons';
 import { CODE_LESSONS } from './codeLessons';
+import { AI_FOUNDATIONS_ADVANCED } from './aiFoundationsAdvanced';
 import type { Lesson, Question, AnswerResult } from '../types';
 
 // Single union pool for any local lesson lookup.
-const ALL_LOCAL_LESSONS: SeedLesson[] = [...SEED_LESSONS, ...CODE_LESSONS];
+const ALL_LOCAL_LESSONS: SeedLesson[] = [...SEED_LESSONS, ...CODE_LESSONS, ...AI_FOUNDATIONS_ADVANCED];
 
 /**
  * Map track ids in seed lessons to the topic strings used elsewhere.

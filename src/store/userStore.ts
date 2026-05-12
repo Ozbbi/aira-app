@@ -79,6 +79,13 @@ export interface LeagueData {
   cohortIds: string[];
 }
 
+export interface AnalyticsEvent {
+  /** Event name — e.g. 'purchase_completed'. */
+  type: string;
+  payload?: Record<string, unknown>;
+  at: string;
+}
+
 interface UserState {
   userId: string;
   name: string;
@@ -111,13 +118,23 @@ interface UserState {
   sandboxHistory: SandboxEntry[];
 
   // ── Phase-2 feature scaffolding ──
-  // These start empty / null and are populated when their features ship.
-  // Adding them now avoids a store migration when Phase 2 lands.
   flashcardDecks: FlashcardDeck[];
   importedContent: ImportedContent[];
   podcastRecaps: PodcastRecap[];
   mockExams: MockExamRecord[];
   leagueData: LeagueData | null;
+
+  // ── Monetization (IAP + Ads) ──
+  /** ISO timestamp of Pro expiry; null = not Pro. */
+  proExpiresAt: string | null;
+  /** Streak-freeze charges owned (from IAP packs or weekly Pro perk). */
+  streakFreezes: number;
+  /** Set of cosmetic skin product ids owned. */
+  ownedSkins: string[];
+  /** Last 200 analytics events (capped). Local-only for now. */
+  analyticsEvents: AnalyticsEvent[];
+  /** User-visible search history (last 10 unique queries). */
+  searchHistory: string[];
 
   setUser: (data: Partial<UserState>) => void;
   completeLesson: (lessonId: string, xpEarned: number) => void;
@@ -128,6 +145,21 @@ interface UserState {
   incrementSandbox: () => void;
   addSandboxEntry: (entry: SandboxEntry) => void;
   toggleBookmark: (id: string) => void;
+
+  // ── Monetization actions ──
+  /** Marks Pro until the supplied ISO timestamp. */
+  grantPro: (expiresAt: string) => void;
+  revokePro: () => void;
+  addStreakFreezes: (count: number) => void;
+  consumeStreakFreeze: () => boolean;
+  addOwnedSkin: (productId: string) => void;
+  /** Refills lives to max (used by heart_refill IAP + ad reward). */
+  fillLives: () => void;
+  /** Appends an analytics event, capped at 200. */
+  logAnalytics: (type: string, payload?: Record<string, unknown>) => void;
+  /** Push a query to searchHistory; dedupes and caps at 10. */
+  recordSearch: (q: string) => void;
+  clearSearchHistory: () => void;
 
   // ── Flashcard actions (real, not scaffolded) ──
   /**
@@ -193,6 +225,12 @@ const initialState = {
   podcastRecaps: [] as PodcastRecap[],
   mockExams: [] as MockExamRecord[],
   leagueData: null as LeagueData | null,
+  // Monetization scaffolding
+  proExpiresAt: null as string | null,
+  streakFreezes: 0,
+  ownedSkins: [] as string[],
+  analyticsEvents: [] as AnalyticsEvent[],
+  searchHistory: [] as string[],
 };
 
 export const useUserStore = create<UserState>()(
@@ -253,6 +291,52 @@ export const useUserStore = create<UserState>()(
           // Cap at 50 most-recent entries so persisted state doesn't bloat.
           sandboxHistory: [entry, ...s.sandboxHistory].slice(0, 50),
         })),
+
+      // ── Monetization ────────────────────────────────────────────
+      grantPro: (expiresAt) =>
+        set({ tier: 'pro', proExpiresAt: expiresAt }),
+
+      revokePro: () =>
+        set({ tier: 'free', proExpiresAt: null }),
+
+      addStreakFreezes: (count) =>
+        set((s) => ({ streakFreezes: s.streakFreezes + count })),
+
+      consumeStreakFreeze: () => {
+        const cur = get().streakFreezes;
+        if (cur <= 0) return false;
+        set({ streakFreezes: cur - 1 });
+        return true;
+      },
+
+      addOwnedSkin: (productId) =>
+        set((s) =>
+          s.ownedSkins.includes(productId)
+            ? {}
+            : { ownedSkins: [...s.ownedSkins, productId] },
+        ),
+
+      fillLives: () => set({ lives: MAX_LIVES }),
+
+      logAnalytics: (type, payload) =>
+        set((s) => ({
+          analyticsEvents: [
+            { type, payload, at: new Date().toISOString() },
+            ...s.analyticsEvents,
+          ].slice(0, 200),
+        })),
+
+      recordSearch: (q) =>
+        set((s) => {
+          const trimmed = q.trim();
+          if (!trimmed) return {};
+          const without = s.searchHistory.filter(
+            (x) => x.toLowerCase() !== trimmed.toLowerCase(),
+          );
+          return { searchHistory: [trimmed, ...without].slice(0, 10) };
+        }),
+
+      clearSearchHistory: () => set({ searchHistory: [] }),
 
       // ── Flashcards ──────────────────────────────────────────────
       createFlashcardsForLesson: (lesson, trackName) => {
@@ -341,6 +425,10 @@ export const useUserStore = create<UserState>()(
         podcastRecaps: s.podcastRecaps,
         mockExams: s.mockExams,
         leagueData: s.leagueData,
+        proExpiresAt: s.proExpiresAt,
+        streakFreezes: s.streakFreezes,
+        ownedSkins: s.ownedSkins,
+        searchHistory: s.searchHistory,
       }),
     },
   ),

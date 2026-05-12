@@ -10,6 +10,7 @@ import { AiraMascot } from '../components/AiraMascot';
 import { colors, radius, spacing, typography } from '../theme';
 import { useUserStore } from '../store/userStore';
 import { createCheckout, getUser } from '../api/client';
+import { showRewardedAd, getRemainingAdsToday } from '../services/adService';
 import { haptics } from '../utils/haptics';
 import type { RootStackParamList } from '../types';
 
@@ -128,6 +129,8 @@ export function PaywallScreen({ navigation }: Props) {
                 {loading ? 'Opening checkout…' : 'Upgrade to Pro'}
               </Text>
             </Pressable>
+
+            <WatchAdForHeart />
 
             <Pressable
               onPress={() => {
@@ -306,4 +309,84 @@ const styles = StyleSheet.create({
     color: colors.textDisabled,
     textAlign: 'center',
   },
+
+  // Watch-ad-for-heart row
+  adBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'transparent',
+    borderColor: colors.cyan,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  adBtnText: { ...typography.button, color: colors.cyan, fontSize: 14 },
+  adBtnLocked: { opacity: 0.5 },
+  adRemaining: { ...typography.caption, color: colors.textMuted, marginTop: -4, marginBottom: 12, textAlign: 'center' },
 });
+
+/* ─────────────────────── WatchAdForHeart ─────────────────────── */
+
+function WatchAdForHeart() {
+  const lives = useUserStore((s) => s.lives);
+  const tier = useUserStore((s) => s.tier);
+  const fillLives = useUserStore((s) => s.fillLives);
+  const earnLife = useUserStore((s) => s.earnLife);
+  const logAnalytics = useUserStore((s) => s.logAnalytics);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    getRemainingAdsToday().then((n) => mounted && setRemaining(n));
+    return () => { mounted = false; };
+  }, []);
+
+  // Pro users don't need ads; full-life users don't either.
+  if (tier === 'pro' || lives >= 5) return null;
+
+  const limitReached = remaining !== null && remaining <= 0;
+
+  const onWatch = async () => {
+    haptics.tap();
+    logAnalytics('ad_shown', { source: 'paywall_screen' });
+    setLoading(true);
+    const result = await showRewardedAd({ type: 'heart', amount: 1 });
+    setLoading(false);
+    setRemaining(await getRemainingAdsToday());
+    if (result.rewarded) {
+      earnLife(result.reward?.amount ?? 1);
+      haptics.success();
+      logAnalytics('ad_completed', { reward: result.reward });
+    } else {
+      logAnalytics('ad_skipped', { reason: result.reason });
+      if (result.reason === 'limit_reached') {
+        Alert.alert(
+          'Daily limit reached',
+          'You can watch up to 3 ads per day. Come back tomorrow, or upgrade for unlimited lives.',
+        );
+      }
+    }
+  };
+
+  return (
+    <>
+      <Pressable
+        onPress={onWatch}
+        disabled={loading || limitReached}
+        style={[styles.adBtn, (loading || limitReached) && styles.adBtnLocked]}
+      >
+        <Text style={styles.adBtnText}>
+          {loading ? 'Loading ad…' : limitReached ? 'Daily ad limit reached' : 'Watch a short ad · Earn 1 heart'}
+        </Text>
+      </Pressable>
+      {remaining !== null && remaining > 0 ? (
+        <Text style={styles.adRemaining}>{remaining} ad{remaining === 1 ? '' : 's'} left today</Text>
+      ) : null}
+    </>
+  );
+}

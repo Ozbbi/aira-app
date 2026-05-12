@@ -31,3 +31,5 @@ export {
 
 export { CODE_LESSONS } from './codeLessons';
 export type { CodeLanguage, CodeLevel, CodeLesson } from './codeLessons';
+
+export { AI_FOUNDATIONS_ADVANCED } from './aiFoundationsAdvanced';
